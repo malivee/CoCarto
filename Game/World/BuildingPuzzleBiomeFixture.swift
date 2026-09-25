@@ -96,12 +96,12 @@ enum BuildingPuzzleBiomeFixture {
     static let biomeEdgesByCellID: [BuildingPuzzleCellID: CellBiomeEdges] = [
         .a: .uniform(.rocksalt),
         .b: .uniform(.rocksalt),
-        .c: mixed(north: .villageSoil, east: .villageSoil, south: .villageSoil, west: .rocksalt),
+        .c: CellBiomeEdges(north: .rocksalt, east: .villageSoil, south: .villageSoil, west: .rocksalt),
         .d: .uniform(.villageSoil),
-        .e: .uniform(.villageSoil),
-        .f: mixed(north: .villageSoil, east: .rocksalt, south: .villageSoil, west: .villageSoil),
-        .g: mixed(north: .rocksalt, east: .villageSoil, south: .villageSoil, west: .rocksalt),
-        .h: mixed(north: .villageSoil, east: .villageSoil, south: .rocksalt, west: .villageSoil),
+        .e: CellBiomeEdges(north: .rocksalt, east: .villageSoil, south: .villageSoil, west: .villageSoil),
+        .f: CellBiomeEdges(north: .rocksalt, east: .rocksalt, south: .villageSoil, west: .villageSoil),
+        .g: CellBiomeEdges(north: .villageSoil, east: .villageSoil, south: .villageSoil, west: .rocksalt),
+        .h: .uniform(.villageSoil),
         .i: CellBiomeEdges(north: .villageSoil, east: .villageSoil, south: .rocksalt, west: .villageSoil),
         .j: CellBiomeEdges(north: .darkGreenForest, east: .darkGreenForest, south: .villageSoil, west: .villageSoil),
         .k: CellBiomeEdges(north: .villageSoil, east: .darkGreenForest, south: .darkGreenForest, west: .villageSoil),
@@ -127,10 +127,47 @@ enum BuildingPuzzleBiomeFixture {
     }
 
     static func biomeEdges(for cellID: BuildingPuzzleCellID) -> CellBiomeEdges {
+        if let customGrid = microBiomeGridOverride(for: cellID) {
+            return CellBiomeEdges(
+                north: dominantBiome(on: .north, in: customGrid),
+                east: dominantBiome(on: .east, in: customGrid),
+                south: dominantBiome(on: .south, in: customGrid),
+                west: dominantBiome(on: .west, in: customGrid)
+            )
+        }
         guard let edges = biomeEdgesByCellID[cellID] else {
             preconditionFailure("Missing biome edges for cell \(cellID.rawValue).")
         }
         return edges
+    }
+
+    private static func dominantBiome(on direction: Direction, in grid: MicroBiomeGrid) -> BiomeType {
+        let last = MicroBiomeGrid.dimension - 1
+        let positions: [MicroGridPosition]
+        switch direction {
+        case .north:
+            positions = (0...last).map { MicroGridPosition(x: $0, y: 0) }
+        case .east:
+            positions = (0...last).map { MicroGridPosition(x: last, y: $0) }
+        case .south:
+            positions = (0...last).map { MicroGridPosition(x: $0, y: last) }
+        case .west:
+            positions = (0...last).map { MicroGridPosition(x: 0, y: $0) }
+        }
+        var counts: [BiomeType: Int] = [:]
+        for position in positions {
+            if let biome = grid.biome(at: position) {
+                counts[biome, default: 0] += 1
+            } else if let split = grid.split(at: position) {
+                counts[split.primaryBiome, default: 0] += 1
+                counts[split.secondaryBiome, default: 0] += 1
+            }
+        }
+        return counts.max { lhs, rhs in
+            lhs.value == rhs.value
+                ? lhs.key.rawValue > rhs.key.rawValue
+                : lhs.value < rhs.value
+        }?.key ?? .villageSoil
     }
 
     static func debugDescription(pieceID: BuildingPuzzlePieceID, cellID: BuildingPuzzleCellID) -> String {
@@ -162,6 +199,30 @@ enum BuildingPuzzleBiomeFixture {
         case .village, .forestWest, .forestEast, .forestPass, .hill, .outerWilderness:
             return nil
         }
+    }
+}
+
+private extension MicroBiomeGrid {
+    func swappingBiomes(_ first: BiomeType, _ second: BiomeType) -> MicroBiomeGrid {
+        var grid = self
+        for position in MicroGridPosition.allPositions {
+            if let split = split(at: position) {
+                grid.setSplit(MicroBiomeSplit(
+                    primaryBiome: swapped(split.primaryBiome, first, second),
+                    secondaryBiome: swapped(split.secondaryBiome, first, second),
+                    primaryCorner: split.primaryCorner
+                ), at: position)
+            } else if let biome = biome(at: position) {
+                grid.setBiome(swapped(biome, first, second), at: position)
+            }
+        }
+        return grid
+    }
+
+    private func swapped(_ biome: BiomeType, _ first: BiomeType, _ second: BiomeType) -> BiomeType {
+        if biome == first { return second }
+        if biome == second { return first }
+        return biome
     }
 }
 
@@ -215,12 +276,14 @@ private extension BuildingPuzzleBiomeFixture {
         switch cellID {
         case .c:
             return villageSoilWithRockSaltDiagonalCut()
+        case .e:
+            return villageSoilWithTopRockSaltTriangle()
         case .f:
-            return villageSoilWithRightRockSaltTriangle()
+            return villageSoilWithRockSaltDiagonalTopLeftToBottomRight().swappingBiomes(.rocksalt, .villageSoil)
         case .g:
             return villageSoilWithLeftRockSaltTriangle()
         case .h:
-            return villageSoilWithBottomRockSaltTriangle()
+            return .uniform(.villageSoil)
         case .i:
             return villageSoilWithTopRockSaltTriangle().rotated(by: .degrees180)
         case .j:
@@ -229,7 +292,7 @@ private extension BuildingPuzzleBiomeFixture {
             return diagonalGrid(upperBiome: .villageSoil, lowerBiome: .darkGreenForest, slopesDownRight: false)
         case .l:
             return diagonalGrid(upperBiome: .villageSoil, lowerBiome: .darkGreenForest, slopesDownRight: true)
-        case .a, .b, .d, .e, .m, .n, .o, .p, .q, .r, .s, .t:
+        case .a, .b, .d, .m, .n, .o, .p, .q, .r, .s, .t:
             return nil
         }
     }
@@ -279,6 +342,14 @@ private extension BuildingPuzzleBiomeFixture {
 
     static func villageSoilWithLeftRockSaltTriangle() -> MicroBiomeGrid {
         villageSoilWithTopRockSaltTriangle().rotated(by: .degrees270)
+    }
+
+    static func rockSaltWithLeftVillageSoilTriangle() -> MicroBiomeGrid {
+        villageSoilWithLeftRockSaltTriangle().swappingBiomes(.rocksalt, .villageSoil)
+    }
+
+    static func villageSoilWithRockSaltDiagonalTopLeftToBottomRight() -> MicroBiomeGrid {
+        .diagonal(primaryBiome: .villageSoil, secondaryBiome: .rocksalt, primaryCorner: .topRight)
     }
 
     static func villageSoilWithBottomRockSaltTriangle() -> MicroBiomeGrid {

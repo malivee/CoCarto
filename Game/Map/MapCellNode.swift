@@ -40,14 +40,14 @@ final class MapCellNode: SKSpriteNode {
     }
 
     private func addMicroBiomeDebugGrid(_ microBiomeGrid: MicroBiomeGrid, gridID: GridID, piece: WorldPiece, cellSize: CGFloat) {
-//        if let override = TileAssetResolver.override(for: piece, gridID: gridID) {
-//            let tile = TileAssetResolver.overrideNode(for: override, size: cellSize)
-//            tile.alpha = 0.92
-//            tile.zPosition = 0.5
-//            addChild(tile)
-//            addGridLines(dimension: MicroBiomeGrid.dimension, cellSize: cellSize)
-//            return
-//        }
+        if let override = TileAssetResolver.override(for: piece, gridID: gridID) {
+            let tile = TileAssetResolver.overrideNode(for: override, size: cellSize)
+            tile.alpha = 0.92
+            tile.zPosition = 0.5
+            addChild(tile)
+            addGridLines(dimension: MicroBiomeGrid.dimension, cellSize: cellSize)
+            return
+        }
 
         let dimension = MicroBiomeGrid.dimension
         let subcellSize = cellSize / CGFloat(dimension)
