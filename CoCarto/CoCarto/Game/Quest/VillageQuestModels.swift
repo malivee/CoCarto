@@ -57,11 +57,10 @@ struct VillageQuest2Progress: Codable {
 // VillageQuest3Progress is defined in VillageQuest3Models.swift
 
 struct VillageQuest4Progress: Codable {
-    static let saveKey = "village.carto.quest4.v1"
+    static let saveKey = "village.carto.quest4.v2"
 
-    var metAnneth = false
-    var sortedTubers = false
-    var receivedSaltErrand = false
+    var chapter3Completed = false
+    var metRoland = false
     var completed = false
 
     static func load(defaults: UserDefaults = .standard) -> Self {
@@ -79,12 +78,11 @@ struct VillageQuest4Progress: Codable {
 }
 
 struct VillageQuest5Progress: Codable {
-    static let saveKey = "village.carto.quest5.v1"
+    static let saveKey = "village.carto.quest5.v2"
 
-    var minedSalt = false
-    var heardSeaLegend = false
-    var deliveredSalt = false
-    var receivedSilverLeafMission = false
+    var chapter4Completed = false
+    var metAnneth = false
+    var washedTubers = false
     var completed = false
 
     static func load(defaults: UserDefaults = .standard) -> Self {

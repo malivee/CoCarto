@@ -51,6 +51,8 @@ final class GameScene: SKScene {
     let quest1Controller = VillageQuest1Controller()
     let quest2Controller = VillageQuest2Controller()
     let quest3Controller = VillageQuest3Controller()
+    let quest4Controller = VillageQuest4Controller()
+    let quest5Controller = VillageQuest5Controller()
     let saveService = try? SaveGameService()
     let puzzleFeedbackLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     let worldQuestLabel = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
@@ -68,7 +70,7 @@ final class GameScene: SKScene {
     var lastSaveStatus = "none"
     var questDialogueLines: [VillageQuestDialogueLine] = []
     weak var activeQuestDialogue: SpeechBubbleNode?
-    weak var activeQuestMinigame: ShelfBalanceMinigameNode?
+    weak var activeQuestMinigame: SKNode?
     var onQuestDialogueFinished: (() -> Void)?
 
     override func didMove(to view: SKView) {

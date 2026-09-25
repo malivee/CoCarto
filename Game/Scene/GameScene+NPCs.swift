@@ -65,7 +65,7 @@ extension GameScene {
                 )
                 npc.name = "npc-roland"
                 offset = CGPoint(x: 28, y: -26)
-                npc.setStatusBadge(icon: "🐑", text: "Kandang", color: .systemYellow)
+                updateRolandBadge(npc)
 
             case .annethHouse:
                 npc = MemoryCharacter(
@@ -74,7 +74,7 @@ extension GameScene {
                 )
                 npc.name = "npc-anneth"
                 offset = CGPoint(x: 24, y: -22)
-                npc.setStatusBadge(icon: "🌸", text: "Kebun", color: .systemTeal)
+                updateAnnethBadge(npc)
 
             default:
                 continue
@@ -171,6 +171,26 @@ extension GameScene {
             npc.setStatusBadge(icon: "🌾", text: "Benih", color: .systemGreen)
         } else if quest3Controller.canStart(in: worldState) {
             npc.setStatusBadge(icon: "🧺", text: "Keranjang", color: .systemYellow)
+        } else {
+            npc.clearStatusBadge()
+        }
+    }
+
+    private func updateRolandBadge(_ npc: MemoryCharacter) {
+        if quest4Controller.isCompleted {
+            npc.clearStatusBadge()
+        } else if quest4Controller.canStart(in: worldState) {
+            npc.setStatusBadge(icon: "!", text: "Bicara", color: .systemYellow)
+        } else {
+            npc.clearStatusBadge()
+        }
+    }
+
+    private func updateAnnethBadge(_ npc: MemoryCharacter) {
+        if quest5Controller.isCompleted {
+            npc.clearStatusBadge()
+        } else if quest5Controller.canStart(in: worldState) {
+            npc.setStatusBadge(icon: "!", text: "Bicara", color: .systemYellow)
         } else {
             npc.clearStatusBadge()
         }

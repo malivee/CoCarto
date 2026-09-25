@@ -82,6 +82,16 @@ struct WorldState: Codable, Equatable, Sendable {
         return true
     }
 
+    @discardableResult
+    mutating func setPieceMovable(_ isMovable: Bool, for role: PieceRole) -> Bool {
+        guard let index = pieces.firstIndex(where: { $0.role == role }),
+              pieces[index].isMovable != isMovable else {
+            return false
+        }
+        pieces[index].isMovable = isMovable
+        return true
+    }
+
     func previewingPiece(id: UUID, at position: GridPosition, rotation: GridRotation) -> WorldState {
         guard let index = pieces.firstIndex(where: { $0.id == id }) else {
             return self

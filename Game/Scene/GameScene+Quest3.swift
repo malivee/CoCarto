@@ -25,8 +25,10 @@ extension GameScene {
             startQuest3SeedSortingMinigame()
 
         case .completed(let lines):
+            quest4Controller.handleChapter3Completed()
+            synchronizeQuestProgressionUnlocks()
             showQuestDialogue(lines) { [weak self] in
-                self?.showProgressionFeedback("QUEST 3 COMPLETE")
+                self?.showProgressionFeedback("ANIMAL PEN & TILE UNLOCKED")
                 self?.playerNode?.celebrate()
                 self?.npcCharacter(named: "Kenneth")?.celebrate()
                 self?.syncVillageNPCs()
@@ -91,8 +93,10 @@ extension GameScene {
 
                     // Tandai minigame selesai dan tampilkan dialog penutup
                     self.quest3Controller.markSeedsSorted()
+                    self.quest4Controller.handleChapter3Completed()
+                    self.synchronizeQuestProgressionUnlocks()
                     self.showQuestDialogue(VillageQuest3Catalog.postMinigameDialogue) { [weak self] in
-                        self?.showProgressionFeedback("QUEST 3 COMPLETE")
+                        self?.showProgressionFeedback("ANIMAL PEN & TILE UNLOCKED")
                         self?.playerNode?.celebrate()
                         self?.npcCharacter(named: "Kenneth")?.celebrate()
                         self?.syncVillageNPCs()

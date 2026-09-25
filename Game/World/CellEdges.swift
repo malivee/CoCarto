@@ -64,19 +64,19 @@ extension Direction {
             return self
         case .degrees90:
             switch self {
-            case .north: return .east
-            case .east: return .south
-            case .south: return .west
-            case .west: return .north
+            case .north: return .west
+            case .east: return .north
+            case .south: return .east
+            case .west: return .south
             }
         case .degrees180:
             return opposite
         case .degrees270:
             switch self {
-            case .north: return .west
-            case .east: return .north
-            case .south: return .east
-            case .west: return .south
+            case .north: return .east
+            case .east: return .south
+            case .south: return .west
+            case .west: return .north
             }
         }
     }

@@ -6,6 +6,24 @@ extension GameScene {
         let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
         let hasMaraHome = worldState.buildingObjects.contains { $0.kind == .buMaraHouse }
         let hasBarn = worldState.buildingObjects.contains { $0.kind == .barn }
+        let hasAnimalPen = worldState.buildingObjects.contains { $0.kind == .animalPen }
+        let hasAnnethHome = worldState.buildingObjects.contains { $0.kind == .annethHouse }
+
+        if quest5Controller.isUnlocked && !quest5Controller.isCompleted {
+            return [MapQuestItem(
+                category: "Quest 5",
+                title: VillageQuest5Catalog.mapObjective,
+                isCompleted: hasAnnethHome
+            )]
+        }
+
+        if quest4Controller.isUnlocked && !quest4Controller.isCompleted {
+            return [MapQuestItem(
+                category: "Quest 4",
+                title: VillageQuest4Catalog.mapObjective,
+                isCompleted: hasAnimalPen
+            )]
+        }
 
         if !hasArthurHome {
             return [MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: false)]
@@ -54,6 +72,12 @@ extension GameScene {
         if quest1Controller.isCompleted && quest2Controller.isCompleted {
             unlocked.insert(.barn)
         }
+        if quest4Controller.isUnlocked {
+            unlocked.insert(.animalPen)
+        }
+        if quest5Controller.isUnlocked {
+            unlocked.insert(.annethHouse)
+        }
         return unlocked
     }
 
@@ -67,7 +91,10 @@ extension GameScene {
 
     @discardableResult
     func synchronizeQuestProgressionUnlocks() -> Bool {
-        let didChangePieces = worldState.synchronizePuzzlePieces(allowing: questUnlockedPieceRoles())
+        var didChangePieces = worldState.synchronizePuzzlePieces(allowing: questUnlockedPieceRoles())
+        if worldState.setPieceMovable(quest3Controller.isCompleted, for: .z1) {
+            didChangePieces = true
+        }
         if didChangePieces {
             playerController.updateWorldState(worldState)
             worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
@@ -94,6 +121,30 @@ extension GameScene {
         let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
         let hasMaraHome = worldState.buildingObjects.contains { $0.kind == .buMaraHouse }
         let hasBarn = worldState.buildingObjects.contains { $0.kind == .barn }
+
+        if quest5Controller.isUnlocked && !quest5Controller.isCompleted {
+            items.append(MapQuestItem(
+                category: "Quest 5",
+                title: VillageQuest5Catalog.worldObjective,
+                isCompleted: false
+            ))
+            worldQuestTracker.update(with: items)
+            worldQuestTracker.isHidden = gameMode != .exploring
+            worldQuestLabel.isHidden = true
+            return
+        }
+
+        if quest4Controller.isUnlocked && !quest4Controller.isCompleted {
+            items.append(MapQuestItem(
+                category: "Quest 4",
+                title: VillageQuest4Catalog.worldObjective,
+                isCompleted: false
+            ))
+            worldQuestTracker.update(with: items)
+            worldQuestTracker.isHidden = gameMode != .exploring
+            worldQuestLabel.isHidden = true
+            return
+        }
 
         if !quest1Controller.isCompleted {
             if !hasArthurHome {
@@ -181,6 +232,10 @@ extension GameScene {
             ))
         case .barn:
             handleQuest3Interaction(object: object)
+        case .animalPen:
+            handleQuest4Interaction()
+        case .annethHouse:
+            handleQuest5Interaction()
         default:
             return
         }

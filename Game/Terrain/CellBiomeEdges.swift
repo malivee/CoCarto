@@ -32,11 +32,11 @@ struct CellBiomeEdges: Codable, Equatable, Hashable, Sendable {
         case .degrees0:
             return self
         case .degrees90:
-            return CellBiomeEdges(north: west, east: north, south: east, west: south)
+            return CellBiomeEdges(north: east, east: south, south: west, west: north)
         case .degrees180:
             return CellBiomeEdges(north: south, east: west, south: north, west: east)
         case .degrees270:
-            return CellBiomeEdges(north: east, east: south, south: west, west: north)
+            return CellBiomeEdges(north: west, east: north, south: east, west: south)
         }
     }
 }
