@@ -18,6 +18,7 @@ final class VillageQuest6Controller {
     var isUnlocked: Bool { VillageQuest5Progress.load().completed }
     var isActive: Bool { synchronize(); return progress.acceptedSaltErrand && !progress.completed }
     var hasCollectedRockSalt: Bool { synchronize(); return progress.pickedUpRockSalt }
+    var collectedRockSaltCount: Int { synchronize(); return progress.collectedMineIDs.count }
     var isCompleted: Bool { synchronize(); return progress.completed }
 
     func activateIfEligible() -> VillageQuest6InteractionResult? {
@@ -28,7 +29,7 @@ final class VillageQuest6Controller {
         return .activated(Self.introDialogue)
     }
 
-    func collectRockSalt(in worldState: WorldState) -> VillageQuest6InteractionResult {
+    func collectRockSalt(from mineID: UUID, in worldState: WorldState) -> VillageQuest6InteractionResult {
         synchronize()
         guard isUnlocked, progress.acceptedSaltErrand else {
             return .unavailable([.init(speaker: "Quest", text: "Finish Anneth's previous quest first.")])
@@ -40,12 +41,27 @@ final class VillageQuest6Controller {
         guard mineCount >= 3 else {
             return .unavailable([.init(speaker: "Quest", text: "Place all three Rock Salt Mines first (\(mineCount)/3).")])
         }
+        guard worldState.buildingObjects.contains(where: { $0.id == mineID && $0.kind == .rockSalt }) else {
+            return .unavailable([.init(speaker: "Quest", text: "This Rock Salt Mine is no longer available.")])
+        }
+        guard !progress.collectedMineIDs.contains(mineID) else {
+            return .unavailable([.init(speaker: "Arthur", text: "I already collected Rock Salt from this mine.")])
+        }
         guard !progress.pickedUpRockSalt else {
             return .unavailable([.init(speaker: "Arthur", text: "The bag is half full. I should return to Mrs. Anneth.")])
         }
-        progress.pickedUpRockSalt = true
+        progress.collectedMineIDs.insert(mineID)
+        progress.pickedUpRockSalt = progress.collectedMineIDs.count >= 3
         progress.save()
-        return .rockSaltCollected(Self.minerDialogue)
+        if progress.pickedUpRockSalt {
+            return .rockSaltCollected(Self.minerDialogue)
+        }
+        return .rockSaltCollected([
+            .init(
+                speaker: "Arthur",
+                text: "Rock Salt collected (\(progress.collectedMineIDs.count)/3). I need to check the other mines."
+            )
+        ])
     }
 
     func deliverToAnneth() -> VillageQuest6InteractionResult {

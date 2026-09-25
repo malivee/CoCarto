@@ -19,6 +19,7 @@
 		AA3EC8313066876C00BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA3ECFA03066B14700BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA3ED6543066D07E00BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
+		AA3EDF743066D75D00BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AAD4F6B730661F4600F88A5D /* CoCarto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoCarto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -127,6 +128,11 @@
 			sourceTree = "<group>";
 		};
 		AA3ED65A3066D07E00BCF5E3 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AA3EDF7A3066D75D00BCF5E3 /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -242,6 +248,10 @@
 					ProjectRef = 23619C643066C1E900C66ECB /* CoCarto.xcodeproj */;
 				},
 				{
+					ProductGroup = AA3EDF7A3066D75D00BCF5E3 /* Products */;
+					ProjectRef = AA3EDF743066D75D00BCF5E3 /* CoCarto.xcodeproj */;
+				},
+				{
 					ProductGroup = AA3ECFA63066B14700BCF5E3 /* Products */;
 					ProjectRef = AA3ECFA03066B14700BCF5E3 /* CoCarto.xcodeproj */;
 				},
@@ -285,7 +295,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = WB3D823668;
+				DEVELOPMENT_TEAM = DTTY9ZX5T4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -318,7 +328,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = WB3D823668;
+				DEVELOPMENT_TEAM = DTTY9ZX5T4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

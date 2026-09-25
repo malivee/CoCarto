@@ -218,7 +218,9 @@ extension GameScene {
             let title: String
             if !hasAnnethHome { title = VillageQuestCatalog.Quest6.mapObjectives[0] }
             else if mineCount < 3 { title = "Place rock salt mine (\(mineCount)/3)" }
-            else if !quest6Controller.hasCollectedRockSalt { title = VillageQuestCatalog.Quest6.worldObjective }
+            else if !quest6Controller.hasCollectedRockSalt {
+                title = "Pick up Rock Salt (\(quest6Controller.collectedRockSaltCount)/3)"
+            }
             else { title = "Return the Rock Salt to Mrs. Anneth" }
             items.append(MapQuestItem(category: "Quest 6", title: title, isCompleted: false))
         }
@@ -270,13 +272,15 @@ extension GameScene {
 
     func interactWithQuest6Pickup(in stack: [SKNode]) {
         guard let playerNode,
-              let pickup = stack.first(where: { $0.name == BuildingObjectRenderer.quest6PickupName }) else { return }
+              let pickup = stack.first(where: { $0.name == BuildingObjectRenderer.quest6PickupName }),
+              let mineIDString = stack.compactMap({ $0.userData?[BuildingObjectRenderer.quest6MineIDKey] as? String }).first,
+              let mineID = UUID(uuidString: mineIDString) else { return }
         let pickupPosition = pickup.convert(CGPoint.zero, to: self)
         guard hypot(playerNode.position.x - pickupPosition.x, playerNode.position.y - pickupPosition.y) <= 220 else {
             showProgressionFeedback("MOVE CLOSER")
             return
         }
-        handleQuest6Result(quest6Controller.collectRockSalt(in: worldState))
+        handleQuest6Result(quest6Controller.collectRockSalt(from: mineID, in: worldState))
         worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
         updateWorldQuestLabel()
     }

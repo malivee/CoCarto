@@ -5,25 +5,27 @@ enum BuildingObjectRenderer {
     static let nodeName = "BuildingObjectNode"
     static let objectIDKey = "buildingObjectID"
     static let quest6PickupName = "Quest6RockSaltPickup"
+    static let quest6MineIDKey = "Quest6RockSaltMineID"
 
     static func render(_ objects: [BuildingObject], in parent: SKNode, cellSize: CGFloat, isWorld: Bool) {
         parent.childNode(withName: rootName)?.removeFromParent()
         let root = SKNode()
         root.name = rootName
         root.zPosition = 40
-        var lastRockSaltNode: SKNode?
+        let quest6Progress = VillageQuest6Progress.load()
+        let canShowQuest6Pickups = isWorld
+            && objects.contains(where: { $0.kind == .annethHouse })
+            && objects.filter({ $0.kind == .rockSalt }).count >= 3
+            && VillageQuest5Progress.load().completed
+            && !quest6Progress.pickedUpRockSalt
         for object in objects {
             let node = makeNode(object, cellSize: cellSize, isWorld: isWorld)
             root.addChild(node)
-            if object.kind == .rockSalt { lastRockSaltNode = node }
-        }
-        if isWorld,
-           objects.contains(where: { $0.kind == .annethHouse }),
-           objects.filter({ $0.kind == .rockSalt }).count >= 3,
-           VillageQuest5Progress.load().completed,
-           !VillageQuest6Progress.load().pickedUpRockSalt,
-           let lastRockSaltNode {
-            lastRockSaltNode.addChild(makeQuest6Pickup())
+            if canShowQuest6Pickups,
+               object.kind == .rockSalt,
+               !quest6Progress.collectedMineIDs.contains(object.id) {
+                node.addChild(makeQuest6Pickup(mineID: object.id))
+            }
         }
         parent.addChild(root)
     }
@@ -99,9 +101,10 @@ enum BuildingObjectRenderer {
         return root
     }
 
-    private static func makeQuest6Pickup() -> SKNode {
+    private static func makeQuest6Pickup(mineID: UUID) -> SKNode {
         let root = SKNode()
         root.name = quest6PickupName
+        root.userData = [quest6MineIDKey: mineID.uuidString]
         root.position = CGPoint(x: 0, y: 54)
         root.zPosition = 20
 
@@ -116,6 +119,7 @@ enum BuildingObjectRenderer {
             return path
         }())
         crystal.name = quest6PickupName
+        crystal.userData = [quest6MineIDKey: mineID.uuidString]
         crystal.fillColor = SKColor(red: 0.91, green: 0.96, blue: 0.92, alpha: 1)
         crystal.strokeColor = .white
         crystal.lineWidth = 3
@@ -139,7 +143,9 @@ enum BuildingObjectRenderer {
             return "rumahBuMara"
         case .annethHouse:
             return "rumahAnneth"
-        case .barn, .animalPen, .rockSalt:
+        case .animalPen:
+            return "kandang"
+        case .barn, .rockSalt:
             return nil
         }
     }

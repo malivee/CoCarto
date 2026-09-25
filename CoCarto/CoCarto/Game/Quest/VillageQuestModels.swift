@@ -100,9 +100,10 @@ struct VillageQuest5Progress: Codable {
 }
 
 struct VillageQuest6Progress: Codable {
-    static let saveKey = "village.carto.quest6.v1"
+    static let saveKey = "village.carto.quest6.v2"
 
     var acceptedSaltErrand = false
+    var collectedMineIDs: Set<UUID> = []
     var pickedUpRockSalt = false
     var deliveredRockSalt = false
     var completed = false
