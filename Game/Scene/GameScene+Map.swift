@@ -518,7 +518,7 @@ extension GameScene {
             }
             self.mapRenderer.updatePreviewNode(piece: piece, preview: currentPreview, in: self.mapRoot, worldState: self.worldState)
             if currentPreview.isValid {
-                self.confirmMapPreview()
+                self.confirmMapPreview(keepSelection: true)
             } else {
                 self.rebuildMapView()
             }
@@ -559,7 +559,7 @@ extension GameScene {
         rebuildMapView()
     }
 
-    func confirmMapPreview() {
+    func confirmMapPreview(keepSelection: Bool = false) {
         guard let preview = mapController.preview else {
             return
         }
@@ -589,7 +589,17 @@ extension GameScene {
         }
 
         puzzleManager.evaluate(worldState: worldState)
-        gameMode = .mapIdle
+        if keepSelection {
+            _ = mapController.select(
+                pieceID: preview.pieceID,
+                in: worldState,
+                playerState: playerController.state,
+                mapper: mapRenderer.mapper
+            )
+            gameMode = .mapPieceSelected(preview.pieceID)
+        } else {
+            gameMode = .mapIdle
+        }
         rebuildMapView()
         autosave(reason: "placement confirmed")
     }

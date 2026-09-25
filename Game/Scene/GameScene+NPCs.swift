@@ -37,6 +37,7 @@ extension GameScene {
                     color: SKColor(red: 0.48, green: 0.54, blue: 0.42, alpha: 1)
                 )
                 npc.name = "npc-grandpa"
+                npc.useSpriteAsset(named: "kakekArthur", size: CGSize(width: 44, height: 58))
                 offset = CGPoint(x: 22, y: -24)
                 updateGrandpaBadge(npc)
                 if isQuest1TutorialActive,
@@ -51,6 +52,7 @@ extension GameScene {
                     color: SKColor(red: 0.76, green: 0.46, blue: 0.36, alpha: 1)
                 )
                 npc.name = "npc-bumara"
+                npc.useSpriteAsset(named: "buMara", size: CGSize(width: 64, height: 48))
                 offset = CGPoint(x: 26, y: -20)
                 updateBuMaraBadge(npc)
 
@@ -60,6 +62,7 @@ extension GameScene {
                     color: SKColor(red: 0.78, green: 0.40, blue: 0.26, alpha: 1)
                 )
                 npc.name = "npc-kenneth"
+                npc.useSpriteAsset(named: "kenneth", size: CGSize(width: 44, height: 58))
                 offset = CGPoint(x: 18, y: -24)
                 updateKennethBadge(npc)
 
@@ -69,6 +72,7 @@ extension GameScene {
                     color: SKColor(red: 0.89, green: 0.68, blue: 0.27, alpha: 1)
                 )
                 npc.name = "npc-roland"
+                npc.useSpriteAsset(named: "roland", size: CGSize(width: 46, height: 60))
                 offset = CGPoint(x: 28, y: -26)
                 updateRolandBadge(npc)
 
@@ -78,8 +82,18 @@ extension GameScene {
                     color: SKColor(red: 0.35, green: 0.55, blue: 0.76, alpha: 1)
                 )
                 npc.name = "npc-anneth"
+                npc.useSpriteAsset(named: "ibuAnneth", size: CGSize(width: 44, height: 58))
                 offset = CGPoint(x: 24, y: -22)
                 updateAnnethBadge(npc)
+
+            case .rockSalt:
+                npc = MemoryCharacter(
+                    title: "Old Miner",
+                    color: SKColor(red: 0.46, green: 0.40, blue: 0.34, alpha: 1)
+                )
+                npc.name = "npc-rocksalt-miner"
+                npc.useSpriteAsset(named: "penambangRocksalt", size: CGSize(width: 46, height: 60))
+                offset = CGPoint(x: 22, y: -24)
 
             case .well:
                 if isQuest1TutorialActive && quest1Controller.isWellUnlocked && !quest1Controller.hasCollectedWater {
@@ -89,8 +103,6 @@ extension GameScene {
                 }
                 continue
 
-            default:
-                continue
             }
 
             npc.setScale(0.7)

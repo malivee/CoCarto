@@ -79,6 +79,18 @@ public final class MemoryCharacter: SKNode {
         fatalError("init(coder:) is not supported")
     }
 
+    /// Replaces the procedural paper character with an authored character asset
+    /// while preserving movement, facing, badges, and quest interactions.
+    public func useSpriteAsset(named assetName: String, size: CGSize) {
+        characterBodyNode.removeAllChildren()
+        let sprite = SKSpriteNode(imageNamed: assetName)
+        sprite.name = "CharacterAsset"
+        sprite.size = size
+        sprite.position = CGPoint(x: 0, y: size.height / 2)
+        characterBodyNode.addChild(sprite)
+        nameTagNode?.position.y = size.height + 7
+    }
+
     // Membangun ilustrasi karakter bertumpuk bergaya paper-cutout Carto
     private func setupCartoIllustration(title: String, tintColor: SKColor) {
         visualRoot.addChild(characterBodyNode)

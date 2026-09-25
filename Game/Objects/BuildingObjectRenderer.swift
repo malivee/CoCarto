@@ -26,8 +26,11 @@ enum BuildingObjectRenderer {
         let size: CGSize
         if isWorld {
             let worldUnit = cellSize / CGFloat(WorldVisualSubcell.dimension)
-            size = CGSize(width: CGFloat(quarterTurn ? worldSize.height : worldSize.width) * worldUnit,
-                          height: CGFloat(quarterTurn ? worldSize.width : worldSize.height) * worldUnit)
+            let worldVisualScale: CGFloat = 1.18
+            size = CGSize(
+                width: CGFloat(quarterTurn ? worldSize.height : worldSize.width) * worldUnit * worldVisualScale,
+                height: CGFloat(quarterTurn ? worldSize.width : worldSize.height) * worldUnit * worldVisualScale
+            )
         } else {
             size = CGSize(width: CGFloat(dimensions.width) * microSize, height: CGFloat(dimensions.height) * microSize)
         }
@@ -109,7 +112,7 @@ enum BuildingObjectRenderer {
         case .rockSalt:
             return "rocksalt"
         case .barn:
-            return nil
+            return "lumbung"
         }
     }
 
