@@ -85,35 +85,33 @@ struct PlacementValidator: Sendable {
         toward direction: Direction,
         _ second: ResolvedWorldCell
     ) -> Bool {
-        let solidPairs = zip(
-            edgeBiomes(of: first.microBiomeGrid, toward: direction),
-            edgeBiomes(of: second.microBiomeGrid, toward: direction.opposite)
-        ).compactMap { first, second -> (BiomeType, BiomeType)? in
-            guard let first, let second else { return nil }
-            return (first, second)
-        }
-        return !solidPairs.isEmpty && solidPairs.allSatisfy { $0.0 == $0.1 }
+        zip(
+            edgeBiomeOptions(of: first.microBiomeGrid, toward: direction),
+            edgeBiomeOptions(of: second.microBiomeGrid, toward: direction.opposite)
+        ).allSatisfy { !$0.isDisjoint(with: $1) }
     }
 
-    private func edgeBiomes(of grid: MicroBiomeGrid, toward direction: Direction) -> [BiomeType?] {
+    private func edgeBiomeOptions(of grid: MicroBiomeGrid, toward direction: Direction) -> [Set<BiomeType>] {
         let last = MicroBiomeGrid.dimension - 1
+        let positions: [MicroGridPosition]
         switch direction {
         case .north:
-            return (0...last).map { x in
-                grid.biome(at: MicroGridPosition(x: x, y: 0))
-            }
+            positions = (0...last).map { MicroGridPosition(x: $0, y: 0) }
         case .east:
-            return (0...last).map { y in
-                grid.biome(at: MicroGridPosition(x: last, y: y))
-            }
+            positions = (0...last).map { MicroGridPosition(x: last, y: $0) }
         case .south:
-            return (0...last).map { x in
-                grid.biome(at: MicroGridPosition(x: x, y: last))
-            }
+            positions = (0...last).map { MicroGridPosition(x: $0, y: last) }
         case .west:
-            return (0...last).map { y in
-                grid.biome(at: MicroGridPosition(x: 0, y: y))
+            positions = (0...last).map { MicroGridPosition(x: 0, y: $0) }
+        }
+        return positions.map { position in
+            if let biome = grid.biome(at: position) {
+                return [biome]
             }
+            if let split = grid.split(at: position) {
+                return [split.primaryBiome, split.secondaryBiome]
+            }
+            return []
         }
     }
 }
