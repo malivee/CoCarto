@@ -6,9 +6,9 @@ final class MapRenderer {
     private(set) var inventoryExpanded = false
     private(set) var inventoryScrollOffset: CGFloat = 0
     private(set) var selectedInventoryIndex = 0
+    private(set) var availableInventoryKinds = BuildingObjectKind.allCases
     private(set) var contentScale: CGFloat = 1
     private var lastRenderedSelectionID: UUID?
-    private let inventoryTitles = BuildingObjectKind.allCases.map { BuildingObjectCatalog.definition(for: $0).title }
     private let mapCellSize: CGFloat
     private let worldCellSize: CGFloat
 
@@ -31,6 +31,16 @@ final class MapRenderer {
         questItems: [MapQuestItem] = []
     ) {
         mapRoot.removeAllChildren()
+        var unavailableKinds = Set(worldState.buildingObjects.map(\.kind))
+        if let selectedObjectKind {
+            unavailableKinds.insert(selectedObjectKind)
+        }
+        availableInventoryKinds = BuildingObjectKind.allCases.filter { !unavailableKinds.contains($0) }
+        if availableInventoryKinds.isEmpty {
+            selectedInventoryIndex = 0
+        } else {
+            selectedInventoryIndex = min(selectedInventoryIndex, availableInventoryKinds.count - 1)
+        }
         mapper = makeMapper(sceneSize: sceneSize)
         cameraCenter = .zero
 
@@ -77,7 +87,7 @@ final class MapRenderer {
             contentRoot.addChild(makePlayerMarker(at: markerPosition))
         }
 
-        let hud = MapHUDNode()
+        let hud = MapHUDNode(inventoryKinds: availableInventoryKinds)
         let shouldAnimateSelection = preview != nil && preview?.pieceID != lastRenderedSelectionID
         hud.layout(
             cameraCenter: .zero,
@@ -85,7 +95,9 @@ final class MapRenderer {
             preview: preview,
             inventoryExpanded: inventoryExpanded,
             inventoryScrollOffset: inventoryScrollOffset,
-            inventorySelectionTitle: inventoryTitles[selectedInventoryIndex],
+            inventorySelectionTitle: availableInventoryKinds.isEmpty
+                ? "Build"
+                : BuildingObjectCatalog.definition(for: availableInventoryKinds[selectedInventoryIndex]).title,
             animateSelection: shouldAnimateSelection,
             selectedObjectKind: selectedObjectKind,
             objectPreview: objectPreview,
@@ -101,17 +113,22 @@ final class MapRenderer {
     }
 
     func scrollInventory(by delta: CGFloat) {
-        let contentHeight = CGFloat(inventoryTitles.count) * 58
+        let contentHeight = CGFloat(availableInventoryKinds.count) * 58
         let viewportHeight: CGFloat = 356
         let maximumOffset = max(0, contentHeight - viewportHeight + 12)
         inventoryScrollOffset = min(max(inventoryScrollOffset + delta, 0), maximumOffset)
     }
 
     func selectInventoryItem(at index: Int) {
-        guard inventoryTitles.indices.contains(index) else { return }
+        guard availableInventoryKinds.indices.contains(index) else { return }
         selectedInventoryIndex = index
         inventoryExpanded = false
         inventoryScrollOffset = 0
+    }
+
+    func inventoryKind(at index: Int) -> BuildingObjectKind? {
+        guard availableInventoryKinds.indices.contains(index) else { return nil }
+        return availableInventoryKinds[index]
     }
 
     func applyContentOffset(_ contentOffset: CGPoint, in mapRoot: SKNode) {

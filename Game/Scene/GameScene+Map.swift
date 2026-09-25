@@ -1,0 +1,597 @@
+import SpriteKit
+import UIKit
+import CoreImage
+
+extension GameScene {
+    func enterMapView() {
+        guard gameMode == .exploring else {
+            return
+        }
+
+        gameMode = .enteringMap
+        inputController.endTouch()
+        hideJoystick()
+        if let playerNode {
+            playerController.stop(playerNode: playerNode)
+            playerController.updateState(from: playerNode.position)
+        }
+
+        mapController.cancel()
+        playTransitionFog { [weak self] in
+            guard let self, self.gameMode == .enteringMap else {
+                return
+            }
+
+            let startingScale = self.cameraController.currentScale
+            self.prepareMapForTransition()
+            self.cameraController.beginTransitionToMap()
+            self.cameraController.applyTransitionFrame(
+                position: self.mapRenderer.cameraCenter,
+                scale: startingScale
+            )
+
+            self.worldRoot.alpha = 0.08
+            self.worldDebugRoot.alpha = 0
+            self.mapRoot.alpha = 1
+            self.mapDebugRoot.alpha = 1
+            self.playerNode?.alpha = 0
+            self.enterMapButton.alpha = 0
+            self.resetButton.alpha = 0
+            self.saveButton.alpha = 0
+            self.loadButton.alpha = 0
+
+            let zoomOut = SKAction.scale(to: 1.35, duration: 0.72)
+            zoomOut.timingMode = .easeInEaseOut
+            self.cameraNode.run(zoomOut) { [weak self] in
+                guard let self, self.gameMode == .enteringMap else { return }
+                self.finishWorldToMapTransition()
+            }
+        }
+    }
+
+    func exitMapView() {
+        guard mapController.preview == nil else {
+            return
+        }
+
+        startMapToWorldTransition()
+    }
+
+    func enterWorldByDoubleTappingTile(at _: CGPoint, pieceID: UUID) {
+        guard worldState.piece(id: pieceID) != nil,
+              let playerNode else {
+            return
+        }
+
+        // A first tap may have selected this piece. A double tap is navigation,
+        // so discard that transient edit before resolving the destination tile.
+        mapController.cancel()
+        rotationInputLocked = false
+
+        playerNode.physicsBody?.velocity = .zero
+        playerController.updateState(from: playerNode.position)
+        startMapToWorldTransition()
+    }
+
+    func rebuildMapView() {
+        mapViewport.recalculateBounds(contentBounds: mapRenderer.contentBounds(for: worldState), sceneSize: size)
+        mapRenderer.buildMap(
+            from: worldState,
+            in: mapRoot,
+            sceneSize: size,
+            playerState: playerController.state,
+            preview: mapController.preview,
+            contentOffset: mapViewport.contentOffset,
+            puzzleStatusText: puzzleStatusText(),
+            footprintRectangle: currentFootprintRectangle(),
+            selectedObjectKind: selectedObjectKind,
+            objectPreview: objectPreview,
+            questItems: mapQuestItems()
+        )
+    }
+
+    func mapQuestItems() -> [MapQuestItem] {
+        [
+            MapQuestItem(
+                category: "Story",
+                title: "Connect the land",
+                isCompleted: puzzleManager.status(for: .snowRoutePrototype) == .completed
+            ),
+            MapQuestItem(
+                category: "Quest",
+                title: "Reach the outer exit",
+                isCompleted: worldEventManager.progressState.prototypeStatus == .reachedExit
+            )
+        ]
+    }
+
+    func prepareMapForTransition() {
+        let focusPoint = mapRenderer.focusPoint(for: playerController.state, worldState: worldState, preview: nil)
+        mapViewport.reset(contentBounds: mapRenderer.contentBounds(for: worldState), sceneSize: size, focusPoint: focusPoint)
+        rebuildMapView()
+        worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+        worldRoot.isHidden = false
+        playerNode?.isHidden = false
+        worldDebugRoot.isHidden = false
+        mapRoot.isHidden = false
+        mapDebugRoot.isHidden = false
+        mapRoot.alpha = 0
+        mapDebugRoot.alpha = 0
+        enterMapButton.alpha = 1
+        playerNode?.alpha = 1
+    }
+
+    func startMapToWorldTransition() {
+        guard gameMode == .mapIdle || gameMode.isMapInteractionActive || gameMode == .committingMapChange else {
+            return
+        }
+
+        gameMode = .exitingMap
+        selectedObjectKind = nil
+        objectPreview = nil
+        mapController.cancel()
+        playerController.updateWorldState(worldState)
+        worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+        worldRoot.isHidden = false
+        playerNode?.isHidden = false
+        worldDebugRoot.isHidden = false
+        mapRoot.isHidden = false
+        mapDebugRoot.isHidden = false
+        let targetPosition = playerNode?.position ?? cameraNode.position
+        playTransitionFog { [weak self] in
+            guard let self, self.gameMode == .exitingMap else {
+                return
+            }
+
+            // Recenter only while the screen is fully covered. The visible part
+            // of the transition is then a pure zoom into the player's position,
+            // without a sideways camera sweep.
+            let startingScale = self.cameraController.currentScale
+            self.cameraController.beginTransitionToWorld()
+            self.cameraController.applyTransitionFrame(
+                position: targetPosition,
+                scale: startingScale
+            )
+            let didStart = self.transitionController.beginMapToWorld(
+                from: targetPosition,
+                cameraScale: startingScale,
+                to: targetPosition
+            )
+            if !didStart {
+                self.finishMapToWorldTransition()
+            }
+        }
+    }
+
+    func presentInitialMapOverview() {
+        mapController.cancel()
+        prepareMapForTransition()
+        transitionController.presentMapImmediately(at: mapRenderer.cameraCenter)
+        cameraController.snapToMapOverview(center: mapRenderer.cameraCenter)
+        finishWorldToMapTransition()
+    }
+
+    func updateViewTransition(deltaTime: TimeInterval) {
+        guard let frame = transitionController.update(deltaTime: deltaTime) else {
+            return
+        }
+
+        applyTransitionFrame(frame)
+
+        if transitionController.state == .idleMap, gameMode == .enteringMap {
+            finishWorldToMapTransition()
+        } else if transitionController.state == .idleWorld, gameMode == .exitingMap {
+            finishMapToWorldTransition()
+        }
+    }
+
+    func applyTransitionFrame(_ frame: MapWorldTransitionFrame) {
+        cameraController.applyTransitionFrame(position: frame.cameraPosition, scale: frame.cameraScale)
+        worldRoot.alpha = frame.worldAlpha
+        worldDebugRoot.alpha = min(frame.worldAlpha, showsDebugOverlay ? 1 : 0)
+        mapRoot.alpha = frame.mapAlpha
+        mapDebugRoot.alpha = frame.mapAlpha
+        playerNode?.alpha = frame.playerAlpha
+        enterMapButton.alpha = frame.enterMapButtonAlpha
+    }
+
+    func finishWorldToMapTransition() {
+        cameraController.setMapOverview(center: mapRenderer.cameraCenter)
+        worldRoot.alpha = 0.08
+        worldDebugRoot.alpha = 0
+        mapRoot.alpha = 1
+        mapDebugRoot.alpha = 1
+        playerNode?.alpha = 0
+        enterMapButton.alpha = 0
+        resetButton.alpha = 0
+        saveButton.alpha = 0
+        loadButton.alpha = 0
+        gameMode = .mapIdle
+    }
+
+    func finishMapToWorldTransition() {
+        cameraController.returnToPlayerFollow()
+        worldRoot.alpha = 1
+        worldDebugRoot.alpha = showsDebugOverlay ? 1 : 0
+        mapRoot.alpha = 0
+        mapDebugRoot.alpha = 0
+        playerNode?.alpha = 1
+        enterMapButton.alpha = 1
+        mapRoot.isHidden = true
+        mapDebugRoot.isHidden = true
+        gameMode = .exploring
+        flushPendingPresentationEvents()
+    }
+
+    func handleMapTouchBegan(at location: CGPoint) {
+        let stack = nodeStack(at: location)
+
+        if let target = footprintDebugTarget(in: stack) {
+            footprintDebugTarget = target
+            rebuildMapView()
+            return
+        }
+
+        if stack.contains(where: { $0.name == MapNodeName.rotateLeftButton.rawValue }) {
+            if selectedObjectKind != nil { rotateObject(clockwise: false); return }
+            rotateSelectedPiece(clockwise: false)
+            return
+        }
+
+        if stack.contains(where: { $0.name == MapNodeName.rotateRightButton.rawValue }) {
+            if selectedObjectKind != nil { rotateObject(clockwise: true); return }
+            rotateSelectedPiece(clockwise: true)
+            return
+        }
+
+        if stack.contains(where: { $0.name == MapNodeName.cancelButton.rawValue }) {
+            if selectedObjectKind != nil {
+                selectedObjectKind = nil
+                objectPreview = nil
+                rebuildMapView()
+                return
+            }
+            cancelMapPreview()
+            return
+        }
+
+        if stack.contains(where: { $0.name == MapNodeName.confirmButton.rawValue }) {
+            if selectedObjectKind != nil {
+                if let objectPreview, worldState.placeBuildingObject(objectPreview) == .valid {
+                    self.objectPreview = nil
+                    selectedObjectKind = nil
+                    worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+                    autosave(reason: "building placed")
+                }
+                rebuildMapView()
+                return
+            }
+            confirmMapPreview()
+            return
+        }
+
+        if stack.contains(where: { $0.name == MapNodeName.exitButton.rawValue }) {
+            exitMapView()
+            return
+        }
+
+        if let kind = selectedObjectKind {
+            guard !stack.contains(where: { $0.name == MapNodeName.hud.rawValue }) else { return }
+            updateObjectPreview(at: location, kind: kind)
+            return
+        }
+
+        guard let pieceID = pieceID(in: stack) else {
+            if mapController.preview != nil {
+                finishCurrentSelection()
+                return
+            }
+            mapController.beginPan(at: location)
+            return
+        }
+
+        guard mapController.canManipulate(pieceID: pieceID, in: worldState, playerState: playerController.state) else {
+            mapController.beginPan(at: location)
+            return
+        }
+
+        _ = mapController.beginDrag(
+            pieceID: pieceID,
+            touchPositionInContent: mapRenderer.screenPointToContent(
+                location,
+                contentOffset: mapViewport.contentOffset
+            ),
+            mapper: mapRenderer.mapper,
+            worldState: worldState,
+            playerState: playerController.state
+        )
+        lastMapDragScreenPosition = location
+        gameMode = .mapDragging(pieceID)
+        if let preview = mapController.preview,
+           let piece = worldState.piece(id: preview.pieceID) {
+            mapRenderer.updatePreviewNode(piece: piece, preview: preview, in: mapRoot)
+        }
+    }
+
+    func rotateObject(clockwise: Bool) {
+        objectRotation = clockwise ? objectRotation.nextQuarterTurn : objectRotation.previousQuarterTurn
+        if let previous = objectPreview {
+            objectPreview = BuildingObject(
+                id: previous.id,
+                kind: previous.kind,
+                origin: previous.origin,
+                rotation: objectRotation
+            )
+        }
+        rebuildMapView()
+    }
+
+    func updateObjectPreview(at screenPosition: CGPoint, kind: BuildingObjectKind? = nil) {
+        guard let kind = kind ?? selectedObjectKind else { return }
+        let content = mapRenderer.screenPointToContent(
+            screenPosition,
+            contentOffset: mapViewport.contentOffset
+        )
+        let microSize = mapRenderer.mapper.cellSize / CGFloat(MicroBiomeGrid.dimension)
+        let template = BuildingObject(kind: kind, origin: .zero, rotation: objectRotation)
+        let dimensions = template.mapDimensions
+        let origin = GridPosition(
+            x: Int(floor((content.x + mapRenderer.mapper.cellSize / 2) / microSize)) - dimensions.width / 2,
+            y: Int(floor((content.y + mapRenderer.mapper.cellSize / 2) / microSize)) - dimensions.height / 2
+        )
+        objectPreview = BuildingObject(
+            id: objectPreview?.id ?? UUID(),
+            kind: kind,
+            origin: origin,
+            rotation: objectRotation
+        )
+        rebuildMapView()
+    }
+
+    func beginPlacedObjectDrag(id: UUID, at location: CGPoint) {
+        guard let object = worldState.removeBuildingObject(id: id) else { return }
+        mapController.cancel()
+        selectedObjectKind = object.kind
+        objectRotation = object.rotation
+        objectPreview = object
+        isDraggingPlacedObject = true
+        isDraggingObjectFromInventory = true
+        updateObjectPreview(at: location, kind: object.kind)
+    }
+
+    func finishObjectDrop() {
+        guard let preview = objectPreview,
+              BuildingPlacementValidator().validate(preview, in: worldState) == .valid else {
+            selectedObjectKind = nil
+            objectPreview = nil
+            if isDraggingPlacedObject {
+                isDraggingPlacedObject = false
+                worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+                autosave(reason: "building returned to inventory")
+            }
+            rebuildMapView()
+            return
+        }
+        _ = worldState.placeBuildingObject(preview)
+        selectedObjectKind = nil
+        objectPreview = nil
+        isDraggingPlacedObject = false
+        worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+        autosave(reason: "building dropped")
+        rebuildMapView()
+    }
+
+    func rotateSelectedPiece(clockwise: Bool) {
+        guard !rotationInputLocked else { return }
+        rotationInputLocked = true
+        guard let preview = mapController.rotateSelected(
+            clockwise: clockwise,
+            in: worldState,
+            mapper: mapRenderer.mapper,
+            locksInteraction: true
+        ),
+              let piece = worldState.piece(id: preview.pieceID) else {
+            rotationInputLocked = false
+            return
+        }
+
+        gameMode = .mapPieceSelected(preview.pieceID)
+        mapRenderer.updatePreviewNode(
+            piece: piece,
+            preview: preview,
+            in: mapRoot,
+            animated: true,
+            clockwise: clockwise
+        )
+        mapRoot.removeAction(forKey: "finishMapRotation")
+        mapRoot.run(.sequence([
+            .wait(forDuration: 0.12),
+            .run { [weak self] in
+                guard let self else { return }
+                self.mapController.finishRotation()
+                self.rotationInputLocked = false
+                self.rebuildMapView()
+            }
+        ]), withKey: "finishMapRotation")
+    }
+
+    func updatePieceDrag(at screenPosition: CGPoint, pieceID: UUID) {
+        lastMapDragScreenPosition = screenPosition
+        let contentPosition = mapRenderer.screenPointToContent(
+            screenPosition,
+            contentOffset: mapViewport.contentOffset
+        )
+        guard let preview = mapController.updateDrag(
+            touchPositionInContent: contentPosition,
+            mapper: mapRenderer.mapper,
+            worldState: worldState
+        ), let piece = worldState.piece(id: preview.pieceID) else {
+            return
+        }
+
+        mapRenderer.updatePreviewNode(piece: piece, preview: preview, in: mapRoot)
+    }
+
+    func finishPieceDrag(pieceID: UUID) {
+        lastMapDragScreenPosition = nil
+        guard let preview = mapController.snapSelectedVisualToGrid(mapper: mapRenderer.mapper) else {
+            gameMode = .mapIdle
+            return
+        }
+
+        gameMode = .mapPieceSelected(pieceID)
+        mapRenderer.animatePreviewSnap(pieceID: pieceID, to: preview.visualPosition, in: mapRoot) { [weak self] in
+            guard let self,
+                  let currentPreview = self.mapController.preview,
+                  let piece = self.worldState.piece(id: currentPreview.pieceID) else {
+                return
+            }
+            self.mapRenderer.updatePreviewNode(piece: piece, preview: currentPreview, in: self.mapRoot)
+            self.rebuildMapView()
+        }
+    }
+
+    func finishCurrentSelection() {
+        if mapController.preview?.isValid == true {
+            confirmMapPreview()
+        } else {
+            cancelMapPreview()
+        }
+    }
+
+    func updateMapAutoPan(deltaTime: TimeInterval) {
+        guard case .mapDragging(let pieceID) = gameMode,
+              let screenPosition = lastMapDragScreenPosition else {
+            return
+        }
+
+        let previousOffset = mapViewport.contentOffset
+        let newOffset = mapViewport.autoPan(
+            screenPosition: screenPosition,
+            sceneSize: size,
+            deltaTime: deltaTime
+        )
+        guard newOffset != previousOffset else {
+            return
+        }
+
+        mapRenderer.applyContentOffset(newOffset, in: mapRoot)
+        updatePieceDrag(at: screenPosition, pieceID: pieceID)
+    }
+
+    func cancelMapPreview() {
+        mapController.cancel()
+        gameMode = .mapIdle
+        rebuildMapView()
+    }
+
+    func confirmMapPreview() {
+        guard let preview = mapController.preview else {
+            return
+        }
+
+        gameMode = .committingMapChange
+        let playerSpatialBeforeCommit = playerController.state.spatialState
+
+        guard mapController.confirm(worldState: &worldState) else {
+            gameMode = .mapPieceSelected(preview.pieceID)
+            rebuildMapView()
+            return
+        }
+
+        playerController.updateWorldState(worldState)
+        worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+
+        if let playerNode {
+            if let playerSpatialBeforeCommit,
+               playerSpatialBeforeCommit.pieceID == preview.pieceID {
+                let didApply = playerController.apply(spatialState: playerSpatialBeforeCommit, to: playerNode)
+                assert(didApply, "Player local position did not resolve back onto the moved piece.")
+            } else {
+                playerController.updateState(from: playerNode.position)
+            }
+        }
+
+        puzzleManager.evaluate(worldState: worldState)
+        gameMode = .mapIdle
+        rebuildMapView()
+        autosave(reason: "placement confirmed")
+    }
+
+    func nodeStack(at location: CGPoint) -> [SKNode] {
+        nodes(at: location).flatMap { node -> [SKNode] in
+            var stack: [SKNode] = []
+            var current: SKNode? = node
+            while let currentNode = current {
+                stack.append(currentNode)
+                current = currentNode.parent
+            }
+            return stack
+        }
+    }
+
+    func pieceID(in stack: [SKNode]) -> UUID? {
+        for node in stack {
+            if let pieceNode = node as? MapPieceNode {
+                return pieceNode.pieceID
+            }
+
+            if let value = node.userData?[MapUserDataKey.pieceID.rawValue] as? String,
+               let uuid = UUID(uuidString: value) {
+                return uuid
+            }
+        }
+        return nil
+    }
+
+    func buildingObjectID(in stack: [SKNode]) -> UUID? {
+        for node in stack where node.name == BuildingObjectRenderer.nodeName {
+            if let value = node.userData?[BuildingObjectRenderer.objectIDKey] as? String,
+               let id = UUID(uuidString: value) {
+                return id
+            }
+        }
+        return nil
+    }
+
+    func footprintDebugTarget(in stack: [SKNode]) -> VillageSoilFootprintDebugTarget? {
+        if stack.contains(where: { $0.name == MapNodeName.footprint3Button.rawValue }) {
+            return .threeByThree
+        }
+        if stack.contains(where: { $0.name == MapNodeName.footprint6Button.rawValue }) {
+            return .sixBySix
+        }
+        if stack.contains(where: { $0.name == MapNodeName.footprint69Button.rawValue }) {
+            return .sixByNine
+        }
+        if stack.contains(where: { $0.name == MapNodeName.footprint915Button.rawValue }) {
+            return .nineByFifteen
+        }
+        return nil
+    }
+
+    func currentFootprintRectangle() -> GlobalMicroRectangle? {
+        guard let footprintDebugTarget else {
+            return nil
+        }
+        let dimensions = footprintDebugTarget.dimensions
+        let scanner = VillageSoilFootprintScanner()
+        return scanner.findRectangleAllowingRotation(
+            width: dimensions.width,
+            height: dimensions.height,
+            in: worldStateWithCurrentPreview()
+        )
+    }
+
+    func worldStateWithCurrentPreview() -> WorldState {
+        guard let preview = mapController.preview else {
+            return worldState
+        }
+        return worldState.previewingPiece(
+            id: preview.pieceID,
+            at: preview.proposedPosition,
+            rotation: preview.proposedRotation
+        )
+    }
+
+}

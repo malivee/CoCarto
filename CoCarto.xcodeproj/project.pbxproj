@@ -9,6 +9,7 @@
 /* Begin PBXFileReference section */
 		23619632306627AE00C66ECB /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		2361970D30662A6B00C66ECB /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
+		236197FF30666E4700C66ECB /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA3EAAD230664B8000BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA3EAE503066571400BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA3EB30E3066687A00BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
@@ -56,11 +57,20 @@
 			isa = PBXGroup;
 			children = (
 				23619632306627AE00C66ECB /* CoCarto.xcodeproj */,
+				2361970D30662A6B00C66ECB /* CoCarto.xcodeproj */,
+				AA3EB30E3066687A00BCF5E3 /* CoCarto.xcodeproj */,
+				AA3EAE503066571400BCF5E3 /* CoCarto.xcodeproj */,
+				AA3EAAD230664B8000BCF5E3 /* CoCarto.xcodeproj */,
 			);
 			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 		2361971330662A6B00C66ECB /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2361980530666E4700C66ECB /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -167,6 +177,10 @@
 					ProjectRef = AA3EAE503066571400BCF5E3 /* CoCarto.xcodeproj */;
 				},
 				{
+					ProductGroup = 2361980530666E4700C66ECB /* Products */;
+					ProjectRef = 236197FF30666E4700C66ECB /* CoCarto.xcodeproj */;
+				},
+				{
 					ProductGroup = AA3EAAD830664B8000BCF5E3 /* Products */;
 					ProjectRef = AA3EAAD230664B8000BCF5E3 /* CoCarto.xcodeproj */;
 				},
@@ -206,7 +220,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DTTY9ZX5T4;
+				DEVELOPMENT_TEAM = WB3D823668;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -238,7 +252,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DTTY9ZX5T4;
+				DEVELOPMENT_TEAM = WB3D823668;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

@@ -2,6 +2,8 @@ import SpriteKit
 
 enum BuildingObjectRenderer {
     static let rootName = "buildingObjects"
+    static let nodeName = "BuildingObjectNode"
+    static let objectIDKey = "buildingObjectID"
 
     static func render(_ objects: [BuildingObject], in parent: SKNode, cellSize: CGFloat, isWorld: Bool) {
         parent.childNode(withName: rootName)?.removeFromParent()
@@ -29,6 +31,8 @@ enum BuildingObjectRenderer {
             size = CGSize(width: CGFloat(dimensions.width) * microSize, height: CGFloat(dimensions.height) * microSize)
         }
         let root = SKNode()
+        root.name = nodeName
+        root.userData = [objectIDKey: object.id.uuidString]
         root.position = CGPoint(
             x: (CGFloat(object.origin.x) + CGFloat(dimensions.width) / 2) * microSize - cellSize / 2,
             y: (CGFloat(object.origin.y) + CGFloat(dimensions.height) / 2) * microSize - cellSize / 2
