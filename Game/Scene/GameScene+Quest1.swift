@@ -4,47 +4,27 @@ extension GameScene {
     func mapQuestItems() -> [MapQuestItem] {
         let hasArthurHome = worldState.buildingObjects.contains { $0.kind == .arthurHouse }
         let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
-
-        guard quest1Controller.isCompleted else {
-            return [
-                MapQuestItem(category: "Quest 1", title: "Place Arthur Home", isCompleted: hasArthurHome),
-                MapQuestItem(category: "Quest 1", title: "Place well", isCompleted: hasWell)
-            ]
-        }
-
-        let placedBuildings = placedBuildingIDs()
-        let quest2Progress = VillageQuest2Progress.load()
-        return [
-            MapQuestItem(
-                category: "Quest 2",
-                title: VillageQuestCatalog.Quest2.mapObjective,
-                isCompleted: quest2Progress.completed || quest2WorldObjectivesCompleted(placedBuildings: placedBuildings)
-            )
+        let hasMaraHome = worldState.buildingObjects.contains { $0.kind == .buMaraHouse }
+        var items = [
+            MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: hasArthurHome),
+            MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: hasWell)
         ]
+        if quest1Controller.hasCollectedWater || quest2Controller.isActive || quest2Controller.isCompleted {
+            items.append(MapQuestItem(category: "Quest 2", title: "Place Mrs. Mara Home", isCompleted: hasMaraHome))
+        }
+        return items
     }
 
     func quest1UnlockedObjectKinds() -> Set<BuildingObjectKind> {
-        Set(BuildingObjectKind.allCases)
+        var unlocked: Set<BuildingObjectKind> = [.arthurHouse, .well]
+        if quest1Controller.hasCollectedWater { unlocked.insert(.buMaraHouse) }
+        if quest1Controller.isCompleted { unlocked.formUnion(BuildingObjectKind.allCases) }
+        return unlocked
     }
 
-    func placedBuildingIDs() -> Set<String> {
-        Set(worldState.buildingObjects.map { VillageQuestCatalog.buildingID(for: $0.kind) })
-    }
-
-    func quest2WorldObjectivesCompleted(placedBuildings: Set<String>) -> Bool {
-        placedBuildings.contains(VillageQuestCatalog.BuildingID.arthurHouse)
-            && placedBuildings.contains(VillageQuestCatalog.BuildingID.villageWell)
-            && placedBuildings.contains(VillageQuestCatalog.BuildingID.buMaraHouse)
-    }
-
+    // Placement only updates the UI. Quest 2 completes through Bu Mara's interaction and minigame.
     func syncQuest2PlacementProgress() {
-        let placedBuildings = placedBuildingIDs()
-        var progress = VillageQuest2Progress.load()
-        progress.completed = progress.completed || quest2WorldObjectivesCompleted(placedBuildings: placedBuildings)
-        if placedBuildings.contains(VillageQuestCatalog.BuildingID.buMaraHouse) {
-            progress.spokeToMara = true
-        }
-        progress.save()
+        updateWorldQuestLabel()
     }
 
     func configureWorldQuestLabel() {
@@ -55,31 +35,39 @@ extension GameScene {
     }
 
     func updateWorldQuestLabel() {
-        guard !quest1Controller.isCompleted else {
-            worldQuestTracker.update(with: [])
-            worldQuestTracker.isHidden = true
-            worldQuestLabel.isHidden = true
-            return
-        }
-
-        worldQuestTracker.update(with: [
-            MapQuestItem(
+        var items: [MapQuestItem] = []
+        if !quest1Controller.isCompleted {
+            let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
+            items.append(MapQuestItem(
                 category: "Quest 1",
-                title: "Get water from the well for Grandpa.",
-                isCompleted: quest1Controller.hasCollectedWater
-            )
-        ])
-        worldQuestTracker.isHidden = gameMode != .exploring
+                title: VillageQuestCatalog.Quest1.mapObjectives[1],
+                isCompleted: hasWell
+            ))
+            items.append(MapQuestItem(
+                category: "Quest 1",
+                title: quest1Controller.hasCollectedWater
+                    ? "Return the water to Grandpa after helping Mrs. Mara."
+                    : VillageQuestCatalog.Quest1.worldObjective,
+                isCompleted: false
+            ))
+        }
+        if quest1Controller.hasCollectedWater && !quest2Controller.isCompleted {
+            items.append(MapQuestItem(
+                category: "Quest 2",
+                title: VillageQuestCatalog.Quest2.mapObjective,
+                isCompleted: false
+            ))
+        }
+        worldQuestTracker.update(with: items)
+        worldQuestTracker.isHidden = gameMode != .exploring || items.isEmpty
         worldQuestLabel.isHidden = true
     }
 
     func interactWithQuestObject(id: UUID, in stack: [SKNode]) {
-        guard let object = worldState.buildingObject(id: id),
+        guard activeQuestMinigame == nil,
+              let object = worldState.buildingObject(id: id),
               let playerNode,
-              let objectNode = stack.first(where: { $0.name == BuildingObjectRenderer.nodeName }) else {
-            return
-        }
-
+              let objectNode = stack.first(where: { $0.name == BuildingObjectRenderer.nodeName }) else { return }
         let objectPosition = objectNode.convert(CGPoint.zero, to: self)
         let distance = hypot(playerNode.position.x - objectPosition.x, playerNode.position.y - objectPosition.y)
         guard distance <= 220 else {
@@ -87,52 +75,98 @@ extension GameScene {
             return
         }
 
-        let result: VillageQuest1InteractionResult
         switch object.kind {
         case .arthurHouse:
-            result = quest1Controller.interactWithGrandpa(in: worldState)
+            handleQuest1Result(quest1Controller.interactWithGrandpa(
+                in: worldState,
+                quest2Completed: quest2Controller.isCompleted
+            ))
         case .well:
-            result = quest1Controller.interactWithWell(in: worldState)
+            handleQuest1Result(quest1Controller.interactWithWell(in: worldState))
+        case .buMaraHouse:
+            handleQuest2Result(quest2Controller.interactWithMara(
+                in: worldState,
+                hasCollectedWater: quest1Controller.hasCollectedWater
+            ))
         default:
             return
         }
+        updateWorldQuestLabel()
+    }
 
+    func handleQuest1Result(_ result: VillageQuest1InteractionResult) {
         switch result {
-        case .unavailable(let lines), .reminder(let lines):
-            showQuestDialogue(lines)
+        case .unavailable(let lines), .reminder(let lines): showQuestDialogue(lines)
         case .started(let lines):
             showQuestDialogue(lines)
             showProgressionFeedback("QUEST 1 STARTED")
         case .waterCollected(let lines):
             showQuestDialogue(lines)
-            showProgressionFeedback("WATER COLLECTED")
+            showProgressionFeedback("QUEST 2 UNLOCKED")
         case .completed(let lines):
             showQuestDialogue(lines)
-            showProgressionFeedback("QUEST COMPLETE")
+            showProgressionFeedback("QUEST 1 COMPLETE")
         case .alreadyCompleted:
             showQuestDialogue([.init(speaker: "Grandpa", text: "Thank you again, Arthur.")])
         }
-        updateWorldQuestLabel()
     }
 
-    func showQuestDialogue(_ lines: [VillageQuestDialogueLine]) {
+    func handleQuest2Result(_ result: VillageQuest2InteractionResult) {
+        switch result {
+        case .unavailable(let lines), .reminder(let lines): showQuestDialogue(lines)
+        case .started(let lines):
+            showQuestDialogue(lines) { [weak self] in self?.presentMaraShelfMinigame() }
+            showProgressionFeedback("QUEST 2 STARTED")
+        case .needsMinigame(let lines):
+            if lines.isEmpty { presentMaraShelfMinigame() }
+            else { showQuestDialogue(lines) { [weak self] in self?.presentMaraShelfMinigame() } }
+        case .completed(let lines):
+            showQuestDialogue(lines)
+            showProgressionFeedback("QUEST 2 COMPLETE")
+        case .alreadyCompleted:
+            showQuestDialogue([.init(speaker: "Mrs. Mara", text: "Please bring the water back to Grandpa.")])
+        }
+    }
+
+    func presentMaraShelfMinigame() {
+        guard activeQuestMinigame == nil else { return }
+        inputController.endTouch()
+        let minigame = ShelfBalanceMinigameNode()
+        minigame.position = .zero
+        minigame.zPosition = 15_000
+        minigame.onComplete = { [weak self] succeeded in
+            guard let self else { return }
+            self.handleQuest2Result(self.quest2Controller.finishShelfMinigame(succeeded: succeeded))
+            self.updateWorldQuestLabel()
+            if succeeded { self.autosave(reason: "quest 2 completed") }
+        }
+        minigame.onDismiss = { [weak self, weak minigame] in
+            if self?.activeQuestMinigame === minigame { self?.activeQuestMinigame = nil }
+        }
+        cameraNode.addChild(minigame)
+        activeQuestMinigame = minigame
+        minigame.start()
+    }
+
+    func showQuestDialogue(_ lines: [VillageQuestDialogueLine], onComplete: (() -> Void)? = nil) {
         activeQuestDialogue?.removeFromParent()
         questDialogueLines = lines
+        questDialogueCompletion = onComplete
         presentNextQuestDialogueLine()
     }
 
     func advanceQuestDialogue() {
-        activeQuestDialogue?.popOut { [weak self] in
-            self?.presentNextQuestDialogueLine()
-        }
+        activeQuestDialogue?.popOut { [weak self] in self?.presentNextQuestDialogueLine() }
     }
 
     func presentNextQuestDialogueLine() {
         guard !questDialogueLines.isEmpty else {
             activeQuestDialogue = nil
+            let completion = questDialogueCompletion
+            questDialogueCompletion = nil
+            completion?()
             return
         }
-
         let line = questDialogueLines.removeFirst()
         let bubble = SpeechBubbleNode(config: SpeechBubbleConfig(
             text: line.text,

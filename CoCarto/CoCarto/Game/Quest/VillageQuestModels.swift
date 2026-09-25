@@ -6,12 +6,10 @@ struct VillageQuestDialogueLine {
 }
 
 struct VillageQuest1Progress: Codable {
-    static let saveKey = "village.carto.quest1.v4"
+    static let saveKey = "village.carto.quest1.v5"
 
     var spokeToGrandpa = false
     var collectedWater = false
-    var spokeToMara = false
-    var rackFixed = false
     var returnedHome = false
 
     static func load(defaults: UserDefaults = .standard) -> Self {
@@ -29,7 +27,7 @@ struct VillageQuest1Progress: Codable {
 }
 
 struct VillageQuest2Progress: Codable {
-    static let saveKey = "village.carto.quest2.v2"
+    static let saveKey = "village.carto.quest2.v3"
 
     var spokeToMara = false
     var shelfFixed = false
@@ -329,6 +327,14 @@ enum VillageQuestCatalog {
         static let berynHouse = "beryn-house"
         static let emptyWarehouse = "empty-warehouse"
         static let rockSalt = "rock-salt"
+    }
+
+    enum Quest1 {
+        static let mapObjectives = [
+            "Place Arthur Home",
+            "Place well"
+        ]
+        static let worldObjective = "Get water from the well for Grandpa."
     }
 
     enum Quest2 {

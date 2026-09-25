@@ -49,6 +49,7 @@ final class GameScene: SKScene {
     let landmarkInteractionResolver = LandmarkInteractionResolver()
     let transitionController = MapWorldTransitionController()
     let quest1Controller = VillageQuest1Controller()
+    let quest2Controller = VillageQuest2Controller()
     let saveService = try? SaveGameService()
     let puzzleFeedbackLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     let worldQuestLabel = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
@@ -66,6 +67,8 @@ final class GameScene: SKScene {
     var lastSaveStatus = "none"
     var questDialogueLines: [VillageQuestDialogueLine] = []
     weak var activeQuestDialogue: SpeechBubbleNode?
+    weak var activeQuestMinigame: ShelfBalanceMinigameNode?
+    var questDialogueCompletion: (() -> Void)?
 
     override func didMove(to view: SKView) {
         backgroundColor = SKColor(red: 0.08, green: 0.09, blue: 0.10, alpha: 1)

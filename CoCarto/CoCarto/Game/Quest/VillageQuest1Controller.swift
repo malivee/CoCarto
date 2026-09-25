@@ -38,7 +38,10 @@ final class VillageQuest1Controller {
         return worldState.buildingObjects.contains(where: { $0.kind == .arthurHouse })
     }
 
-    func interactWithGrandpa(in worldState: WorldState) -> VillageQuest1InteractionResult {
+    func interactWithGrandpa(
+        in worldState: WorldState,
+        quest2Completed: Bool
+    ) -> VillageQuest1InteractionResult {
         guard !isCompleted else { return .alreadyCompleted }
 
         guard canStart(in: worldState) else {
@@ -59,6 +62,12 @@ final class VillageQuest1Controller {
         guard progress.collectedWater else {
             return .reminder([
                 .init(speaker: "Grandpa", text: "Please fetch some water from the well, Arthur.")
+            ])
+        }
+
+        guard quest2Completed else {
+            return .reminder([
+                .init(speaker: "Arthur", text: "I should help Mrs. Mara before bringing the water back to Grandpa.")
             ])
         }
 
@@ -85,7 +94,7 @@ final class VillageQuest1Controller {
         }
         guard !progress.collectedWater else {
             return .reminder([
-                .init(speaker: "Arthur", text: "I already have the water. I should return to Grandpa.")
+                .init(speaker: "Arthur", text: "I have the water. Mrs. Mara needs my help before I return to Grandpa.")
             ])
         }
 
