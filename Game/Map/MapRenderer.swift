@@ -11,6 +11,7 @@ final class MapRenderer {
     private var lastRenderedSelectionID: UUID?
     private let mapCellSize: CGFloat
     private let worldCellSize: CGFloat
+    private var currentTutorialTarget: BuildingObject?
 
     init(mapCellSize: CGFloat = 96, worldCellSize: CGFloat = 256) {
         self.mapCellSize = mapCellSize
@@ -29,9 +30,14 @@ final class MapRenderer {
         selectedObjectKind: BuildingObjectKind? = nil,
         objectPreview: BuildingObject? = nil,
         unlockedObjectKinds: Set<BuildingObjectKind> = Set(BuildingObjectKind.allCases),
-        questItems: [MapQuestItem] = []
+        questItems: [MapQuestItem] = [],
+        tutorialStep: MapTutorialStep? = nil
     ) {
         mapRoot.removeAllChildren()
+        let tutorialKind = tutorialStep?.dragDemoKind ?? tutorialStep?.placementKind
+        currentTutorialTarget = tutorialKind.flatMap {
+            TutorialBuildingPlacementResolver.target(for: $0, in: worldState)
+        }
         var unavailableKinds = Set(worldState.buildingObjects.map(\.kind))
         if worldState.buildingObjects.filter({ $0.kind == .rockSalt }).count < 3 {
             unavailableKinds.remove(.rockSalt)
@@ -84,18 +90,55 @@ final class MapRenderer {
                     in: worldState
                 ))
                 : []
-            contentRoot.addChild(MapPieceNode(
+            let pieceNode = MapPieceNode(
                 piece: renderedPiece,
                 mapper: mapper,
                 interactionState: state,
                 mismatchedEdgesByLocalCell: mismatchedEdges
-            ))
+            )
+            contentRoot.addChild(pieceNode)
+            if tutorialStep == .selectTile, piece.isMovable {
+                addTutorialGlow(around: pieceNode, in: contentRoot)
+            }
         }
 
         BuildingObjectRenderer.render(worldState.buildingObjects, in: contentRoot, cellSize: mapCellSize, isWorld: false)
         if let objectPreview {
             let result = BuildingPlacementValidator().validate(objectPreview, in: worldState)
-            contentRoot.addChild(BuildingObjectRenderer.makeNode(objectPreview, cellSize: mapCellSize, isWorld: false, result: result))
+            let previewNode = BuildingObjectRenderer.makeNode(
+                objectPreview,
+                cellSize: mapCellSize,
+                isWorld: false,
+                result: result
+            )
+            contentRoot.addChild(previewNode)
+            if tutorialStep?.isBuildingPlacementStep == true {
+                addTutorialGlow(around: previewNode, in: contentRoot, color: result == .valid ? .systemGreen : .systemYellow)
+            }
+        }
+
+        if tutorialStep?.placementKind == .arthurHouse,
+           let target = currentTutorialTarget,
+           objectPreview.map({ !matchesCurrentTutorialTarget($0) }) ?? true {
+            let landingPreview = BuildingObjectRenderer.makeNode(
+                target,
+                cellSize: mapCellSize,
+                isWorld: false,
+                result: .valid
+            )
+            landingPreview.name = "TutorialLandingPreview"
+            landingPreview.userData = nil
+            landingPreview.alpha = 0.42
+            contentRoot.addChild(landingPreview)
+            addTutorialGlow(around: landingPreview, in: contentRoot, color: .systemGreen)
+        }
+
+        if tutorialStep == .enterWorld,
+           let arthurHouse = worldState.buildingObjects.first(where: { $0.kind == .arthurHouse }),
+           let housePiece = tutorialEntryPiece(for: arthurHouse, in: worldState),
+           let tileNode = contentRoot.children.compactMap({ $0 as? MapPieceNode })
+            .first(where: { $0.pieceID == housePiece.id }) {
+            addTutorialGlow(around: tileNode, in: contentRoot)
         }
 
         if let footprintRectangle {
@@ -110,7 +153,7 @@ final class MapRenderer {
         let hud = MapHUDNode(inventoryKinds: availableInventoryKinds)
         let shouldAnimateSelection = preview != nil && preview?.pieceID != lastRenderedSelectionID
         hud.layout(
-            cameraCenter: .zero,
+            cameraCenter: CGPoint.zero,
             sceneSize: sceneSize,
             preview: preview,
             inventoryExpanded: inventoryExpanded,
@@ -123,9 +166,21 @@ final class MapRenderer {
             objectPreview: objectPreview,
             objectResult: objectPreview.map { BuildingPlacementValidator().validate($0, in: worldState) },
             questItems: questItems,
+            tutorialStep: tutorialStep
         )
         lastRenderedSelectionID = preview?.pieceID
         mapRoot.addChild(hud)
+
+        if inventoryExpanded,
+           let tutorialStep,
+           let kind = tutorialStep.dragDemoKind {
+            addTutorialDragDemo(
+                kind: kind,
+                sceneSize: sceneSize,
+                contentOffset: contentOffset,
+                to: mapRoot
+            )
+        }
     }
 
     func toggleInventory() {
@@ -372,5 +427,169 @@ final class MapRenderer {
         marker.lineWidth = 4
         marker.zPosition = 500
         return marker
+    }
+
+    private func addTutorialGlow(
+        around node: SKNode,
+        in parent: SKNode,
+        color: SKColor = SKColor(red: 1.0, green: 0.80, blue: 0.24, alpha: 1.0)
+    ) {
+        let frame = node.calculateAccumulatedFrame().insetBy(dx: -7, dy: -7)
+        guard frame.width > 0, frame.height > 0 else { return }
+        let glow = SKShapeNode(rect: frame, cornerRadius: 8)
+        glow.name = "TutorialGlow"
+        glow.fillColor = .clear
+        glow.strokeColor = color
+        glow.lineWidth = 3
+        glow.glowWidth = 5
+        glow.zPosition = 75
+        glow.run(.repeatForever(.sequence([
+            .fadeAlpha(to: 0.38, duration: 0.65),
+            .fadeAlpha(to: 1.0, duration: 0.65)
+        ])))
+        parent.addChild(glow)
+    }
+
+    private func tutorialEntryPiece(
+        for house: BuildingObject,
+        in worldState: WorldState
+    ) -> WorldPiece? {
+        let validator = BuildingPlacementValidator()
+        return worldState.pieces
+            .map { piece in
+                (piece, house.occupiedPositions.intersection(validator.villagePositions(for: piece)).count)
+            }
+            .filter { $0.1 > 0 }
+            .max { $0.1 < $1.1 }?
+            .0
+    }
+
+    private func matchesCurrentTutorialTarget(_ object: BuildingObject) -> Bool {
+        guard let target = currentTutorialTarget else { return false }
+        return object.kind == target.kind
+            && object.origin == target.origin
+            && object.rotation == target.rotation
+    }
+
+    private func addTutorialDragDemo(
+        kind: BuildingObjectKind,
+        sceneSize: CGSize,
+        contentOffset: CGPoint,
+        to mapRoot: SKNode
+    ) {
+        guard let inventoryIndex = availableInventoryKinds.firstIndex(of: kind),
+              let target = currentTutorialTarget,
+              target.kind == kind else {
+            return
+        }
+
+        let cameraScale: CGFloat = 1.35
+        let halfWidth = sceneSize.width * cameraScale / 2
+        let halfHeight = sceneSize.height * cameraScale / 2
+        let topY = halfHeight - 116
+        let start = CGPoint(
+            x: -halfWidth + 14 + 83,
+            y: topY - 71 - CGFloat(inventoryIndex) * 58 + inventoryScrollOffset
+        )
+
+        let preview = BuildingObjectRenderer.makeNode(
+            target,
+            cellSize: mapCellSize,
+            isWorld: false,
+            result: .valid
+        )
+        let contentDestination = preview.position
+        let destination = CGPoint(
+            x: contentDestination.x * contentScale + contentOffset.x,
+            y: contentDestination.y * contentScale + contentOffset.y
+        )
+        preview.name = "TutorialDragDemo"
+        preview.position = start
+        preview.setScale(0.52)
+        preview.alpha = 0
+        preview.zPosition = 850
+
+        let dimensions = target.mapDimensions
+        let microSize = mapCellSize / CGFloat(MicroBiomeGrid.dimension)
+        let glow = SKShapeNode(
+            rectOf: CGSize(
+                width: CGFloat(dimensions.width) * microSize + 10,
+                height: CGFloat(dimensions.height) * microSize + 10
+            ),
+            cornerRadius: 7
+        )
+        glow.name = "TutorialGlow"
+        glow.fillColor = .clear
+        glow.strokeColor = SKColor(red: 1.0, green: 0.80, blue: 0.24, alpha: 1.0)
+        glow.lineWidth = 3
+        glow.glowWidth = 5
+        glow.zPosition = 8
+        preview.addChild(glow)
+
+        // A neutral touch indicator makes the motion read as a drag without
+        // relying on an emoji or changing the building artwork.
+        let touchIndicator = SKShapeNode(circleOfRadius: 11)
+        touchIndicator.fillColor = SKColor.white.withAlphaComponent(0.34)
+        touchIndicator.strokeColor = .white
+        touchIndicator.lineWidth = 2
+        touchIndicator.glowWidth = 3
+        touchIndicator.position = CGPoint(
+            x: 0,
+            y: -CGFloat(dimensions.height) * microSize / 2 - 15
+        )
+        touchIndicator.zPosition = 9
+        preview.addChild(touchIndicator)
+
+        let travel = SKAction.group([
+            .move(to: destination, duration: 1.45),
+            .scale(to: contentScale, duration: 1.45)
+        ])
+        travel.timingMode = .easeInEaseOut
+        let reset = SKAction.group([
+            .move(to: start, duration: 0),
+            .scale(to: 0.52, duration: 0)
+        ])
+        preview.run(.repeatForever(.sequence([
+            .fadeIn(withDuration: 0.18),
+            .wait(forDuration: 0.25),
+            travel,
+            .wait(forDuration: 1.0),
+            .fadeOut(withDuration: 0.22),
+            reset,
+            .wait(forDuration: 0.35)
+        ])))
+        mapRoot.addChild(preview)
+    }
+
+}
+
+private extension MapTutorialStep {
+    var isBuildingPlacementStep: Bool {
+        switch self {
+        case .placeHouse, .placeWell:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var dragDemoKind: BuildingObjectKind? {
+        switch self {
+        case .dragHouse:
+            return .arthurHouse
+        case .dragWell:
+            return .well
+        default:
+            return nil
+        }
+    }
+
+    var placementKind: BuildingObjectKind? {
+        switch self {
+        case .placeHouse:
+            return .arthurHouse
+        default:
+            return nil
+        }
     }
 }

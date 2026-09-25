@@ -7,6 +7,171 @@ struct MapQuestItem {
     let isCompleted: Bool
 }
 
+enum MapTutorialStep: Equatable {
+    case selectTile
+    case rotateTile(isValid: Bool)
+    case openSidebar
+    case dragHouse
+    case placeHouse(isValid: Bool)
+    case dragWell
+    case placeWell(isValid: Bool)
+    case enterWorld
+
+    var badge: String {
+        switch self {
+        case .selectTile: return "1"
+        case .rotateTile: return "2"
+        case .openSidebar: return "3"
+        case .dragHouse, .placeHouse: return "4"
+        case .dragWell, .placeWell: return "5"
+        case .enterWorld: return "6"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .selectTile:
+            return "Pilih Ubin"
+        case .rotateTile:
+            return "Putar Ubin"
+        case .openSidebar:
+            return "Buka Bangunan"
+        case .dragHouse:
+            return "Seret Rumah Arthur"
+        case .placeHouse(let isValid):
+            return isValid ? "Lepaskan di Sini" : "Cari Area Kuning"
+        case .dragWell:
+            return "Seret Sumur"
+        case .placeWell(let isValid):
+            return isValid ? "Lepaskan di Sini" : "Cari Area Kuning"
+        case .enterWorld:
+            return "Masuk ke Desa"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .selectTile:
+            return "Ketuk ubin yang menyala."
+        case .rotateTile:
+            return "Gunakan tombol yang menyala."
+        case .openSidebar:
+            return "Ketuk tombol yang menyala."
+        case .dragHouse:
+            return "Ikuti contoh gerak di layar."
+        case .placeHouse(let isValid):
+            return isValid
+                ? "Posisinya sudah tepat."
+                : "Geser sampai bingkai hijau."
+        case .dragWell:
+            return "Ikuti contoh gerak di layar."
+        case .placeWell(let isValid):
+            return isValid
+                ? "Posisinya sudah tepat."
+                : "Geser sampai bingkai hijau."
+        case .enterWorld:
+            return "Ketuk ubin yang menyala dua kali."
+        }
+    }
+}
+
+final class TutorialBannerNode: SKNode {
+    private let background = SKShapeNode()
+    private let innerBorder = SKShapeNode()
+    private let sealBg = SKShapeNode()
+    private let sealIcon = SKLabelNode(fontNamed: "AvenirNext-Bold")
+    private let titleLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+    private let subLabel = SKLabelNode(fontNamed: "AvenirNext-Medium")
+
+    override init() {
+        super.init()
+        zPosition = 50
+        name = "TutorialBanner"
+
+        background.fillColor = SKColor(red: 0.98, green: 0.95, blue: 0.88, alpha: 0.96)
+        background.strokeColor = SKColor(red: 0.36, green: 0.24, blue: 0.16, alpha: 0.95)
+        background.lineWidth = 2.0
+        addChild(background)
+
+        innerBorder.fillColor = .clear
+        innerBorder.strokeColor = SKColor(red: 0.84, green: 0.68, blue: 0.34, alpha: 0.70)
+        innerBorder.lineWidth = 1.0
+        addChild(innerBorder)
+
+        sealBg.fillColor = SKColor(red: 0.74, green: 0.28, blue: 0.22, alpha: 1.0)
+        sealBg.strokeColor = SKColor(red: 0.92, green: 0.78, blue: 0.42, alpha: 1.0)
+        sealBg.lineWidth = 1.2
+        addChild(sealBg)
+
+        sealIcon.fontSize = 17
+        sealIcon.verticalAlignmentMode = .center
+        sealIcon.horizontalAlignmentMode = .center
+        addChild(sealIcon)
+
+        titleLabel.fontSize = 13.5
+        titleLabel.fontColor = SKColor(red: 0.22, green: 0.14, blue: 0.08, alpha: 1.0)
+        titleLabel.horizontalAlignmentMode = .left
+        titleLabel.verticalAlignmentMode = .center
+        addChild(titleLabel)
+
+        subLabel.fontSize = 11.5
+        subLabel.fontColor = SKColor(red: 0.44, green: 0.32, blue: 0.22, alpha: 1.0)
+        subLabel.horizontalAlignmentMode = .left
+        subLabel.verticalAlignmentMode = .center
+        addChild(subLabel)
+
+        let bobUp = SKAction.moveBy(x: 0, y: 2.5, duration: 1.4)
+        bobUp.timingMode = .easeInEaseOut
+        let bobDown = SKAction.moveBy(x: 0, y: -2.5, duration: 1.4)
+        bobDown.timingMode = .easeInEaseOut
+        run(SKAction.repeatForever(SKAction.sequence([bobUp, bobDown])))
+    }
+
+    required init?(coder aDecoder: NSCoder) { nil }
+
+    func update(with step: MapTutorialStep?, maxWidth: CGFloat) {
+        guard let step else {
+            isHidden = true
+            return
+        }
+        isHidden = false
+
+        let bannerWidth = min(maxWidth, 350)
+        let bannerHeight: CGFloat = 54
+
+        background.path = CGPath(
+            roundedRect: CGRect(x: -bannerWidth / 2, y: -bannerHeight / 2, width: bannerWidth, height: bannerHeight),
+            cornerWidth: 15,
+            cornerHeight: 15,
+            transform: nil
+        )
+
+        innerBorder.path = CGPath(
+            roundedRect: CGRect(x: -bannerWidth / 2 + 3, y: -bannerHeight / 2 + 3, width: bannerWidth - 6, height: bannerHeight - 6),
+            cornerWidth: 12,
+            cornerHeight: 12,
+            transform: nil
+        )
+
+        let sealRadius: CGFloat = 18
+        let sealX = -bannerWidth / 2 + 24
+        sealBg.path = CGPath(ellipseIn: CGRect(x: sealX - sealRadius, y: -sealRadius, width: sealRadius * 2, height: sealRadius * 2), transform: nil)
+        sealIcon.text = step.badge
+        sealIcon.position = CGPoint(x: sealX, y: -1)
+
+        let textX = sealX + sealRadius + 14
+        let textWidth = bannerWidth - (textX - (-bannerWidth / 2)) - 14
+
+        titleLabel.text = step.title
+        titleLabel.position = CGPoint(x: textX, y: 11)
+        titleLabel.preferredMaxLayoutWidth = textWidth
+
+        subLabel.text = step.subtitle
+        subLabel.position = CGPoint(x: textX, y: -11)
+        subLabel.preferredMaxLayoutWidth = textWidth
+    }
+}
+
 final class MapHUDNode: SKNode {
 
     private let inventoryToggle = MapButtonNode(
@@ -59,6 +224,8 @@ final class MapHUDNode: SKNode {
     private let objectStatus = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
     private let placeObjectButton = MapButtonNode(title: "Pasang", name: MapNodeName.confirmButton.rawValue)
     private let cancelObjectButton = MapButtonNode(title: "Batal", name: MapNodeName.cancelButton.rawValue)
+    private let tutorialBanner = TutorialBannerNode()
+    private var inventoryItemNodes: [BuildingObjectKind: SKNode] = [:]
 
     private let inventoryKinds: [BuildingObjectKind]
 
@@ -85,6 +252,8 @@ final class MapHUDNode: SKNode {
 
         configureQuestTracker()
 
+        configureTutorialNodes()
+
         addChild(inventoryToggle)
 
     }
@@ -108,6 +277,7 @@ final class MapHUDNode: SKNode {
         objectPreview: BuildingObject? = nil,
         objectResult: BuildingPlacementResult? = nil,
         questItems: [MapQuestItem],
+        tutorialStep: MapTutorialStep? = nil
     ) {
 
         let cameraScale: CGFloat = 1.35
@@ -123,7 +293,7 @@ final class MapHUDNode: SKNode {
 
         inventoryToggle.position = CGPoint(x: cameraCenter.x - halfWidth + sideInset + 83, y: topY)
 
-        inventoryToggle.setTitle("\(inventorySelectionTitle.uppercased()) \(inventoryExpanded ? "⌃" : "⌄")")
+        inventoryToggle.setTitle(inventoryExpanded ? "TUTUP ⌃" : "BANGUNAN ⌄")
 
         inventoryPanel.position = CGPoint(
 
@@ -141,6 +311,16 @@ final class MapHUDNode: SKNode {
         )
 
         questPanel.update(with: Array(questItems.prefix(2)))
+        questPanel.isHidden = (tutorialStep != nil)
+
+        // Keep tutorial copy inside the top HUD row, away from the inventory
+        // list and the bottom placement controls.
+        let bannerY = topY - 78
+        tutorialBanner.position = CGPoint(x: cameraCenter.x, y: bannerY)
+        let bannerMaxWidth = min(halfWidth * 2 - 40, 420)
+        tutorialBanner.update(with: tutorialStep, maxWidth: bannerMaxWidth)
+
+        updateTutorialHighlights(for: tutorialStep)
 
 
         let trayHeight: CGFloat = 216
@@ -156,22 +336,74 @@ final class MapHUDNode: SKNode {
         )
 
         selectionTray.position = CGPoint(x: cameraCenter.x, y: trayY)
-        selectionTray.isHidden = preview == nil && selectedObjectKind == nil
-        selectionControls.position.y = selectedObjectKind == nil ? 44 : 20
-        selectionControls.setScale(selectedObjectKind == nil ? 1 : 0.75)
-        objectStatus.isHidden = selectedObjectKind == nil
+        let isTrayVisible = preview != nil || selectedObjectKind != nil
+        selectionTray.isHidden = !isTrayVisible
         objectStatus.preferredMaxLayoutWidth = halfWidth * 2 - 30
-        placeObjectButton.isHidden = selectedObjectKind == nil
-        cancelObjectButton.isHidden = selectedObjectKind == nil
-        placeObjectButton.setEnabled(objectResult == .valid)
+
         if let selectedObjectKind {
+            // BUILDINGS: DO NOT ROTATE BUILDINGS!
+            selectionControls.isHidden = true
+            rotateLeftButton.removeAction(forKey: "rotatePulse")
+            rotateRightButton.removeAction(forKey: "rotatePulse")
+            rotateLeftButton.setScale(1.0)
+            rotateRightButton.setScale(1.0)
+
             let definition = BuildingObjectCatalog.definition(for: selectedObjectKind)
-            objectStatus.text = "\(definition.title) \(objectPreview?.mapDimensions.width ?? definition.mapWidth)×\(objectPreview?.mapDimensions.height ?? definition.mapHeight) · \(objectResult?.message ?? "Seret ke village soil")"
+            objectStatus.isHidden = false
+            let isValid = objectResult == .valid
+            let statusText = isValid ? "● Siap Dipasang" : "○ " + (objectResult?.message ?? "Pindahkan ke tanah desa")
+            objectStatus.text = "\(definition.title) (\(objectPreview?.mapDimensions.width ?? definition.mapWidth)×\(objectPreview?.mapDimensions.height ?? definition.mapHeight)) · \(statusText)"
+            objectStatus.fontColor = isValid ? SKColor(red: 0.4, green: 0.95, blue: 0.5, alpha: 1.0) : SKColor(red: 0.98, green: 0.75, blue: 0.35, alpha: 1.0)
+            objectStatus.position.y = 30
+
+            placeObjectButton.position = CGPoint(x: 75, y: -25)
+            cancelObjectButton.position = CGPoint(x: -75, y: -25)
+            placeObjectButton.setTitle("✓ Pasang")
+            cancelObjectButton.setTitle("✕ Batal")
+            placeObjectButton.isHidden = false
+            cancelObjectButton.isHidden = false
+            placeObjectButton.setEnabled(isValid)
+        } else if preview != nil {
+            // TILE PIECES: ROTATION ACTIVE!
+            selectionControls.isHidden = false
+            selectionControls.position.y = 44
+            selectionControls.setScale(1.0)
+
+            objectStatus.isHidden = false
+            let isValid = preview?.isValid == true
+            let alignText = isValid ? "● Posisi Cocok" : "○ Tepi Belum Sesuai"
+            objectStatus.text = "Ubin Peta · \(alignText) · Putar dengan ⟲ / ⟳"
+            objectStatus.fontColor = isValid ? SKColor(red: 0.4, green: 0.95, blue: 0.5, alpha: 1.0) : SKColor(red: 0.98, green: 0.75, blue: 0.35, alpha: 1.0)
+            objectStatus.position.y = 94
+
+            placeObjectButton.position = CGPoint(x: 66, y: -65)
+            cancelObjectButton.position = CGPoint(x: -66, y: -65)
+            placeObjectButton.setTitle("✓ Selesai")
+            cancelObjectButton.setTitle("✕ Batal")
+            placeObjectButton.isHidden = false
+            cancelObjectButton.isHidden = false
+            placeObjectButton.setEnabled(isValid)
+
+            rotateLeftButton.removeAction(forKey: "rotatePulse")
+            rotateRightButton.removeAction(forKey: "rotatePulse")
+            let pulse = SKAction.sequence([
+                .scale(to: 1.08, duration: 0.6),
+                .scale(to: 1.0, duration: 0.6)
+            ])
+            rotateLeftButton.run(.repeatForever(pulse), withKey: "rotatePulse")
+            rotateRightButton.run(.repeatForever(pulse), withKey: "rotatePulse")
+        } else {
+            selectionControls.isHidden = true
+            objectStatus.isHidden = true
+            placeObjectButton.isHidden = true
+            cancelObjectButton.isHidden = true
+            rotateLeftButton.removeAction(forKey: "rotatePulse")
+            rotateRightButton.removeAction(forKey: "rotatePulse")
+            rotateLeftButton.setScale(1.0)
+            rotateRightButton.setScale(1.0)
         }
 
-        selectionTray.isHidden = preview == nil
-
-        if animateSelection, preview != nil {
+        if animateSelection, isTrayVisible {
 
             selectionTray.position.y = trayY - trayHeight
 
@@ -185,6 +417,53 @@ final class MapHUDNode: SKNode {
 
         inventoryContent.position.y = inventoryScrollOffset
 
+    }
+
+    private func configureTutorialNodes() {
+        addChild(tutorialBanner)
+    }
+
+    private func updateTutorialHighlights(for step: MapTutorialStep?) {
+        inventoryToggle.setTutorialHighlighted(step == .openSidebar)
+        rotateLeftButton.setTutorialHighlighted(false)
+        rotateRightButton.setTutorialHighlighted(false)
+        placeObjectButton.setTutorialHighlighted(false)
+        inventoryItemNodes.values.forEach {
+            $0.childNode(withName: "TutorialGlow")?.removeFromParent()
+        }
+
+        switch step {
+        case .rotateTile:
+            rotateLeftButton.setTutorialHighlighted(true)
+            rotateRightButton.setTutorialHighlighted(true)
+        case .dragHouse:
+            addTutorialGlow(to: inventoryItemNodes[.arthurHouse])
+        case .dragWell:
+            addTutorialGlow(to: inventoryItemNodes[.well])
+        case .placeHouse(let isValid), .placeWell(let isValid):
+            if isValid { placeObjectButton.setTutorialHighlighted(true) }
+        default:
+            break
+        }
+    }
+
+    private func addTutorialGlow(to node: SKNode?) {
+        guard let node else { return }
+        let glow = SKShapeNode(
+            rectOf: CGSize(width: panelSize.width - 8, height: itemHeight + 2),
+            cornerRadius: 10
+        )
+        glow.name = "TutorialGlow"
+        glow.fillColor = .clear
+        glow.strokeColor = SKColor(red: 1.0, green: 0.80, blue: 0.24, alpha: 1.0)
+        glow.glowWidth = 4
+        glow.lineWidth = 3
+        glow.zPosition = 20
+        glow.run(.repeatForever(.sequence([
+            .fadeAlpha(to: 0.42, duration: 0.65),
+            .fadeAlpha(to: 1.0, duration: 0.65)
+        ])))
+        node.addChild(glow)
     }
 
     private func configureQuestTracker() {
@@ -257,6 +536,7 @@ final class MapHUDNode: SKNode {
             item.position = CGPoint(x: 0, y: panelSize.height / 2 - 10 - itemHeight / 2 - CGFloat(index) * itemHeight)
 
             inventoryContent.addChild(item)
+            inventoryItemNodes[kind] = item
 
         }
 
@@ -264,52 +544,34 @@ final class MapHUDNode: SKNode {
 
 
     private func makeInventoryItem(title: String, index: Int) -> SKNode {
-
         let root = SKNode()
-
         root.name = MapNodeName.inventoryItem.rawValue
-
         root.userData = ["inventoryIndex": index]
 
+        let kind = inventoryKinds[index]
+        let definition = BuildingObjectCatalog.definition(for: kind)
 
         let hitArea = SKShapeNode(rectOf: CGSize(width: panelSize.width - 12, height: itemHeight - 2))
-
         hitArea.name = MapNodeName.inventoryItem.rawValue
-
         hitArea.fillColor = SKColor.white.withAlphaComponent(0.001)
-
         hitArea.strokeColor = .clear
-
         root.addChild(hitArea)
 
-
         let icon = SKShapeNode(circleOfRadius: 13)
-
         icon.position.x = -44
-
         icon.fillColor = index == 0 ? .systemYellow : SKColor.white.withAlphaComponent(0.18)
-
         icon.strokeColor = .clear
-
         root.addChild(icon)
 
-
         let label = SKLabelNode(fontNamed: "AvenirNext-Medium")
-
         label.text = title
-
         label.fontSize = 14
-
         label.fontColor = index == 0 ? .systemGreen : SKColor.white.withAlphaComponent(0.58)
         label.horizontalAlignmentMode = .left
-
         label.verticalAlignmentMode = .center
-
         label.position.x = -20
-
         root.addChild(label)
 
-        let definition = BuildingObjectCatalog.definition(for: inventoryKinds[index])
         let dimensions = SKLabelNode(fontNamed: "AvenirNext-Regular")
         dimensions.text = "\(definition.mapWidth)×\(definition.mapHeight)"
         dimensions.fontSize = 10
@@ -319,25 +581,16 @@ final class MapHUDNode: SKNode {
         root.addChild(dimensions)
 
         if index > 0 {
-
             let soon = SKLabelNode(fontNamed: "AvenirNext-Regular")
-
             soon.text = "soon"
-
             soon.fontSize = 9
-
             soon.fontColor = SKColor.white.withAlphaComponent(0.28)
-
             soon.horizontalAlignmentMode = .right
-
             soon.position = CGPoint(x: 55, y: -15)
-
             root.addChild(soon)
-
         }
 
         return root
-
     }
 
 
@@ -397,11 +650,24 @@ enum RotationButtonDirection {
 
 final class RotationButtonNode: SKNode {
 
+    private let tutorialGlow: SKShapeNode
+
     init(direction: RotationButtonDirection, name: String, size: CGFloat) {
+
+        tutorialGlow = SKShapeNode(circleOfRadius: size / 2 + 5)
 
         super.init()
 
         self.name = name
+
+        tutorialGlow.name = "TutorialGlow"
+        tutorialGlow.fillColor = .clear
+        tutorialGlow.strokeColor = SKColor(red: 1.0, green: 0.80, blue: 0.24, alpha: 1.0)
+        tutorialGlow.lineWidth = 3
+        tutorialGlow.glowWidth = 5
+        tutorialGlow.zPosition = -1
+        tutorialGlow.isHidden = true
+        addChild(tutorialGlow)
 
 
         let hitArea = SKShapeNode(circleOfRadius: size / 2)
@@ -455,6 +721,18 @@ final class RotationButtonNode: SKNode {
 
     }
 
+    func setTutorialHighlighted(_ isHighlighted: Bool) {
+        tutorialGlow.isHidden = !isHighlighted
+        tutorialGlow.removeAction(forKey: "tutorialGlowPulse")
+        tutorialGlow.alpha = 1
+        if isHighlighted {
+            tutorialGlow.run(.repeatForever(.sequence([
+                .fadeAlpha(to: 0.4, duration: 0.65),
+                .fadeAlpha(to: 1.0, duration: 0.65)
+            ])), withKey: "tutorialGlowPulse")
+        }
+    }
+
 
     @available(*, unavailable)
 
@@ -468,6 +746,7 @@ final class MapButtonNode: SKNode {
     private let background: SKShapeNode
 
     private let label: SKLabelNode
+    private let tutorialGlow: SKShapeNode
 
 
     init(title: String, name: String, size: CGSize? = nil, borderless: Bool = false, fontSize: CGFloat = 14) {
@@ -489,6 +768,11 @@ final class MapButtonNode: SKNode {
 
         )
 
+        tutorialGlow = SKShapeNode(
+            rectOf: CGSize(width: resolvedSize.width + 10, height: resolvedSize.height + 10),
+            cornerRadius: isEnterMapButton ? 21 : min(17, resolvedSize.height / 2 + 3)
+        )
+
         label = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
 
         super.init()
@@ -496,6 +780,15 @@ final class MapButtonNode: SKNode {
         self.name = name
 
         isUserInteractionEnabled = false
+
+        tutorialGlow.name = "TutorialGlow"
+        tutorialGlow.fillColor = .clear
+        tutorialGlow.strokeColor = SKColor(red: 1.0, green: 0.80, blue: 0.24, alpha: 1.0)
+        tutorialGlow.lineWidth = 3
+        tutorialGlow.glowWidth = 5
+        tutorialGlow.zPosition = -1
+        tutorialGlow.isHidden = true
+        addChild(tutorialGlow)
 
 
         background.name = name
@@ -582,6 +875,18 @@ final class MapButtonNode: SKNode {
 
         alpha = isEnabled ? 1 : 0.28
 
+    }
+
+    func setTutorialHighlighted(_ isHighlighted: Bool) {
+        tutorialGlow.isHidden = !isHighlighted
+        tutorialGlow.removeAction(forKey: "tutorialGlowPulse")
+        tutorialGlow.alpha = 1
+        if isHighlighted {
+            tutorialGlow.run(.repeatForever(.sequence([
+                .fadeAlpha(to: 0.4, duration: 0.65),
+                .fadeAlpha(to: 1.0, duration: 0.65)
+            ])), withKey: "tutorialGlowPulse")
+        }
     }
 
 

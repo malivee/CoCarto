@@ -33,6 +33,7 @@ final class GameScene: SKScene {
     var inventoryLastTouchY: CGFloat?
     var inventoryTouchStartPosition: CGPoint?
     var inventoryTouchIndex: Int?
+    var inventoryToggleTouch = false
     var inventoryDidScroll = false
     var isDraggingObjectFromInventory = false
     var isDraggingPlacedObject = false
@@ -61,6 +62,9 @@ final class GameScene: SKScene {
     let transitionFog = SKEffectNode()
     let joystickBase = SKShapeNode(circleOfRadius: 72)
     let joystickKnob = SKShapeNode(circleOfRadius: 28)
+    let worldTutorialBanner = InWorldTutorialBannerNode()
+    var hasMovedArthurInTutorial = false
+    var hasRotatedPieceInTutorial = false
 
     var playerNode: PlayerNode?
     var showsDebugOverlay = false
@@ -124,6 +128,8 @@ final class GameScene: SKScene {
         addChild(cameraNode)
         cameraNode.addChild(worldQuestLabel)
         cameraNode.addChild(worldQuestTracker)
+        cameraNode.addChild(worldTutorialBanner)
+        worldTutorialBanner.isHidden = true
         cameraNode.addChild(enterMapButton)
         cameraNode.addChild(transitionFog)
         cameraNode.addChild(joystickBase)
@@ -206,6 +212,14 @@ final class GameScene: SKScene {
         case .exploring:
             inputController.playerPosition = playerNode.position
             playerController.update(playerNode: playerNode, movementVector: inputController.movementVector)
+            if !hasMovedArthurInTutorial && isQuest1TutorialActive {
+                let vec = inputController.movementVector
+                if abs(vec.dx) > 0.05 || abs(vec.dy) > 0.05 {
+                    hasMovedArthurInTutorial = true
+                    syncVillageNPCs()
+                    updateWorldTutorialBanner()
+                }
+            }
         case .mapDragging:
             updateMapAutoPan(deltaTime: deltaTime)
             playerController.stop(playerNode: playerNode)
@@ -280,8 +294,12 @@ final class GameScene: SKScene {
                 return
             }
             if stack.contains(where: { $0.name == MapNodeName.inventoryToggle.rawValue }) {
-                mapRenderer.toggleInventory()
-                rebuildMapView()
+                inventoryTouchIndex = mapRenderer.selectedInventoryIndex
+                inventoryTouchStartPosition = location
+                inventoryDidScroll = false
+                isDraggingObjectFromInventory = false
+                inventoryLastTouchY = location.y
+                inventoryToggleTouch = true
                 return
             }
             if mapRenderer.inventoryExpanded,
@@ -293,11 +311,19 @@ final class GameScene: SKScene {
                 inventoryDidScroll = false
                 isDraggingObjectFromInventory = false
                 inventoryLastTouchY = location.y
+                inventoryToggleTouch = false
                 return
             }
             if let objectID = buildingObjectID(in: stack) {
-                beginPlacedObjectDrag(id: objectID, at: location)
-                return
+                if let preview = objectPreview, preview.id == objectID {
+                    isDraggingPlacedObject = false
+                    isDraggingObjectFromInventory = true
+                    updateObjectPreview(at: location, kind: preview.kind)
+                    return
+                } else if worldState.buildingObject(id: objectID) != nil {
+                    beginPlacedObjectDrag(id: objectID, at: location)
+                    return
+                }
             }
             handleMapTouchBegan(at: location)
         case .mapDragging:
@@ -317,19 +343,22 @@ final class GameScene: SKScene {
             if let start = inventoryTouchStartPosition,
                let index = inventoryTouchIndex,
                let kind = mapRenderer.inventoryKind(at: index),
-               location.x - start.x > 12,
-               abs(location.x - start.x) > abs(location.y - start.y) {
+               location.x - start.x > 14 {
                 isDraggingObjectFromInventory = true
                 inventoryLastTouchY = nil
+                inventoryToggleTouch = false
                 mapController.cancel()
                 selectedObjectKind = kind
                 objectRotation = .degrees0
                 mapRenderer.selectInventoryItem(at: index)
                 updateObjectPreview(at: location)
+                AudioService.shared.playSFX("PaperMap")
                 return
             }
             if abs(location.y - lastY) > 2 { inventoryDidScroll = true }
-            mapRenderer.scrollInventory(by: location.y - lastY)
+            if !inventoryToggleTouch {
+                mapRenderer.scrollInventory(by: location.y - lastY)
+            }
             inventoryLastTouchY = location.y
             rebuildMapView()
             return
@@ -361,19 +390,29 @@ final class GameScene: SKScene {
             finishObjectDrop()
             inventoryTouchIndex = nil
             inventoryTouchStartPosition = nil
+            inventoryToggleTouch = false
             isDraggingObjectFromInventory = false
             return
         }
         if inventoryLastTouchY != nil {
             inventoryLastTouchY = nil
+            if inventoryToggleTouch {
+                inventoryToggleTouch = false
+                if !inventoryDidScroll {
+                    mapRenderer.toggleInventory()
+                    rebuildMapView()
+                    return
+                }
+            }
             if !inventoryDidScroll, let index = inventoryTouchIndex,
                let kind = mapRenderer.inventoryKind(at: index) {
                 mapController.cancel()
                 selectedObjectKind = kind
-                objectPreview = nil
                 objectRotation = .degrees0
                 gameMode = .mapIdle
                 mapRenderer.selectInventoryItem(at: index)
+                updateObjectPreview(at: CGPoint.zero, kind: kind)
+                AudioService.shared.playSFX("PaperMap")
                 rebuildMapView()
             }
             inventoryTouchIndex = nil
@@ -401,6 +440,7 @@ final class GameScene: SKScene {
             selectedObjectKind = nil
             objectPreview = nil
             isDraggingObjectFromInventory = false
+            inventoryToggleTouch = false
             if isDraggingPlacedObject {
                 isDraggingPlacedObject = false
                 worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
@@ -412,6 +452,7 @@ final class GameScene: SKScene {
             rebuildMapView()
             return
         }
+        inventoryToggleTouch = false
         inventoryTouchIndex = nil
         inventoryTouchStartPosition = nil
         touchesEnded(touches, with: event)

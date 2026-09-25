@@ -39,6 +39,11 @@ extension GameScene {
                 npc.name = "npc-grandpa"
                 offset = CGPoint(x: 22, y: -24)
                 updateGrandpaBadge(npc)
+                if isQuest1TutorialActive,
+                   hasMovedArthurInTutorial,
+                   !quest1Controller.isWellUnlocked {
+                    npc.addChild(makeTutorialHalo())
+                }
 
             case .buMaraHouse:
                 npc = MemoryCharacter(
@@ -75,6 +80,14 @@ extension GameScene {
                 npc.name = "npc-anneth"
                 offset = CGPoint(x: 24, y: -22)
                 updateAnnethBadge(npc)
+
+            case .well:
+                if isQuest1TutorialActive && quest1Controller.isWellUnlocked && !quest1Controller.hasCollectedWater {
+                    let wellBadge = makeWellTutorialBadge(for: object.id)
+                    wellBadge.position = CGPoint(x: buildingPos.x, y: buildingPos.y + 44)
+                    root.addChild(wellBadge)
+                }
+                continue
 
             default:
                 continue
@@ -194,5 +207,57 @@ extension GameScene {
         } else {
             npc.clearStatusBadge()
         }
+    }
+
+    private func makeWellTutorialBadge(for objectID: UUID) -> SKNode {
+        let node = SKNode()
+        node.name = "WellTutorialBadge"
+        node.userData = [BuildingObjectRenderer.objectIDKey: objectID.uuidString]
+        node.zPosition = 60
+
+        let pill = SKShapeNode(rectOf: CGSize(width: 104, height: 32), cornerRadius: 10)
+        pill.name = "WellTutorialBadge"
+        pill.fillColor = SKColor(red: 0.94, green: 0.97, blue: 1.0, alpha: 0.96)
+        pill.strokeColor = SKColor(red: 0.18, green: 0.52, blue: 0.78, alpha: 1.0)
+        pill.lineWidth = 1.8
+        pill.glowWidth = 4
+        pill.run(.repeatForever(.sequence([
+            .fadeAlpha(to: 0.45, duration: 0.65),
+            .fadeAlpha(to: 1.0, duration: 0.65)
+        ])))
+        node.addChild(pill)
+
+        let label = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        label.name = "WellTutorialBadge"
+        label.text = "Timba Air"
+        label.fontSize = 12
+        label.fontColor = SKColor(red: 0.10, green: 0.35, blue: 0.55, alpha: 1.0)
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        node.addChild(label)
+
+        let bobUp = SKAction.moveBy(x: 0, y: 5, duration: 0.55)
+        bobUp.timingMode = .easeInEaseOut
+        let bobDown = SKAction.moveBy(x: 0, y: -5, duration: 0.55)
+        bobDown.timingMode = .easeInEaseOut
+        node.run(SKAction.repeatForever(SKAction.sequence([bobUp, bobDown])))
+
+        return node
+    }
+
+    private func makeTutorialHalo() -> SKShapeNode {
+        let halo = SKShapeNode(ellipseOf: CGSize(width: 48, height: 62))
+        halo.name = "TutorialGlow"
+        halo.position.y = 8
+        halo.fillColor = .clear
+        halo.strokeColor = SKColor(red: 1.0, green: 0.80, blue: 0.24, alpha: 1.0)
+        halo.lineWidth = 3
+        halo.glowWidth = 5
+        halo.zPosition = -1
+        halo.run(.repeatForever(.sequence([
+            .fadeAlpha(to: 0.38, duration: 0.65),
+            .fadeAlpha(to: 1.0, duration: 0.65)
+        ])))
+        return halo
     }
 }
