@@ -5,16 +5,46 @@ extension GameScene {
         let hasArthurHome = worldState.buildingObjects.contains { $0.kind == .arthurHouse }
         let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
 
-        if quest1Controller.isCompleted { return [] }
+        guard quest1Controller.isCompleted else {
+            return [
+                MapQuestItem(category: "Quest 1", title: "Place Arthur Home", isCompleted: hasArthurHome),
+                MapQuestItem(category: "Quest 1", title: "Place well", isCompleted: hasWell)
+            ]
+        }
 
+        let placedBuildings = placedBuildingIDs()
+        let quest2Progress = VillageQuest2Progress.load()
         return [
-            MapQuestItem(category: "Quest 1", title: "Place Arthur Home", isCompleted: hasArthurHome),
-            MapQuestItem(category: "Quest 1", title: "Place well", isCompleted: hasWell)
+            MapQuestItem(
+                category: "Quest 2",
+                title: VillageQuestCatalog.Quest2.mapObjective,
+                isCompleted: quest2Progress.completed || quest2WorldObjectivesCompleted(placedBuildings: placedBuildings)
+            )
         ]
     }
 
     func quest1UnlockedObjectKinds() -> Set<BuildingObjectKind> {
         Set(BuildingObjectKind.allCases)
+    }
+
+    func placedBuildingIDs() -> Set<String> {
+        Set(worldState.buildingObjects.map { VillageQuestCatalog.buildingID(for: $0.kind) })
+    }
+
+    func quest2WorldObjectivesCompleted(placedBuildings: Set<String>) -> Bool {
+        placedBuildings.contains(VillageQuestCatalog.BuildingID.arthurHouse)
+            && placedBuildings.contains(VillageQuestCatalog.BuildingID.villageWell)
+            && placedBuildings.contains(VillageQuestCatalog.BuildingID.buMaraHouse)
+    }
+
+    func syncQuest2PlacementProgress() {
+        let placedBuildings = placedBuildingIDs()
+        var progress = VillageQuest2Progress.load()
+        progress.completed = progress.completed || quest2WorldObjectivesCompleted(placedBuildings: placedBuildings)
+        if placedBuildings.contains(VillageQuestCatalog.BuildingID.buMaraHouse) {
+            progress.spokeToMara = true
+        }
+        progress.save()
     }
 
     func configureWorldQuestLabel() {

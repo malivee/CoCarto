@@ -86,74 +86,11 @@ extension GameScene {
             footprintRectangle: currentFootprintRectangle(),
             selectedObjectKind: selectedObjectKind,
             objectPreview: objectPreview,
-<<<<<<< HEAD
-            questItems: mapQuestItems(),
-            unlockedInventoryKinds: unlockedBuildingObjectKinds()
-        )
-    }
-
-    func mapQuestItems() -> [MapQuestItem] {
-        let placedBuildings = placedBuildingIDs()
-        let quest2Progress = VillageQuest2Progress.load()
-        return [
-            MapQuestItem(
-                category: "Story",
-                title: "Connect the land",
-                isCompleted: puzzleManager.status(for: .snowRoutePrototype) == .completed
-            ),
-            MapQuestItem(
-                category: "Quest 2",
-                title: VillageQuestCatalog.Quest2.mapObjective,
-                isCompleted: quest2Progress.completed || quest2WorldObjectivesCompleted(placedBuildings: placedBuildings)
-            )
-        ]
-    }
-
-    func unlockedBuildingObjectKinds() -> [BuildingObjectKind] {
-        let placedBuildings = placedBuildingIDs()
-        var unlocked: [BuildingObjectKind] = [.arthurHouse, .well]
-        if quest2BuMaraHouseUnlocked(placedBuildings: placedBuildings) {
-            unlocked.append(.buMaraHouse)
-        }
-        return unlocked
-    }
-
-    func placedBuildingIDs() -> Set<String> {
-        Set(worldState.buildingObjects.map { VillageQuestCatalog.buildingID(for: $0.kind) })
-    }
-
-    func quest2BuMaraHouseUnlocked(placedBuildings: Set<String>) -> Bool {
-        let quest1 = VillageQuest1Progress.load()
-        return quest1.collectedWater
-            || quest1.spokeToMara
-            || quest1.rackFixed
-            || placedBuildings.contains(VillageQuestCatalog.BuildingID.villageWell)
-            || placedBuildings.contains(VillageQuestCatalog.BuildingID.buMaraHouse)
-    }
-
-    func quest2WorldObjectivesCompleted(placedBuildings: Set<String>) -> Bool {
-        placedBuildings.contains(VillageQuestCatalog.BuildingID.arthurHouse)
-            && placedBuildings.contains(VillageQuestCatalog.BuildingID.villageWell)
-            && placedBuildings.contains(VillageQuestCatalog.BuildingID.buMaraHouse)
-    }
-
-    func syncQuest2PlacementProgress() {
-        let placedBuildings = placedBuildingIDs()
-        var progress = VillageQuest2Progress.load()
-        progress.completed = progress.completed || quest2WorldObjectivesCompleted(placedBuildings: placedBuildings)
-        if placedBuildings.contains(VillageQuestCatalog.BuildingID.buMaraHouse) {
-            progress.spokeToMara = true
-        }
-        progress.save()
-    }
-
-=======
             unlockedObjectKinds: quest1UnlockedObjectKinds(),
             questItems: mapQuestItems()
         )
     }
 
->>>>>>> Bur
     func prepareMapForTransition() {
         worldQuestLabel.isHidden = true
         worldQuestTracker.isHidden = true
