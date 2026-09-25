@@ -212,10 +212,12 @@ private extension BuildingPuzzleBiomeFixture {
 
     static func microBiomeGridOverride(for cellID: BuildingPuzzleCellID) -> MicroBiomeGrid? {
         switch cellID {
-        case .c, .g:
+        case .c:
             return villageSoilWithRockSaltDiagonalCut()
         case .f:
             return villageSoilWithRightRockSaltTriangle()
+        case .g:
+            return villageSoilWithLeftRockSaltTriangle()
         case .h:
             return villageSoilWithBottomRockSaltTriangle()
         case .i:
@@ -272,6 +274,10 @@ private extension BuildingPuzzleBiomeFixture {
             upperLeftBiome: .villageSoil,
             lowerRightBiome: .rocksalt
         )
+    }
+
+    static func villageSoilWithLeftRockSaltTriangle() -> MicroBiomeGrid {
+        villageSoilWithTopRockSaltTriangle().rotated(by: .degrees270)
     }
 
     static func villageSoilWithBottomRockSaltTriangle() -> MicroBiomeGrid {

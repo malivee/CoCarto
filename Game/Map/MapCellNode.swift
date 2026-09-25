@@ -24,7 +24,7 @@ final class MapCellNode: SKSpriteNode {
         border.zPosition = 1
         addChild(border)
 
-        addMicroBiomeDebugGrid(microBiomeGrid, cellSize: mapper.cellSize)
+        addMicroBiomeDebugGrid(microBiomeGrid, gridID: gridID, piece: piece, cellSize: mapper.cellSize)
 
         let symbol = SKLabelNode(fontNamed: "Menlo-Bold")
         symbol.text = "\(piece.role.debugName)-\(gridID.rawValue)"
@@ -39,12 +39,70 @@ final class MapCellNode: SKSpriteNode {
         addBiomeEdgeDebugLabels(edges: biomeEdges, cellSize: mapper.cellSize)
     }
 
-    private func addMicroBiomeDebugGrid(_ microBiomeGrid: MicroBiomeGrid, cellSize: CGFloat) {
-        let tile = TileAssetResolver.node(for: microBiomeGrid, size: cellSize)
-        tile.alpha = 0.92
-        tile.zPosition = 0.5
-        addChild(tile)
-        addGridLines(dimension: MicroBiomeGrid.dimension, cellSize: cellSize)
+    private func addMicroBiomeDebugGrid(_ microBiomeGrid: MicroBiomeGrid, gridID: GridID, piece: WorldPiece, cellSize: CGFloat) {
+//        if let override = TileAssetResolver.override(for: piece, gridID: gridID) {
+//            let tile = TileAssetResolver.overrideNode(for: override, size: cellSize)
+//            tile.alpha = 0.92
+//            tile.zPosition = 0.5
+//            addChild(tile)
+//            addGridLines(dimension: MicroBiomeGrid.dimension, cellSize: cellSize)
+//            return
+//        }
+
+        let dimension = MicroBiomeGrid.dimension
+        let subcellSize = cellSize / CGFloat(dimension)
+        let half = cellSize / 2
+        for position in MicroGridPosition.allPositions {
+            let origin = CGPoint(
+                x: -half + CGFloat(position.x) * subcellSize,
+                y: half - CGFloat(position.y + 1) * subcellSize
+            )
+            let rect = CGRect(origin: origin, size: CGSize(width: subcellSize, height: subcellSize))
+            if let split = microBiomeGrid.split(at: position) {
+                addMicroBiomeSplit(split, rect: rect)
+            } else if let biome = microBiomeGrid.biome(at: position) {
+                let cell = SKShapeNode(rect: rect)
+                cell.fillColor = biome.debugColor
+                cell.strokeColor = .clear
+                cell.zPosition = 0.5
+                addChild(cell)
+            }
+        }
+        addGridLines(dimension: dimension, cellSize: cellSize)
+    }
+
+    private func addMicroBiomeSplit(_ split: MicroBiomeSplit, rect: CGRect) {
+        let background = SKShapeNode(rect: rect)
+        background.fillColor = split.secondaryBiome.debugColor
+        background.strokeColor = .clear
+        background.zPosition = 0.5
+        addChild(background)
+
+        let overlay = SKShapeNode(path: splitPath(for: split.primaryCorner, rect: rect))
+        overlay.fillColor = split.primaryBiome.debugColor
+        overlay.strokeColor = .clear
+        overlay.zPosition = 0.51
+        addChild(overlay)
+    }
+
+    private func splitPath(for corner: MicroBiomeSplit.Corner, rect: CGRect) -> CGPath {
+        let topLeft = CGPoint(x: rect.minX, y: rect.maxY)
+        let topRight = CGPoint(x: rect.maxX, y: rect.maxY)
+        let bottomRight = CGPoint(x: rect.maxX, y: rect.minY)
+        let bottomLeft = CGPoint(x: rect.minX, y: rect.minY)
+        let path = CGMutablePath()
+        switch corner {
+        case .topLeft:
+            path.addLines(between: [topLeft, topRight, bottomLeft])
+        case .topRight:
+            path.addLines(between: [topRight, bottomRight, topLeft])
+        case .bottomRight:
+            path.addLines(between: [bottomRight, bottomLeft, topRight])
+        case .bottomLeft:
+            path.addLines(between: [bottomLeft, topLeft, bottomRight])
+        }
+        path.closeSubpath()
+        return path
     }
 
     private func addGridLines(dimension: Int, cellSize: CGFloat) {
@@ -187,21 +245,6 @@ private extension EdgeType {
             return .systemMint
         case .cliff:
             return .systemOrange
-        }
-    }
-}
-
-extension BiomeType {
-    var debugColor: SKColor {
-        switch self {
-        case .villageSoil, .hillSoil:
-            return SKColor(red: 0.96, green: 0.76, blue: 0.20, alpha: 1)
-        case .naturalGrass:
-            return SKColor(red: 0.20, green: 0.76, blue: 0.38, alpha: 1)
-        case .rocksalt:
-            return SKColor(red: 0.18, green: 0.52, blue: 0.95, alpha: 1)
-        case .darkGreenForest:
-            return SKColor(red: 0.10, green: 0.43, blue: 0.25, alpha: 1)
         }
     }
 }
