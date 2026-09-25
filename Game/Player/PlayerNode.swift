@@ -29,7 +29,7 @@ final class PlayerNode: SKShapeNode {
         body.friction = 0
         body.linearDamping = 0
         body.categoryBitMask = PhysicsCategory.player
-        body.collisionBitMask = PhysicsCategory.worldBoundary
+        body.collisionBitMask = PhysicsCategory.worldBoundary | PhysicsCategory.building
         body.contactTestBitMask = 0
         physicsBody = body
 
