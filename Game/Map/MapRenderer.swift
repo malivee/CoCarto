@@ -3,6 +3,11 @@ import SpriteKit
 final class MapRenderer {
     private(set) var mapper = MapGridMapper(cellSize: 96, origin: .zero)
     private(set) var cameraCenter = CGPoint.zero
+    private(set) var inventoryExpanded = false
+    private(set) var inventoryScrollOffset: CGFloat = 0
+    private(set) var selectedInventoryIndex = 0
+    private var lastRenderedSelectionID: UUID?
+    private let inventoryTitles = ["House", "Workshop", "Farm", "Market", "Bridge", "Tower"]
     private let mapCellSize: CGFloat
     private let worldCellSize: CGFloat
 
@@ -53,8 +58,36 @@ final class MapRenderer {
         }
 
         let hud = MapHUDNode()
-        hud.layout(cameraCenter: .zero, sceneSize: sceneSize, preview: preview, puzzleStatusText: puzzleStatusText)
+        let shouldAnimateSelection = preview != nil && preview?.pieceID != lastRenderedSelectionID
+        hud.layout(
+            cameraCenter: .zero,
+            sceneSize: sceneSize,
+            preview: preview,
+            inventoryExpanded: inventoryExpanded,
+            inventoryScrollOffset: inventoryScrollOffset,
+            inventorySelectionTitle: inventoryTitles[selectedInventoryIndex],
+            animateSelection: shouldAnimateSelection
+        )
+        lastRenderedSelectionID = preview?.pieceID
         mapRoot.addChild(hud)
+    }
+
+    func toggleInventory() {
+        inventoryExpanded.toggle()
+    }
+
+    func scrollInventory(by delta: CGFloat) {
+        let contentHeight: CGFloat = 6 * 58
+        let viewportHeight: CGFloat = 356
+        let maximumOffset = max(0, contentHeight - viewportHeight + 12)
+        inventoryScrollOffset = min(max(inventoryScrollOffset + delta, 0), maximumOffset)
+    }
+
+    func selectInventoryItem(at index: Int) {
+        guard inventoryTitles.indices.contains(index) else { return }
+        selectedInventoryIndex = index
+        inventoryExpanded = false
+        inventoryScrollOffset = 0
     }
 
     func applyContentOffset(_ contentOffset: CGPoint, in mapRoot: SKNode) {
@@ -174,11 +207,11 @@ final class MapRenderer {
     }
 
     private func makeBackground(sceneSize: CGSize) -> SKNode {
-        let node = SKShapeNode(rectOf: CGSize(width: sceneSize.width * 1.2, height: sceneSize.height * 1.2), cornerRadius: 10)
+        let node = SKShapeNode(rectOf: CGSize(width: sceneSize.width * 2.2, height: sceneSize.height * 2.2))
         node.position = .zero
-        node.fillColor = SKColor.black.withAlphaComponent(0.84)
-        node.strokeColor = SKColor.white.withAlphaComponent(0.22)
-        node.lineWidth = 2
+        node.fillColor = SKColor(red: 0.035, green: 0.10, blue: 0.19, alpha: 1)
+        node.strokeColor = .clear
+        node.lineWidth = 0
         node.zPosition = -20
         node.name = MapNodeName.background.rawValue
         return node

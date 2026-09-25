@@ -29,4 +29,17 @@ enum GridRotation: Int, CaseIterable, Codable, Sendable {
             return .degrees0
         }
     }
+
+    var previousQuarterTurn: GridRotation {
+        switch self {
+        case .degrees0:
+            return .degrees270
+        case .degrees90:
+            return .degrees0
+        case .degrees180:
+            return .degrees90
+        case .degrees270:
+            return .degrees180
+        }
+    }
 }

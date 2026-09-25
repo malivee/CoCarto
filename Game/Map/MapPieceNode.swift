@@ -57,11 +57,11 @@ final class MapPieceNode: SKNode {
             )
             removeAction(forKey: "rotateFeedback")
             zRotation = piece.rotation.radians
-            let rotate = SKAction.rotate(toAngle: preview.proposedRotation.radians, duration: 0.18, shortestUnitArc: true)
+            let rotate = SKAction.rotate(toAngle: preview.proposedRotation.radians, duration: 0.11, shortestUnitArc: true)
             rotate.timingMode = .easeInEaseOut
             let pulse = SKAction.sequence([
-                .scale(to: 1.06, duration: 0.08),
-                .scale(to: 1, duration: 0.10)
+                .scale(to: 1.04, duration: 0.05),
+                .scale(to: 1, duration: 0.06)
             ])
             pulse.timingMode = .easeInEaseOut
             run(.group([rotate, pulse]), withKey: "rotateFeedback")
@@ -101,14 +101,19 @@ final class MapPieceNode: SKNode {
 }
 
 enum MapNodeName: String {
+    case hud = "MapHUD"
     case contentRoot = "MapContentRoot"
     case background = "MapBackground"
     case piece = "MapPieceNode"
     case cell = "MapCellNode"
-    case rotateButton = "MapRotateButton"
+    case rotateLeftButton = "MapRotateLeftButton"
+    case rotateRightButton = "MapRotateRightButton"
     case cancelButton = "MapCancelButton"
     case confirmButton = "MapConfirmButton"
     case exitButton = "MapExitButton"
+    case inventoryToggle = "MapInventoryToggle"
+    case inventoryPanel = "MapInventoryPanel"
+    case inventoryItem = "MapInventoryItem"
     case enterButton = "EnterMapButton"
     case resetButton = "ResetPuzzleButton"
     case saveButton = "SaveGameButton"
