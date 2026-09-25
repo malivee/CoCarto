@@ -5,20 +5,24 @@ struct WorldCellDefinition: Codable, Hashable, Sendable {
     let localPosition: GridPosition
     let edges: CellEdges
     let biomeEdges: CellBiomeEdges
+    private let customMicroBiomeGrid: MicroBiomeGrid?
+
     var microBiomeGrid: MicroBiomeGrid {
-        MicroBiomeGridGenerator().generate(from: biomeEdges)
+        customMicroBiomeGrid ?? MicroBiomeGridGenerator().generate(from: biomeEdges)
     }
 
     init(
         id: GridID? = nil,
         localPosition: GridPosition,
         edges: CellEdges,
-        biomeEdges: CellBiomeEdges = .uniform(.naturalGrass)
+        biomeEdges: CellBiomeEdges = .uniform(.naturalGrass),
+        microBiomeGrid: MicroBiomeGrid? = nil
     ) {
         self.id = id ?? GridID("\(localPosition.x),\(localPosition.y)")
         self.localPosition = localPosition
         self.edges = edges
         self.biomeEdges = biomeEdges
+        self.customMicroBiomeGrid = microBiomeGrid
     }
 
     init(
@@ -46,11 +50,14 @@ struct WorldCellDefinition: Codable, Hashable, Sendable {
         self.edges = try container.decode(CellEdges.self, forKey: .edges)
         if let biomeEdges = try container.decodeIfPresent(CellBiomeEdges.self, forKey: .biomeEdges) {
             self.biomeEdges = biomeEdges
+            self.customMicroBiomeGrid = try container.decodeIfPresent(MicroBiomeGrid.self, forKey: .microBiomeGrid)
         } else if let oldGrid = try container.decodeIfPresent(MicroBiomeGrid.self, forKey: .microBiomeGrid),
                   let firstCell = oldGrid.cells().first {
             self.biomeEdges = .uniform(firstCell.biome)
+            self.customMicroBiomeGrid = oldGrid
         } else {
             self.biomeEdges = .uniform(.naturalGrass)
+            self.customMicroBiomeGrid = nil
         }
     }
 
@@ -60,6 +67,7 @@ struct WorldCellDefinition: Codable, Hashable, Sendable {
         try container.encode(localPosition, forKey: .localPosition)
         try container.encode(edges, forKey: .edges)
         try container.encode(biomeEdges, forKey: .biomeEdges)
+        try container.encodeIfPresent(customMicroBiomeGrid, forKey: .microBiomeGrid)
     }
 }
 

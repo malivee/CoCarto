@@ -94,14 +94,14 @@ enum BuildingPuzzleBiomeFixture {
     ]
 
     static let biomeEdgesByCellID: [BuildingPuzzleCellID: CellBiomeEdges] = [
-        .a: mixed(north: .naturalGrass, east: .villageSoil, south: .villageSoil, west: .naturalGrass),
-        .b: mixed(north: .naturalGrass, east: .villageSoil, south: .villageSoil, west: .naturalGrass),
-        .c: mixed(north: .villageSoil, east: .villageSoil, south: .naturalGrass, west: .naturalGrass),
-        .d: mixed(north: .villageSoil, east: .naturalGrass, south: .naturalGrass, west: .villageSoil),
-        .e: mixed(north: .villageSoil, east: .villageSoil, south: .villageSoil, west: .naturalGrass),
-        .f: mixed(north: .naturalGrass, east: .villageSoil, south: .villageSoil, west: .villageSoil),
-        .g: mixed(north: .villageSoil, east: .naturalGrass, south: .naturalGrass, west: .villageSoil),
-        .h: mixed(north: .naturalGrass, east: .villageSoil, south: .villageSoil, west: .naturalGrass),
+        .a: .uniform(.rocksalt),
+        .b: .uniform(.rocksalt),
+        .c: mixed(north: .villageSoil, east: .villageSoil, south: .villageSoil, west: .rocksalt),
+        .d: .uniform(.villageSoil),
+        .e: .uniform(.villageSoil),
+        .f: mixed(north: .villageSoil, east: .rocksalt, south: .villageSoil, west: .villageSoil),
+        .g: mixed(north: .rocksalt, east: .villageSoil, south: .villageSoil, west: .rocksalt),
+        .h: mixed(north: .villageSoil, east: .villageSoil, south: .rocksalt, west: .villageSoil),
         .i: mixed(north: .villageSoil, east: .villageSoil, south: .villageSoil, west: .naturalGrass),
         .j: mixed(north: .villageSoil, east: .villageSoil, south: .naturalGrass, west: .villageSoil),
         .k: mixed(north: .naturalGrass, east: .villageSoil, south: .villageSoil, west: .villageSoil),
@@ -117,6 +117,9 @@ enum BuildingPuzzleBiomeFixture {
     ]
 
     static func grid(for cellID: BuildingPuzzleCellID) -> MicroBiomeGrid {
+        if let customGrid = microBiomeGridOverride(for: cellID) {
+            return customGrid
+        }
         guard let edges = biomeEdgesByCellID[cellID] else {
             preconditionFailure("Missing biome edges for cell \(cellID.rawValue).")
         }
@@ -198,6 +201,48 @@ private extension BuildingPuzzleBiomeFixture {
         CellBiomeEdges(north: north, east: east, south: south, west: west)
     }
 
+    static func microBiomeGridOverride(for cellID: BuildingPuzzleCellID) -> MicroBiomeGrid? {
+        switch cellID {
+        case .c, .g:
+            return villageSoilWithRockSaltDiagonalCut()
+        case .f:
+            return villageSoilWithRightRockSaltTip()
+        case .h:
+            return villageSoilWithBottomRockSaltTip()
+        case .a, .b, .d, .e, .i, .j, .k, .l, .m, .n, .o, .p, .q, .r, .s, .t:
+            return nil
+        }
+    }
+
+    static func villageSoilWithRockSaltDiagonalCut() -> MicroBiomeGrid {
+        DiagonalBiomeTemplate.topLeftTriangle.grid(
+            primaryBiome: .rocksalt,
+            secondaryBiome: .villageSoil
+        )
+    }
+
+    static func villageSoilWithRightRockSaltTip() -> MicroBiomeGrid {
+        let maxIndex = MicroBiomeGrid.dimension - 1
+        let triangleSize = 3
+        let matrix = (0..<MicroBiomeGrid.dimension).map { y in
+            (0..<MicroBiomeGrid.dimension).map { x in
+                (maxIndex - x) + (maxIndex - y) < triangleSize ? BiomeType.rocksalt : BiomeType.villageSoil
+            }
+        }
+        return try! MicroBiomeGrid(matrix: matrix)
+    }
+
+    static func villageSoilWithBottomRockSaltTip() -> MicroBiomeGrid {
+        let maxIndex = MicroBiomeGrid.dimension - 1
+        let triangleSize = 3
+        let matrix = (0..<MicroBiomeGrid.dimension).map { y in
+            (0..<MicroBiomeGrid.dimension).map { x in
+                x + (maxIndex - y) < triangleSize ? BiomeType.rocksalt : BiomeType.villageSoil
+            }
+        }
+        return try! MicroBiomeGrid(matrix: matrix)
+    }
+
     static func makePiece(
         pieceID: BuildingPuzzlePieceID,
         type: TetrominoType,
@@ -213,7 +258,8 @@ private extension BuildingPuzzleBiomeFixture {
                 id: GridID(cellID.rawValue),
                 localPosition: localPosition,
                 edges: .open,
-                biomeEdges: biomeEdges(for: cellID)
+                biomeEdges: biomeEdges(for: cellID),
+                microBiomeGrid: microBiomeGridOverride(for: cellID)
             )
         }
         return WorldPiece(
