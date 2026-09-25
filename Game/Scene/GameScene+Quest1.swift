@@ -10,11 +10,17 @@ extension GameScene {
         if !hasArthurHome {
             return [MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: false)]
         }
-        if quest1Controller.isWellUnlocked && !hasWell {
+        if !hasWell {
             return [MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: false)]
         }
-        if quest1Controller.hasCollectedWater && !quest2Controller.isCompleted && !hasMaraHome {
-            return [MapQuestItem(category: "Quest 2", title: "Place Mrs. Mara Home", isCompleted: false)]
+        if quest1Controller.hasCollectedWater && !quest2Controller.isCompleted {
+            var quest2Items = [
+                MapQuestItem(category: "Quest 2", title: VillageQuestCatalog.Quest2.mapObjective, isCompleted: false)
+            ]
+            if !hasMaraHome {
+                quest2Items.append(MapQuestItem(category: "Quest 2", title: VillageQuestCatalog.Quest2.worldObjectives[2], isCompleted: false))
+            }
+            return quest2Items
         }
         if quest1Controller.isCompleted && quest2Controller.isCompleted && !hasBarn {
             return [MapQuestItem(category: "Quest 3", title: VillageQuest3Catalog.mapObjective, isCompleted: false)]
@@ -28,7 +34,7 @@ extension GameScene {
             items.append(MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: hasWell))
         }
         if quest1Controller.hasCollectedWater || quest2Controller.isActive || quest2Controller.isCompleted || hasMaraHome {
-            items.append(MapQuestItem(category: "Quest 2", title: "Place Mrs. Mara Home", isCompleted: hasMaraHome))
+            items.append(MapQuestItem(category: "Quest 2", title: VillageQuestCatalog.Quest2.mapObjective, isCompleted: quest2Controller.isCompleted))
         }
         if quest1Controller.isCompleted && quest2Controller.isCompleted {
             items.append(MapQuestItem(
@@ -41,8 +47,7 @@ extension GameScene {
     }
 
     func questUnlockedObjectKinds() -> Set<BuildingObjectKind> {
-        var unlocked: Set<BuildingObjectKind> = [.arthurHouse]
-        if quest1Controller.isWellUnlocked { unlocked.insert(.well) }
+        var unlocked: Set<BuildingObjectKind> = [.arthurHouse, .well]
         if quest1Controller.hasCollectedWater || quest2Controller.isActive || quest2Controller.isCompleted {
             unlocked.insert(.buMaraHouse)
         }
@@ -97,16 +102,16 @@ extension GameScene {
                     title: VillageQuestCatalog.Quest1.mapObjectives[0],
                     isCompleted: false
                 ))
-            } else if !quest1Controller.isWellUnlocked {
-                items.append(MapQuestItem(
-                    category: "Quest 1",
-                    title: "Talk to Grandpa at Arthur Home.",
-                    isCompleted: false
-                ))
             } else if !hasWell {
                 items.append(MapQuestItem(
                     category: "Quest 1",
                     title: VillageQuestCatalog.Quest1.mapObjectives[1],
+                    isCompleted: false
+                ))
+            } else if !quest1Controller.isWellUnlocked {
+                items.append(MapQuestItem(
+                    category: "Quest 1",
+                    title: "Talk to Grandpa at Arthur Home.",
                     isCompleted: false
                 ))
             } else {
@@ -120,9 +125,19 @@ extension GameScene {
             }
         }
         if quest1Controller.hasCollectedWater && !quest2Controller.isCompleted {
+            let quest2Title: String
+            if !hasArthurHome {
+                quest2Title = VillageQuestCatalog.Quest2.worldObjectives[0]
+            } else if !hasWell {
+                quest2Title = VillageQuestCatalog.Quest2.worldObjectives[1]
+            } else if !hasMaraHome {
+                quest2Title = VillageQuestCatalog.Quest2.worldObjectives[2]
+            } else {
+                quest2Title = VillageQuestCatalog.Quest2.mapObjective
+            }
             items.append(MapQuestItem(
                 category: "Quest 2",
-                title: hasMaraHome ? VillageQuestCatalog.Quest2.mapObjective : "Place Mrs. Mara Home",
+                title: quest2Title,
                 isCompleted: false
             ))
         }

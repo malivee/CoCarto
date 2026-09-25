@@ -27,7 +27,7 @@ final class VillageQuest3Controller {
     var isUnlocked: Bool {
         let q1 = VillageQuest1Progress.load()
         let q2 = VillageQuest2Progress.load()
-        return q1.returnedHome && (q2.completed || q2.returnedWaterToGrandpa)
+        return q1.returnedHome && q2.completed
     }
 
     var isBarnUnlocked: Bool {

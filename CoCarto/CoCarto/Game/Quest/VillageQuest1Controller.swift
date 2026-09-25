@@ -89,7 +89,7 @@ final class VillageQuest1Controller {
               worldState.buildingObjects.contains(where: { $0.kind == .arthurHouse }),
               worldState.buildingObjects.contains(where: { $0.kind == .well }) else {
             return .unavailable([
-                .init(speaker: "Quest", text: "Place Arthur Home and the well after speaking with Grandpa.")
+                .init(speaker: "Quest", text: "Talk to Grandpa before using the well.")
             ])
         }
         guard !progress.collectedWater else {
