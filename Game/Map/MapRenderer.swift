@@ -6,6 +6,7 @@ final class MapRenderer {
     private(set) var inventoryExpanded = false
     private(set) var inventoryScrollOffset: CGFloat = 0
     private(set) var selectedInventoryIndex = 0
+    private(set) var contentScale: CGFloat = 1
     private var lastRenderedSelectionID: UUID?
     private let inventoryTitles = ["House", "Workshop", "Farm", "Market", "Bridge", "Tower"]
     private let mapCellSize: CGFloat
@@ -36,6 +37,7 @@ final class MapRenderer {
         let contentRoot = SKNode()
         contentRoot.name = MapNodeName.contentRoot.rawValue
         contentRoot.position = contentOffset
+        contentRoot.setScale(contentScale)
         mapRoot.addChild(contentRoot)
 
         for piece in worldState.pieces {
@@ -94,6 +96,20 @@ final class MapRenderer {
         contentRoot(in: mapRoot)?.position = contentOffset
     }
 
+    @discardableResult
+    func setContentScale(_ scale: CGFloat, in mapRoot: SKNode) -> CGFloat {
+        contentScale = min(max(scale, 0.55), 1.8)
+        contentRoot(in: mapRoot)?.setScale(contentScale)
+        return contentScale
+    }
+
+    func screenPointToContent(_ screenPoint: CGPoint, contentOffset: CGPoint) -> CGPoint {
+        CGPoint(
+            x: (screenPoint.x - contentOffset.x) / contentScale,
+            y: (screenPoint.y - contentOffset.y) / contentScale
+        )
+    }
+
     func contentRoot(in mapRoot: SKNode) -> SKNode? {
         mapRoot.childNode(withName: MapNodeName.contentRoot.rawValue)
     }
@@ -102,12 +118,19 @@ final class MapRenderer {
         piece: WorldPiece,
         preview: PiecePlacementPreview,
         in mapRoot: SKNode,
-        animated: Bool = false
+        animated: Bool = false,
+        clockwise: Bool? = nil
     ) {
         guard let node = pieceNode(pieceID: piece.id, in: mapRoot) else {
             return
         }
-        node.applyPreview(piece: piece, preview: preview, mapper: mapper, animated: animated)
+        node.applyPreview(
+            piece: piece,
+            preview: preview,
+            mapper: mapper,
+            animated: animated,
+            clockwise: clockwise
+        )
     }
 
     func animatePreviewSnap(pieceID: UUID, to position: CGPoint, in mapRoot: SKNode, completion: @escaping () -> Void) {

@@ -1,4 +1,5 @@
 import SpriteKit
+import UIKit
 
 final class GameScene: SKScene {
     private let worldRoot = SKNode()
@@ -25,6 +26,10 @@ final class GameScene: SKScene {
     private var lastMapDragScreenPosition: CGPoint?
     private var inventoryLastTouchY: CGFloat?
     private var rotationInputLocked = false
+    private weak var mapPinchGesture: UIPinchGestureRecognizer?
+    private var pinchStartContentScale: CGFloat = 1
+    private var pinchAnchorContentPoint = CGPoint.zero
+    private var pinchAnchorScreenPoint = CGPoint.zero
     private let puzzleManager = PuzzleManager()
     private let worldEventManager = WorldEventManager()
     private let landmarkInteractionResolver = LandmarkInteractionResolver()
@@ -92,6 +97,51 @@ final class GameScene: SKScene {
         rebuildWorldFromState()
         spawnPlayer()
         puzzleManager.evaluate(worldState: worldState)
+
+        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handleMapPinch(_:)))
+        pinch.cancelsTouchesInView = true
+        view.addGestureRecognizer(pinch)
+        mapPinchGesture = pinch
+    }
+
+    override func willMove(from view: SKView) {
+        if let mapPinchGesture {
+            view.removeGestureRecognizer(mapPinchGesture)
+        }
+        super.willMove(from: view)
+    }
+
+    @objc private func handleMapPinch(_ gesture: UIPinchGestureRecognizer) {
+        guard gameMode.isMapInteractionActive else { return }
+
+        switch gesture.state {
+        case .began:
+            pinchStartContentScale = mapRenderer.contentScale
+            if let spatialState = playerController.state.spatialState,
+               let playerMapPosition = mapRenderer.mapMarkerPosition(
+                   for: spatialState,
+                   worldState: worldState,
+                   preview: mapController.preview
+               ) {
+                pinchAnchorContentPoint = playerMapPosition
+            } else {
+                pinchAnchorContentPoint = .zero
+            }
+            pinchAnchorScreenPoint = CGPoint(
+                x: pinchAnchorContentPoint.x * pinchStartContentScale + mapViewport.contentOffset.x,
+                y: pinchAnchorContentPoint.y * pinchStartContentScale + mapViewport.contentOffset.y
+            )
+        case .changed:
+            let scale = mapRenderer.setContentScale(pinchStartContentScale * gesture.scale, in: mapRoot)
+            let desiredOffset = CGPoint(
+                x: pinchAnchorScreenPoint.x - pinchAnchorContentPoint.x * scale,
+                y: pinchAnchorScreenPoint.y - pinchAnchorContentPoint.y * scale
+            )
+            let offset = mapViewport.setContentOffset(desiredOffset)
+            mapRenderer.applyContentOffset(offset, in: mapRoot)
+        default:
+            break
+        }
     }
 
     func rebuildWorldFromState() {
@@ -437,7 +487,10 @@ final class GameScene: SKScene {
 
         _ = mapController.beginDrag(
             pieceID: pieceID,
-            touchPositionInContent: mapViewport.screenPointToContent(location),
+            touchPositionInContent: mapRenderer.screenPointToContent(
+                location,
+                contentOffset: mapViewport.contentOffset
+            ),
             mapper: mapRenderer.mapper,
             worldState: worldState,
             playerState: playerController.state
@@ -465,7 +518,13 @@ final class GameScene: SKScene {
         }
 
         gameMode = .mapPieceSelected(preview.pieceID)
-        mapRenderer.updatePreviewNode(piece: piece, preview: preview, in: mapRoot, animated: true)
+        mapRenderer.updatePreviewNode(
+            piece: piece,
+            preview: preview,
+            in: mapRoot,
+            animated: true,
+            clockwise: clockwise
+        )
         mapRoot.removeAction(forKey: "finishMapRotation")
         mapRoot.run(.sequence([
             .wait(forDuration: 0.12),
@@ -480,7 +539,10 @@ final class GameScene: SKScene {
 
     private func updatePieceDrag(at screenPosition: CGPoint, pieceID: UUID) {
         lastMapDragScreenPosition = screenPosition
-        let contentPosition = mapViewport.screenPointToContent(screenPosition)
+        let contentPosition = mapRenderer.screenPointToContent(
+            screenPosition,
+            contentOffset: mapViewport.contentOffset
+        )
         guard let preview = mapController.updateDrag(
             touchPositionInContent: contentPosition,
             mapper: mapRenderer.mapper,

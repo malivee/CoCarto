@@ -1,3 +1,3 @@
 enum SaveVersion {
-    static let current = 1
+    static let current = 2
 }

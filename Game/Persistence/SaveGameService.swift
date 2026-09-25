@@ -54,7 +54,7 @@ final class SaveGameService {
         do {
             let rawData = try Data(contentsOf: saveURL)
             let versionEnvelope = try JSONDecoder().decode(SaveVersionEnvelope.self, from: rawData)
-            guard versionEnvelope.version <= SaveVersion.current else {
+            guard versionEnvelope.version == SaveVersion.current else {
                 throw SaveGameError.unsupportedVersion(versionEnvelope.version)
             }
             return try JSONDecoder().decode(GameSaveData.self, from: rawData)

@@ -16,12 +16,12 @@ final class MapHUDNode: SKNode {
         borderless: true
     )
     private let rotateLeftButton = RotationButtonNode(
-        direction: .right,
+        direction: .left,
         name: MapNodeName.rotateLeftButton.rawValue,
         size: 104
     )
     private let rotateRightButton = RotationButtonNode(
-        direction: .left,
+        direction: .right,
         name: MapNodeName.rotateRightButton.rawValue,
         size: 104
     )
@@ -198,35 +198,24 @@ final class RotationButtonNode: SKNode {
         hitArea.lineWidth = 1.5
         addChild(hitArea)
 
-        let iconRoot = SKNode()
-        iconRoot.name = name
-        iconRoot.xScale = direction == .left ? -1 : 1
-        addChild(iconRoot)
-
-        let arcPath = UIBezierPath(
-            arcCenter: .zero,
-            radius: size * 0.24,
-            startAngle: -.pi * 0.72,
-            endAngle: .pi * 0.72,
-            clockwise: true
-        )
-        let arc = SKShapeNode(path: arcPath.cgPath)
-        arc.name = name
-        arc.strokeColor = .white
-        arc.lineWidth = 5
-        arc.lineCap = .round
-        iconRoot.addChild(arc)
-
-        let arrowPath = CGMutablePath()
-        arrowPath.move(to: CGPoint(x: -size * 0.25, y: size * 0.20))
-        arrowPath.addLine(to: CGPoint(x: -size * 0.08, y: size * 0.22))
-        arrowPath.addLine(to: CGPoint(x: -size * 0.18, y: size * 0.06))
-        arrowPath.closeSubpath()
-        let arrow = SKShapeNode(path: arrowPath)
-        arrow.name = name
-        arrow.fillColor = .white
-        arrow.strokeColor = .clear
-        iconRoot.addChild(arrow)
+        let symbolName = direction == .left ? "rotate.left" : "rotate.right"
+        let configuration = UIImage.SymbolConfiguration(pointSize: size * 0.44, weight: .semibold)
+        if let symbol = UIImage(systemName: symbolName, withConfiguration: configuration)?
+            .withTintColor(.white, renderingMode: .alwaysOriginal) {
+            let canvasSize = CGSize(width: size, height: size)
+            let rendered = UIGraphicsImageRenderer(size: canvasSize).image { _ in
+                let origin = CGPoint(
+                    x: (canvasSize.width - symbol.size.width) / 2,
+                    y: (canvasSize.height - symbol.size.height) / 2
+                )
+                symbol.draw(at: origin)
+            }
+            let icon = SKSpriteNode(texture: SKTexture(image: rendered))
+            icon.name = name
+            icon.size = canvasSize
+            icon.zPosition = 2
+            addChild(icon)
+        }
     }
 
     @available(*, unavailable)

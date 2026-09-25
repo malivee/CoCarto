@@ -27,7 +27,7 @@ struct MapViewportController: Sendable {
 
     mutating func reset(contentBounds: CGRect, sceneSize: CGSize, focusPoint: CGPoint) {
         recalculateBounds(contentBounds: contentBounds, sceneSize: sceneSize)
-        contentOffset = clamped(CGPoint(x: -focusPoint.x, y: -focusPoint.y))
+        contentOffset = CGPoint(x: -focusPoint.x, y: -focusPoint.y)
     }
 
     mutating func recalculateBounds(contentBounds: CGRect, sceneSize: CGSize) {
@@ -52,11 +52,15 @@ struct MapViewportController: Sendable {
             minOffset.y = midpoint
             maxOffset.y = midpoint
         }
-        contentOffset = clamped(contentOffset)
     }
 
     mutating func pan(by delta: CGPoint) -> CGPoint {
-        contentOffset = clamped(CGPoint(x: contentOffset.x + delta.x, y: contentOffset.y + delta.y))
+        contentOffset = CGPoint(x: contentOffset.x + delta.x, y: contentOffset.y + delta.y)
+        return contentOffset
+    }
+
+    mutating func setContentOffset(_ offset: CGPoint) -> CGPoint {
+        contentOffset = offset
         return contentOffset
     }
 

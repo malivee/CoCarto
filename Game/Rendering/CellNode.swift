@@ -66,7 +66,7 @@ final class CellNode: SKNode {
                 x: topLeft.x + CGFloat(microCell.localPosition.x) * microSize,
                 y: topLeft.y - CGFloat(microCell.localPosition.y) * microSize
             )
-            node.alpha = 0.55
+            node.alpha = 0.92
             node.zPosition = 0.5
             addChild(node)
         }

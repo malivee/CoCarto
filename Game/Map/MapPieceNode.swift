@@ -42,7 +42,8 @@ final class MapPieceNode: SKNode {
         piece: WorldPiece,
         preview: PiecePlacementPreview,
         mapper: MapGridMapper,
-        animated: Bool = false
+        animated: Bool = false,
+        clockwise: Bool? = nil
     ) {
         var previewPiece = piece
         previewPiece.gridPosition = preview.proposedPosition
@@ -50,14 +51,16 @@ final class MapPieceNode: SKNode {
         position = preview.visualPosition
 
         if animated {
+            let startingAngle = zRotation
             rebuildCells(
                 piece: previewPiece,
                 mapper: mapper,
                 interactionState: .selected(isValid: preview.isValid)
             )
             removeAction(forKey: "rotateFeedback")
-            zRotation = piece.rotation.radians
-            let rotate = SKAction.rotate(toAngle: preview.proposedRotation.radians, duration: 0.11, shortestUnitArc: true)
+            zRotation = startingAngle
+            let quarterTurn: CGFloat = clockwise == true ? -.pi / 2 : .pi / 2
+            let rotate = SKAction.rotate(byAngle: quarterTurn, duration: 0.11)
             rotate.timingMode = .easeInEaseOut
             let pulse = SKAction.sequence([
                 .scale(to: 1.04, duration: 0.05),
