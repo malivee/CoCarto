@@ -3,6 +3,16 @@ import SpriteKit
 /// Selects authored image overrides for specific complete tiles. Biomes remain
 /// gameplay data; this is only for tiles that need hand-authored visuals.
 struct TileAssetResolver {
+    /// Base tiles are used on the map; their detailed counterparts are used in
+    /// the world while keeping the same rotation and mirroring configuration.
+    private static let detailAssetByTileAsset: [String: String] = [
+        "tile 1": "tileDetail 1",
+        "tile 2": "tileDetail 2",
+        "tile 3": "tileDetail 3",
+        "tile 4": "tileDetail 4",
+        "tile 5": "tileDetail 5"
+    ]
+
     struct TileOverride {
         let assetName: String
         let rotation: CGFloat
@@ -35,8 +45,11 @@ struct TileAssetResolver {
         }
     }
 
-    static func overrideNode(for override: TileOverride, size: CGFloat) -> SKNode {
-        let texture = SKTexture(imageNamed: override.assetName)
+    static func overrideNode(for override: TileOverride, size: CGFloat, usesDetailAsset: Bool = false) -> SKNode {
+        let resolvedAssetName = usesDetailAsset
+            ? detailAssetByTileAsset[override.assetName] ?? override.assetName
+            : override.assetName
+        let texture = SKTexture(imageNamed: resolvedAssetName)
         texture.filteringMode = .linear
         let sprite = SKSpriteNode(texture: texture, color: .clear, size: CGSize(width: size, height: size))
         sprite.zRotation = override.rotation
