@@ -244,19 +244,21 @@ extension GameScene {
         updateWorldTutorialBanner()
     }
 
-    func interactWithQuestObject(id: UUID, in stack: [SKNode]) {
+    func interactWithQuestNPC(_ npc: MemoryCharacter) {
         guard activeQuestMinigame == nil,
-              let object = worldState.buildingObject(id: id),
               let playerNode,
-              let objectNode = stack.first(where: {
-                  $0.name == BuildingObjectRenderer.nodeName ||
-                  $0.name == "WellTutorialBadge" ||
-                  $0.name?.starts(with: "npc-") == true ||
-                  $0.userData?[BuildingObjectRenderer.objectIDKey] != nil
-              }) else { return }
-        let objectPosition = objectNode.convert(CGPoint.zero, to: self)
-        let distance = hypot(playerNode.position.x - objectPosition.x, playerNode.position.y - objectPosition.y)
-        guard distance <= 220 else {
+              let idString = npc.userData?[BuildingObjectRenderer.objectIDKey] as? String,
+              let objectID = UUID(uuidString: idString),
+              let object = worldState.buildingObject(id: objectID) else { return }
+
+        let playerPosition = playerNode.convert(CGPoint.zero, to: self)
+        let npcPosition = npc.convert(CGPoint.zero, to: self)
+        let interactionDistance = mapper.cellSize / CGFloat(MicroBiomeGrid.dimension)
+        let distance = hypot(
+            playerPosition.x - npcPosition.x,
+            playerPosition.y - npcPosition.y
+        )
+        guard distance <= interactionDistance else {
             showProgressionFeedback("MOVE CLOSER")
             return
         }
@@ -288,6 +290,31 @@ extension GameScene {
             handleQuest6Result(quest6Controller.collectRockSalt(from: object.id, in: worldState))
             worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
         }
+        updateWorldQuestLabel()
+        updateWorldTutorialBanner()
+    }
+
+    func interactWithQuestBuildingWithoutNPC(id: UUID, in stack: [SKNode]) {
+        guard activeQuestMinigame == nil,
+              let object = worldState.buildingObject(id: id),
+              object.kind == .well,
+              let playerNode,
+              let objectNode = stack.first(where: { $0.name == BuildingObjectRenderer.nodeName }) else {
+            return
+        }
+
+        let playerPosition = playerNode.convert(CGPoint.zero, to: self)
+        let objectPosition = objectNode.convert(CGPoint.zero, to: self)
+        let interactionDistance = mapper.cellSize / CGFloat(MicroBiomeGrid.dimension)
+        guard hypot(
+            playerPosition.x - objectPosition.x,
+            playerPosition.y - objectPosition.y
+        ) <= interactionDistance else {
+            showProgressionFeedback("MOVE CLOSER")
+            return
+        }
+
+        handleQuest1Result(quest1Controller.interactWithWell(in: worldState))
         updateWorldQuestLabel()
         updateWorldTutorialBanner()
     }

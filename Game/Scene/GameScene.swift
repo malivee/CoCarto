@@ -37,6 +37,7 @@ final class GameScene: SKScene {
     var inventoryDidScroll = false
     var isDraggingObjectFromInventory = false
     var isDraggingPlacedObject = false
+    var originalDraggedBuilding: BuildingObject?
     var selectedObjectKind: BuildingObjectKind?
     var objectPreview: BuildingObject?
     var objectRotation: GridRotation = .degrees0
@@ -278,8 +279,10 @@ final class GameScene: SKScene {
             }
             if nodeStack(at: location).contains(where: { $0.name == MapNodeName.enterButton.rawValue }) {
                 enterMapView()
+            } else if let npc = villageNPC(in: stack) {
+                interactWithQuestNPC(npc)
             } else if let objectID = buildingObjectID(in: stack) {
-                interactWithQuestObject(id: objectID, in: stack)
+                interactWithQuestBuildingWithoutNPC(id: objectID, in: stack)
             } else {
                 let controlPosition = touch.location(in: cameraNode)
                 inputController.beginTouch(at: controlPosition)
@@ -310,6 +313,10 @@ final class GameScene: SKScene {
                 isDraggingObjectFromInventory = false
                 inventoryLastTouchY = location.y
                 inventoryToggleTouch = false
+                return
+            }
+            if selectedObjectKind != nil {
+                handleMapTouchBegan(at: location)
                 return
             }
             if let objectID = buildingObjectID(in: stack) {
@@ -440,9 +447,8 @@ final class GameScene: SKScene {
             isDraggingObjectFromInventory = false
             inventoryToggleTouch = false
             if isDraggingPlacedObject {
-                isDraggingPlacedObject = false
+                restoreOriginalDraggedBuilding()
                 worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
-                autosave(reason: "building returned to inventory")
             }
             inventoryLastTouchY = nil
             inventoryTouchStartPosition = nil

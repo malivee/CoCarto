@@ -168,6 +168,9 @@ extension GameScene {
         }
 
         gameMode = .exitingMap
+        if isDraggingPlacedObject {
+            restoreOriginalDraggedBuilding()
+        }
         selectedObjectKind = nil
         objectPreview = nil
         mapController.cancel()
@@ -289,6 +292,9 @@ extension GameScene {
             if selectedObjectKind != nil {
                 selectedObjectKind = nil
                 objectPreview = nil
+                if isDraggingPlacedObject {
+                    restoreOriginalDraggedBuilding()
+                }
                 rebuildMapView()
                 return
             }
@@ -303,6 +309,8 @@ extension GameScene {
                     let title = BuildingObjectCatalog.definition(for: objectPreview.kind).title
                     self.objectPreview = nil
                     selectedObjectKind = nil
+                    isDraggingPlacedObject = false
+                    originalDraggedBuilding = nil
                     syncQuest2PlacementProgress()
                     worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
                     autosave(reason: "building placed")
@@ -322,7 +330,7 @@ extension GameScene {
         }
 
         if let kind = selectedObjectKind {
-            guard !stack.contains(where: { $0.name == MapNodeName.hud.rawValue }) else { return }
+            isDraggingObjectFromInventory = true
             updateObjectPreview(at: location, kind: kind)
             return
         }
@@ -411,6 +419,7 @@ extension GameScene {
     func beginPlacedObjectDrag(id: UUID, at location: CGPoint) {
         guard let object = worldState.removeBuildingObject(id: id) else { return }
         mapController.cancel()
+        originalDraggedBuilding = object
         selectedObjectKind = object.kind
         objectRotation = object.rotation
         objectPreview = object
@@ -434,17 +443,27 @@ extension GameScene {
             selectedObjectKind = nil
             objectPreview = nil
             isDraggingPlacedObject = false
+            originalDraggedBuilding = nil
             worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
             autosave(reason: "building dropped")
             AudioService.shared.playSFX("PaperMap")
             showProgressionFeedback("\(title.uppercased()) PLACED")
             rebuildMapView()
         } else {
-            // Keep preview active on the map so the user can easily rotate or adjust without starting over
-            isDraggingPlacedObject = false
+            // Keep the preview active so it can be adjusted. A previously placed
+            // building remains restorable if the player exits or cancels.
             AudioService.shared.playSFX("PaperMap")
             rebuildMapView()
         }
+    }
+
+    func restoreOriginalDraggedBuilding() {
+        if let originalDraggedBuilding {
+            _ = worldState.placeBuildingObject(originalDraggedBuilding)
+        }
+        originalDraggedBuilding = nil
+        isDraggingPlacedObject = false
+        autosave(reason: "building restored after invalid move")
     }
 
     func rotateSelectedPiece(clockwise: Bool) {

@@ -173,6 +173,31 @@ enum TutorialBuildingPlacementResolver {
 }
 
 struct BuildingPlacementValidator {
+    func tilePositions(in world: WorldState) -> Set<GridPosition> {
+        var positions = Set<GridPosition>()
+        let dimension = MicroBiomeGrid.dimension
+        for piece in world.pieces {
+            for cell in piece.cellDefinitions {
+                for microPosition in MicroGridPosition.allPositions {
+                    let center = GridPosition(
+                        x: cell.localPosition.x * dimension * 2 + microPosition.x * 2 + 1 - dimension,
+                        y: cell.localPosition.y * dimension * 2 + dimension - microPosition.y * 2 - 1
+                    )
+                    let rotated = piece.rotation.rotated(center)
+                    positions.insert(GridPosition(
+                        x: piece.gridPosition.x * dimension + (rotated.x + dimension - 1) / 2,
+                        y: piece.gridPosition.y * dimension + (rotated.y + dimension - 1) / 2
+                    ))
+                }
+            }
+        }
+        return positions
+    }
+
+    func overlapsWorldTiles(_ object: BuildingObject, in world: WorldState) -> Bool {
+        !object.occupiedPositions.isDisjoint(with: tilePositions(in: world))
+    }
+
     func villagePositions(in world: WorldState) -> Set<GridPosition> {
         biomePositions(.villageSoil, in: world)
     }
@@ -191,7 +216,16 @@ struct BuildingPlacementValidator {
         var positions = Set<GridPosition>()
         let dimension = MicroBiomeGrid.dimension
         for cell in piece.cellDefinitions {
-            for microCell in cell.microBiomeGrid.cells() where microCell.biome == biome {
+            // Saved worlds can contain an older serialized microgrid. For the
+            // built-in puzzle cells, always validate against the current fixture
+            // used by the visible tile artwork, without requiring a save reset.
+            let microBiomeGrid = BuildingPuzzleCellID(rawValue: cell.id.rawValue)
+                .map { BuildingPuzzleBiomeFixture.grid(for: $0) }
+                ?? cell.microBiomeGrid
+            // A split micro-cell contains two biomes, so it is not a complete
+            // buildable square for either one. Buildings may only occupy cells
+            // whose entire area is the required biome.
+            for microCell in microBiomeGrid.cells() where microCell.biome == biome {
                 // Rotate actual rendered square centers, including the downward microgrid Y.
                 let center = GridPosition(
                     x: cell.localPosition.x * dimension * 2 + microCell.localPosition.x * 2 + 1 - dimension,

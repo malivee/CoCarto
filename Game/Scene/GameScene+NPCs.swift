@@ -153,6 +153,10 @@ extension GameScene {
         return nil
     }
 
+    func villageNPC(in stack: [SKNode]) -> MemoryCharacter? {
+        stack.compactMap { $0 as? MemoryCharacter }.first
+    }
+
     private func buildingWorldPosition(for objectID: UUID) -> CGPoint? {
         guard let buildingRoot = worldRoot.childNode(withName: BuildingObjectRenderer.rootName) else {
             return nil
