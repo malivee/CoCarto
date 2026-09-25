@@ -12,6 +12,14 @@ extension GameScene {
         if quest1Controller.hasCollectedWater || quest2Controller.isActive || quest2Controller.isCompleted {
             items.append(MapQuestItem(category: "Quest 2", title: "Place Mrs. Mara Home", isCompleted: hasMaraHome))
         }
+        if quest1Controller.isCompleted && quest2Controller.isCompleted {
+            let hasBarn = worldState.buildingObjects.contains { $0.kind == .barn }
+            items.append(MapQuestItem(
+                category: "Quest 3",
+                title: VillageQuest3Catalog.mapObjective,
+                isCompleted: quest3Controller.isCompleted || hasBarn
+            ))
+        }
         return items
     }
 
@@ -58,6 +66,14 @@ extension GameScene {
                 isCompleted: false
             ))
         }
+        if quest1Controller.isCompleted && quest2Controller.isCompleted && !quest3Controller.isCompleted {
+            let quest3Progress = VillageQuest3Progress.load()
+            items.append(MapQuestItem(
+                category: "Quest 3",
+                title: VillageQuest3Catalog.worldObjective,
+                isCompleted: quest3Progress.sortedSeeds
+            ))
+        }
         worldQuestTracker.update(with: items)
         worldQuestTracker.isHidden = gameMode != .exploring || items.isEmpty
         worldQuestLabel.isHidden = true
@@ -88,6 +104,8 @@ extension GameScene {
                 in: worldState,
                 hasCollectedWater: quest1Controller.hasCollectedWater
             ))
+        case .barn:
+            handleQuest3Interaction(object: object)
         default:
             return
         }
@@ -96,18 +114,28 @@ extension GameScene {
 
     func handleQuest1Result(_ result: VillageQuest1InteractionResult) {
         switch result {
-        case .unavailable(let lines), .reminder(let lines): showQuestDialogue(lines)
+        case .unavailable(let lines), .reminder(let lines):
+            showQuestDialogue(lines)
+            npcCharacter(named: "Grandpa")?.wave()
         case .started(let lines):
             showQuestDialogue(lines)
             showProgressionFeedback("QUEST 1 STARTED")
+            npcCharacter(named: "Grandpa")?.wave()
+            syncVillageNPCs()
         case .waterCollected(let lines):
             showQuestDialogue(lines)
             showProgressionFeedback("QUEST 2 UNLOCKED")
+            playerNode?.celebrate()
+            syncVillageNPCs()
         case .completed(let lines):
             showQuestDialogue(lines)
             showProgressionFeedback("QUEST 1 COMPLETE")
+            playerNode?.celebrate()
+            npcCharacter(named: "Grandpa")?.celebrate()
+            syncVillageNPCs()
         case .alreadyCompleted:
             showQuestDialogue([.init(speaker: "Grandpa", text: "Thank you again, Arthur.")])
+            npcCharacter(named: "Grandpa")?.wave()
         }
     }
 
@@ -151,7 +179,7 @@ extension GameScene {
     func showQuestDialogue(_ lines: [VillageQuestDialogueLine], onComplete: (() -> Void)? = nil) {
         activeQuestDialogue?.removeFromParent()
         questDialogueLines = lines
-        questDialogueCompletion = onComplete
+        onQuestDialogueFinished = onComplete
         presentNextQuestDialogueLine()
     }
 
@@ -162,8 +190,8 @@ extension GameScene {
     func presentNextQuestDialogueLine() {
         guard !questDialogueLines.isEmpty else {
             activeQuestDialogue = nil
-            let completion = questDialogueCompletion
-            questDialogueCompletion = nil
+            let completion = onQuestDialogueFinished
+            onQuestDialogueFinished = nil
             completion?()
             return
         }

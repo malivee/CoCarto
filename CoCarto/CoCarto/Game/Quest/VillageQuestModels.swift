@@ -54,28 +54,7 @@ struct VillageQuest2Progress: Codable {
     }
 }
 
-struct VillageQuest3Progress: Codable {
-    static let saveKey = "village.carto.quest3.v1"
-
-    var spokeToRoland = false
-    var promisedRoland = false
-    var stayedSilent = false
-    var fenceChecked = false
-    var completed = false
-
-    static func load(defaults: UserDefaults = .standard) -> Self {
-        guard let data = defaults.data(forKey: saveKey),
-              let saved = try? JSONDecoder().decode(Self.self, from: data) else {
-            return Self()
-        }
-        return saved
-    }
-
-    func save(defaults: UserDefaults = .standard) {
-        guard let data = try? JSONEncoder().encode(self) else { return }
-        defaults.set(data, forKey: Self.saveKey)
-    }
-}
+// VillageQuest3Progress is defined in VillageQuest3Models.swift
 
 struct VillageQuest4Progress: Codable {
     static let saveKey = "village.carto.quest4.v1"

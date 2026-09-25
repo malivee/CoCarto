@@ -1,0 +1,561 @@
+// Penjelasan file: MemoryCharacter.swift
+// Membuat karakter bergaya storybook 2.5D Carto (Arthur, Kakek, Bu Mara, Kenneth, Roland, Anneth, dan warga).
+// Menampilkan tubuh tegak (billboard), bayangan tanah, pakaian khas, animasi melangkah (bobbing), dan arah hadap kiri/kanan.
+
+import SpriteKit
+
+public final class MemoryCharacter: SKNode {
+    public let title: String
+    public var route: [CGPoint] = []
+
+    // Node legacy untuk kompatibilitas properti
+    public let body = SKShapeNode()
+
+    // Komponen visual 2.5D bergaya Carto
+    public let visualRoot = SKNode()
+    private let shadowNode: SKShapeNode
+    private let characterBodyNode: SKNode
+    private let headNode: SKNode
+    private var nameTagNode: SKLabelNode?
+
+    private var walkPhase: CGFloat = 0
+    private var idlePhase: CGFloat = 0
+    private(set) var isWalking: Bool = false
+
+    public private(set) var isSitting: Bool = false
+    public private(set) var isSleeping: Bool = false
+    private var sleepParticlesNode: SKNode?
+
+    private var holdingBookNode: SKNode?
+    private var statusBadgeNode: SKNode?
+
+    public var showsNameTag: Bool {
+        get { nameTagNode?.isHidden == false }
+        set { nameTagNode?.isHidden = !newValue }
+    }
+
+    public init(title: String, color: SKColor = .systemGreen) {
+        self.title = title
+
+        // Bayangan lembut di atas tanah
+        shadowNode = SKShapeNode(ellipseOf: CGSize(width: 22, height: 9))
+        shadowNode.fillColor = SKColor(red: 0.16, green: 0.22, blue: 0.14, alpha: 0.28)
+        shadowNode.strokeColor = .clear
+        shadowNode.position = CGPoint(x: 0, y: 0)
+        shadowNode.zPosition = 0
+
+        characterBodyNode = SKNode()
+        headNode = SKNode()
+
+        super.init()
+
+        // Pasang bayangan dan visual root
+        addChild(shadowNode)
+        addChild(visualRoot)
+
+        // Sembunyikan body legacy tapi tetap aktif untuk rotasi internal bila diakses
+        body.fillColor = .clear
+        body.strokeColor = .clear
+        addChild(body)
+
+        setupCartoIllustration(title: title, tintColor: color)
+
+        // Label nama karakter di atas kepala
+        let nameTag = SKLabelNode(fontNamed: "AvenirNext-Medium")
+        nameTag.text = title
+        nameTag.fontSize = 9.5
+        nameTag.fontColor = SKColor(white: 0.96, alpha: 0.95)
+        nameTag.position = CGPoint(x: 0, y: 44)
+        nameTag.verticalAlignmentMode = .center
+        nameTag.zPosition = 10
+        addChild(nameTag)
+        self.nameTagNode = nameTag
+
+        updateDepth()
+    }
+
+    @available(*, unavailable)
+    public required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    // Membangun ilustrasi karakter bertumpuk bergaya paper-cutout Carto
+    private func setupCartoIllustration(title: String, tintColor: SKColor) {
+        visualRoot.addChild(characterBodyNode)
+
+        // 1. Kaki / Sepatu
+        let leftShoe = SKShapeNode(ellipseOf: CGSize(width: 5.5, height: 4))
+        leftShoe.fillColor = SKColor(red: 0.32, green: 0.24, blue: 0.18, alpha: 1)
+        leftShoe.strokeColor = .clear
+        leftShoe.position = CGPoint(x: -3.5, y: 2)
+        characterBodyNode.addChild(leftShoe)
+
+        let rightShoe = SKShapeNode(ellipseOf: CGSize(width: 5.5, height: 4))
+        rightShoe.fillColor = SKColor(red: 0.32, green: 0.24, blue: 0.18, alpha: 1)
+        rightShoe.strokeColor = .clear
+        rightShoe.position = CGPoint(x: 3.5, y: 2)
+        characterBodyNode.addChild(rightShoe)
+
+        // 2. Celana / Rok
+        let legs = SKShapeNode(rectOf: CGSize(width: 9, height: 6), cornerRadius: 2)
+        legs.fillColor = SKColor(red: 0.22, green: 0.26, blue: 0.28, alpha: 1)
+        legs.strokeColor = .clear
+        legs.position = CGPoint(x: 0, y: 6)
+        characterBodyNode.addChild(legs)
+
+        // 3. Jubah / Tunik (Baju Poncho ala Carto)
+        let tunicColor: SKColor
+        let trimColor: SKColor
+        let scarfColor: SKColor?
+
+        switch title {
+        case "Arthur":
+            // Carto poncho: warna krem hangat dengan syal leher toska cerah
+            tunicColor = SKColor(red: 0.94, green: 0.92, blue: 0.83, alpha: 1)
+            trimColor = SKColor(red: 0.58, green: 0.38, blue: 0.22, alpha: 1)
+            scarfColor = SKColor(red: 0.24, green: 0.65, blue: 0.72, alpha: 1)
+        case "Keneth", "Kenneth":
+            // Keneth: tunik terakota hangat petani lumbung
+            tunicColor = SKColor(red: 0.78, green: 0.40, blue: 0.26, alpha: 1)
+            trimColor = SKColor(red: 0.44, green: 0.23, blue: 0.14, alpha: 1)
+            scarfColor = SKColor(red: 0.92, green: 0.80, blue: 0.58, alpha: 1)
+        case "Roland":
+            // Roland: tunik kuning gandum / amber pengurus ternak
+            tunicColor = SKColor(red: 0.89, green: 0.68, blue: 0.27, alpha: 1)
+            trimColor = SKColor(red: 0.48, green: 0.35, blue: 0.16, alpha: 1)
+            scarfColor = SKColor(red: 0.75, green: 0.35, blue: 0.22, alpha: 1)
+        case "Anneth":
+            // Anneth: tunik biru tenang ala carto
+            tunicColor = SKColor(red: 0.35, green: 0.55, blue: 0.76, alpha: 1)
+            trimColor = SKColor(red: 0.20, green: 0.36, blue: 0.52, alpha: 1)
+            scarfColor = SKColor(red: 0.96, green: 0.91, blue: 0.78, alpha: 1)
+        case "Grandpa", "Kakek":
+            // Kakek: tunik zaitun / sage lembut dengan trim cokelat hangat
+            tunicColor = SKColor(red: 0.48, green: 0.54, blue: 0.42, alpha: 1)
+            trimColor = SKColor(red: 0.36, green: 0.26, blue: 0.18, alpha: 1)
+            scarfColor = SKColor(red: 0.92, green: 0.88, blue: 0.78, alpha: 1)
+        case "Bu Mara", "Mara":
+            // Bu Mara: tunik terakota pengrajin gerabah dengan syal marigold
+            tunicColor = SKColor(red: 0.76, green: 0.46, blue: 0.36, alpha: 1)
+            trimColor = SKColor(red: 0.42, green: 0.24, blue: 0.16, alpha: 1)
+            scarfColor = SKColor(red: 0.95, green: 0.78, blue: 0.35, alpha: 1)
+        default:
+            // Warga / Patroli
+            tunicColor = tintColor
+            trimColor = SKColor(red: 0.30, green: 0.24, blue: 0.18, alpha: 1)
+            scarfColor = SKColor(red: 0.88, green: 0.76, blue: 0.50, alpha: 1)
+        }
+
+        // Bentuk jubah melingkar sedikit melebar ke bawah
+        let tunicPath = CGMutablePath()
+        tunicPath.move(to: CGPoint(x: -6, y: 20))
+        tunicPath.addLine(to: CGPoint(x: 6, y: 20))
+        tunicPath.addLine(to: CGPoint(x: 8.5, y: 8))
+        tunicPath.addLine(to: CGPoint(x: -8.5, y: 8))
+        tunicPath.closeSubpath()
+
+        let tunic = SKShapeNode(path: tunicPath)
+        tunic.fillColor = tunicColor
+        tunic.strokeColor = SKColor(white: 0.15, alpha: 0.3)
+        tunic.lineWidth = 1
+        characterBodyNode.addChild(tunic)
+
+        // Sabuk & detail bawah tunik
+        let hem = SKShapeNode(rectOf: CGSize(width: 17, height: 2.5), cornerRadius: 1)
+        hem.fillColor = trimColor
+        hem.strokeColor = .clear
+        hem.position = CGPoint(x: 0, y: 9.5)
+        characterBodyNode.addChild(hem)
+
+        // Syal / kerah leher jika ada
+        if let scarf = scarfColor {
+            let collar = SKShapeNode(ellipseOf: CGSize(width: 8, height: 4.5))
+            collar.fillColor = scarf
+            collar.strokeColor = .clear
+            collar.position = CGPoint(x: 0, y: 19)
+            characterBodyNode.addChild(collar)
+        }
+
+        // Tas selempang kecil di punggung / samping (khas Carto)
+        if title == "Arthur" {
+            let satchel = SKShapeNode(rectOf: CGSize(width: 4.5, height: 6), cornerRadius: 1.5)
+            satchel.fillColor = SKColor(red: 0.52, green: 0.33, blue: 0.19, alpha: 1)
+            satchel.strokeColor = .clear
+            satchel.position = CGPoint(x: -7, y: 13)
+            characterBodyNode.addChild(satchel)
+
+            let strap = SKShapeNode(rectOf: CGSize(width: 1.5, height: 12))
+            strap.fillColor = SKColor(red: 0.38, green: 0.24, blue: 0.14, alpha: 0.8)
+            strap.strokeColor = .clear
+            strap.zRotation = -0.55
+            strap.position = CGPoint(x: -2, y: 15)
+            characterBodyNode.addChild(strap)
+        }
+
+        // Apron gerabah kecil untuk Bu Mara
+        if title == "Bu Mara" || title == "Mara" {
+            let apron = SKShapeNode(rectOf: CGSize(width: 7.5, height: 9), cornerRadius: 1.5)
+            apron.fillColor = SKColor(red: 0.88, green: 0.82, blue: 0.70, alpha: 0.9)
+            apron.strokeColor = .clear
+            apron.position = CGPoint(x: 0, y: 13.5)
+            characterBodyNode.addChild(apron)
+        }
+
+        // 4. Kepala & Wajah (HeadNode)
+        headNode.position = CGPoint(x: 0, y: 23)
+        characterBodyNode.addChild(headNode)
+
+        // Kulit kepala hangat khas Carto
+        let skin = SKShapeNode(ellipseOf: CGSize(width: 16, height: 14.5))
+        skin.fillColor = SKColor(red: 0.98, green: 0.88, blue: 0.79, alpha: 1)
+        skin.strokeColor = .clear
+        headNode.addChild(skin)
+
+        // Warna dan gaya rambut
+        let hairColor: SKColor
+        switch title {
+        case "Keneth", "Kenneth":
+            hairColor = SKColor(red: 0.28, green: 0.20, blue: 0.15, alpha: 1)
+        case "Roland":
+            hairColor = SKColor(red: 0.35, green: 0.25, blue: 0.18, alpha: 1)
+        case "Grandpa", "Kakek":
+            hairColor = SKColor(red: 0.82, green: 0.82, blue: 0.85, alpha: 1)
+        case "Bu Mara", "Mara":
+            hairColor = SKColor(red: 0.24, green: 0.16, blue: 0.12, alpha: 1)
+        default:
+            hairColor = SKColor(red: 0.14, green: 0.19, blue: 0.28, alpha: 1)
+        }
+
+        let hairCap = CGMutablePath()
+        hairCap.addArc(center: CGPoint(x: 0, y: 2), radius: 8.2, startAngle: 0, endAngle: .pi, clockwise: false)
+        hairCap.closeSubpath()
+        let hair = SKShapeNode(path: hairCap)
+        hair.fillColor = hairColor
+        hair.strokeColor = .clear
+        headNode.addChild(hair)
+
+        // Poni rambut di samping
+        let sideHair = SKShapeNode(ellipseOf: CGSize(width: 4, height: 6))
+        sideHair.fillColor = hairColor
+        sideHair.strokeColor = .clear
+        sideHair.position = CGPoint(x: -7, y: 2)
+        headNode.addChild(sideHair)
+
+        // Kuncir atas (topknot tuft khas Carto)
+        let topknot = SKShapeNode(ellipseOf: CGSize(width: 5, height: 6.5))
+        topknot.fillColor = hairColor
+        topknot.strokeColor = .clear
+        topknot.position = CGPoint(x: 0, y: 10.5)
+        headNode.addChild(topknot)
+
+        let knotBandColor = (title == "Bu Mara" || title == "Mara")
+            ? SKColor(red: 0.95, green: 0.78, blue: 0.35, alpha: 1)
+            : (title == "Grandpa" || title == "Kakek")
+            ? SKColor(red: 0.48, green: 0.54, blue: 0.42, alpha: 1)
+            : SKColor(red: 0.85, green: 0.45, blue: 0.28, alpha: 1)
+
+        let knotBand = SKShapeNode(rectOf: CGSize(width: 3.5, height: 1.5))
+        knotBand.fillColor = knotBandColor
+        knotBand.strokeColor = .clear
+        knotBand.position = CGPoint(x: 0, y: 8)
+        headNode.addChild(knotBand)
+
+        // Alis atau janggut lembut untuk Kakek
+        if title == "Grandpa" || title == "Kakek" {
+            let beard = SKShapeNode(ellipseOf: CGSize(width: 7, height: 4.5))
+            beard.fillColor = SKColor(red: 0.84, green: 0.84, blue: 0.86, alpha: 0.95)
+            beard.strokeColor = .clear
+            beard.position = CGPoint(x: 3.5, y: -4.5)
+            headNode.addChild(beard)
+        }
+
+        // Pita rambut anggun untuk Anneth
+        if title == "Anneth" {
+            let bow = SKShapeNode(rectOf: CGSize(width: 5, height: 2.2), cornerRadius: 0.8)
+            bow.fillColor = SKColor(red: 0.92, green: 0.42, blue: 0.50, alpha: 1)
+            bow.strokeColor = .clear
+            bow.position = CGPoint(x: -6.5, y: 7)
+            headNode.addChild(bow)
+        }
+
+        // Mata lucu (dua titik hitam khas ekspresif Carto)
+        let leftEye = SKShapeNode(ellipseOf: CGSize(width: 1.8, height: 2.2))
+        leftEye.fillColor = SKColor(red: 0.12, green: 0.14, blue: 0.18, alpha: 1)
+        leftEye.strokeColor = .clear
+        leftEye.position = CGPoint(x: 1.5, y: 0.5)
+        headNode.addChild(leftEye)
+
+        let rightEye = SKShapeNode(ellipseOf: CGSize(width: 1.8, height: 2.2))
+        rightEye.fillColor = SKColor(red: 0.12, green: 0.14, blue: 0.18, alpha: 1)
+        rightEye.strokeColor = .clear
+        rightEye.position = CGPoint(x: 5.5, y: 0.5)
+        headNode.addChild(rightEye)
+
+        // Pipi merona lembut (blush)
+        let blush = SKShapeNode(ellipseOf: CGSize(width: 2.6, height: 1.5))
+        blush.fillColor = SKColor(red: 0.94, green: 0.60, blue: 0.56, alpha: 0.55)
+        blush.strokeColor = .clear
+        blush.position = CGPoint(x: 6.0, y: -2.2)
+        headNode.addChild(blush)
+
+        // Mulut senyum kecil
+        let smile = SKShapeNode(ellipseOf: CGSize(width: 2.0, height: 1.0))
+        smile.fillColor = SKColor(red: 0.65, green: 0.35, blue: 0.30, alpha: 0.8)
+        smile.strokeColor = .clear
+        smile.position = CGPoint(x: 3.5, y: -3)
+        headNode.addChild(smile)
+    }
+
+    // Perbarui urutan zPosition berdasarkan posisi Y (depth sorting 2.5D)
+    public func updateDepth() {
+        zPosition = 50 + (1000 - position.y) * 0.05
+    }
+
+    // Animasi melompat gembira saat merayakan keberhasilan cerita atau quest
+    public func celebrate() {
+        let jumpUp = SKAction.moveBy(x: 0, y: 12, duration: 0.18)
+        jumpUp.timingMode = .easeOut
+        let fallDown = SKAction.moveBy(x: 0, y: -12, duration: 0.18)
+        fallDown.timingMode = .easeIn
+        let squash = SKAction.scaleX(to: 1.18, y: 0.82, duration: 0.08)
+        let stretch = SKAction.scaleX(to: 0.88, y: 1.18, duration: 0.12)
+        let restore = SKAction.scale(to: 1.0, duration: 0.10)
+
+        let jumpSeq = SKAction.sequence([squash, stretch, jumpUp, fallDown, squash, restore])
+        visualRoot.run(SKAction.sequence([jumpSeq, SKAction.wait(forDuration: 0.05), jumpSeq]))
+
+        // Semburan partikel bintang perayaan kecil di atas kepala
+        let sparks = ["✨", "⭐", "🎉"]
+        for i in 0..<5 {
+            let spark = SKLabelNode(text: sparks[i % sparks.count])
+            spark.fontSize = 11
+            spark.position = CGPoint(x: CGFloat(i - 2) * 7, y: 35)
+            spark.zPosition = 50
+            addChild(spark)
+            let driftX = (CGFloat(i) - 2.0) * 10
+            let driftY = 20 + CGFloat(i * 4)
+            spark.run(SKAction.sequence([
+                SKAction.group([
+                    SKAction.moveBy(x: driftX, y: driftY, duration: 0.65),
+                    SKAction.scale(to: 1.2, duration: 0.3),
+                    SKAction.fadeOut(withDuration: 0.65)
+                ]),
+                SKAction.removeFromParent()
+            ]))
+        }
+    }
+
+    // Animasi lambaian ramah saat disapa
+    public func wave() {
+        let hop = SKAction.sequence([
+            SKAction.moveBy(x: 0, y: 4, duration: 0.13),
+            SKAction.moveBy(x: 0, y: -4, duration: 0.13)
+        ])
+        visualRoot.run(SKAction.sequence([hop, hop]))
+    }
+
+    // Menampilkan buku kuno di tangan karakter saat memperlihatkan sketsa peta
+    public func setHoldingBook(visible: Bool) {
+        if !visible {
+            holdingBookNode?.removeFromParent()
+            holdingBookNode = nil
+            return
+        }
+        guard holdingBookNode == nil else { return }
+        let book = SKNode()
+        book.position = CGPoint(x: 8, y: 14)
+        book.zPosition = 15
+
+        let cover = SKShapeNode(rectOf: CGSize(width: 14, height: 11), cornerRadius: 2)
+        cover.fillColor = SKColor(red: 0.55, green: 0.20, blue: 0.16, alpha: 1.0)
+        cover.strokeColor = SKColor(red: 0.96, green: 0.84, blue: 0.42, alpha: 1.0)
+        cover.lineWidth = 1.0
+        book.addChild(cover)
+
+        let page = SKShapeNode(rectOf: CGSize(width: 11, height: 8), cornerRadius: 1)
+        page.fillColor = SKColor(red: 0.96, green: 0.92, blue: 0.80, alpha: 1.0)
+        page.strokeColor = .clear
+        book.addChild(page)
+
+        let sketch = SKShapeNode(rectOf: CGSize(width: 6, height: 1.5), cornerRadius: 0.5)
+        sketch.fillColor = SKColor(red: 0.40, green: 0.30, blue: 0.22, alpha: 0.8)
+        sketch.strokeColor = .clear
+        book.addChild(sketch)
+
+        let glow = SKShapeNode(circleOfRadius: 10)
+        glow.fillColor = SKColor(red: 1.0, green: 0.90, blue: 0.50, alpha: 0.3)
+        glow.strokeColor = .clear
+        book.addChild(glow)
+        glow.run(SKAction.repeatForever(SKAction.sequence([
+            SKAction.scale(to: 1.25, duration: 0.6),
+            SKAction.scale(to: 0.95, duration: 0.6)
+        ])))
+
+        visualRoot.addChild(book)
+        holdingBookNode = book
+    }
+
+    // Menampilkan lencana status mengambang di atas karakter
+    public func setStatusBadge(icon: String, text: String, color: SKColor) {
+        statusBadgeNode?.removeFromParent()
+        statusBadgeNode = nil
+
+        let badge = SKNode()
+        badge.position = CGPoint(x: 0, y: 56)
+        badge.zPosition = 25
+
+        let bg = SKShapeNode(rectOf: CGSize(width: 76, height: 18), cornerRadius: 9)
+        bg.fillColor = SKColor(red: 0.12, green: 0.16, blue: 0.14, alpha: 0.92)
+        bg.strokeColor = color
+        bg.lineWidth = 1.2
+        badge.addChild(bg)
+
+        let label = SKLabelNode(text: "\(icon) \(text)")
+        label.fontName = "AvenirNext-Bold"
+        label.fontSize = 9.5
+        label.fontColor = color
+        label.verticalAlignmentMode = .center
+        bg.addChild(label)
+
+        badge.run(SKAction.repeatForever(SKAction.sequence([
+            SKAction.moveBy(x: 0, y: 3, duration: 0.9),
+            SKAction.moveBy(x: 0, y: -3, duration: 0.9)
+        ])))
+
+        addChild(badge)
+        statusBadgeNode = badge
+    }
+
+    public func clearStatusBadge() {
+        statusBadgeNode?.removeFromParent()
+        statusBadgeNode = nil
+    }
+
+    // Duduk santai
+    public func sit(at point: CGPoint) {
+        isSitting = true
+        isSleeping = false
+        sleepParticlesNode?.removeFromParent()
+        sleepParticlesNode = nil
+        position = point
+        visualRoot.removeAllActions()
+        characterBodyNode.removeAllActions()
+        characterBodyNode.zRotation = 0
+        characterBodyNode.position = CGPoint(x: 0, y: -3)
+        characterBodyNode.setScale(1.0)
+        shadowNode.setScale(0.85)
+        visualRoot.run(SKAction.sequence([
+            SKAction.scaleX(to: 1.12, y: 0.82, duration: 0.18),
+            SKAction.scaleX(to: 1.05, y: 0.88, duration: 0.14)
+        ]))
+        updateDepth()
+    }
+
+    // Bangun dari posisi duduk
+    public func standUp() {
+        guard isSitting else { return }
+        isSitting = false
+        visualRoot.removeAllActions()
+        characterBodyNode.position = .zero
+        characterBodyNode.zRotation = 0
+        shadowNode.setScale(1.0)
+        visualRoot.run(SKAction.sequence([
+            SKAction.scaleX(to: 0.90, y: 1.15, duration: 0.12),
+            SKAction.scale(to: 1.0, duration: 0.12)
+        ]))
+        updateDepth()
+    }
+
+    // Berbaring tidur
+    public func sleep(at point: CGPoint) {
+        isSleeping = true
+        isSitting = false
+        position = point
+        visualRoot.removeAllActions()
+        characterBodyNode.removeAllActions()
+        characterBodyNode.zRotation = -.pi / 2
+        characterBodyNode.position = CGPoint(x: 0, y: 4)
+        visualRoot.setScale(0.92)
+        shadowNode.setScale(0.7)
+
+        let zContainer = SKNode()
+        zContainer.name = "sleepZzz"
+        zContainer.position = CGPoint(x: 8, y: 22)
+        zContainer.zPosition = 60
+        addChild(zContainer)
+        sleepParticlesNode = zContainer
+
+        for i in 0..<3 {
+            let zLabel = SKLabelNode(text: "z")
+            zLabel.fontName = "AvenirNext-Bold"
+            zLabel.fontSize = CGFloat(10 + i * 3)
+            zLabel.fontColor = SKColor(red: 0.98, green: 0.92, blue: 0.72, alpha: 0.9)
+            zLabel.position = CGPoint(x: CGFloat(i * 6), y: CGFloat(i * 8))
+            zLabel.alpha = 0
+            zContainer.addChild(zLabel)
+            zLabel.run(SKAction.repeatForever(SKAction.sequence([
+                SKAction.wait(forDuration: Double(i) * 0.45),
+                SKAction.group([
+                    SKAction.fadeIn(withDuration: 0.4),
+                    SKAction.moveBy(x: 6, y: 14, duration: 1.2),
+                    SKAction.scale(to: 1.2, duration: 1.2)
+                ]),
+                SKAction.fadeOut(withDuration: 0.4),
+                SKAction.moveBy(x: -6, y: -14, duration: 0),
+                SKAction.scale(to: 0.8, duration: 0),
+                SKAction.wait(forDuration: 0.8)
+            ])))
+        }
+        updateDepth()
+    }
+
+    // Bangun dari tidur
+    public func wakeUp() {
+        guard isSleeping else { return }
+        isSleeping = false
+        sleepParticlesNode?.removeFromParent()
+        sleepParticlesNode = nil
+        visualRoot.removeAllActions()
+        characterBodyNode.removeAllActions()
+        characterBodyNode.position = .zero
+        characterBodyNode.zRotation = 0
+        visualRoot.setScale(1.0)
+        shadowNode.setScale(1.0)
+        visualRoot.run(SKAction.sequence([
+            SKAction.scaleX(to: 0.88, y: 1.22, duration: 0.18),
+            SKAction.scale(to: 1.0, duration: 0.14)
+        ]))
+        updateDepth()
+    }
+
+    // Memperbarui arah pandang dan animasi langkah/diam
+    public func applyMovement(dx: CGFloat, dy: CGFloat, dt: CGFloat) {
+        let speed = hypot(dx, dy)
+        if speed > 0.5 {
+            if isSitting { standUp() }
+            if isSleeping { wakeUp() }
+            isWalking = true
+            walkPhase += dt * 14
+
+            // Arah hadap kiri / kanan (flip visualRoot.xScale)
+            if dx > 0.3 {
+                visualRoot.xScale = 1.0
+            } else if dx < -0.3 {
+                visualRoot.xScale = -1.0
+            }
+
+            // Animasi langkah: waddle naik-turun dan sedikit bergoyang
+            characterBodyNode.position.y = abs(sin(walkPhase)) * 2.5
+            characterBodyNode.zRotation = sin(walkPhase) * 0.07
+            shadowNode.setScale(1.0 - (abs(sin(walkPhase)) * 0.1))
+        } else {
+            isWalking = false
+            idlePhase += dt * 3
+            // Animasi bernapas santai saat diam
+            characterBodyNode.position.y = sin(idlePhase) * 0.6
+            characterBodyNode.zRotation = 0
+            shadowNode.setScale(1.0)
+        }
+        updateDepth()
+    }
+}

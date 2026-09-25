@@ -69,6 +69,7 @@ extension GameScene {
         worldState = .buildingPuzzleBiomePrototype
         quest1Controller.reset()
         quest2Controller.reset()
+        quest3Controller.reset()
         puzzleManager.reset()
         worldEventManager.reset()
         playerController.updateWorldState(worldState)

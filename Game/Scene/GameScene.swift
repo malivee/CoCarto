@@ -50,6 +50,7 @@ final class GameScene: SKScene {
     let transitionController = MapWorldTransitionController()
     let quest1Controller = VillageQuest1Controller()
     let quest2Controller = VillageQuest2Controller()
+    let quest3Controller = VillageQuest3Controller()
     let saveService = try? SaveGameService()
     let puzzleFeedbackLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     let worldQuestLabel = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
@@ -68,7 +69,7 @@ final class GameScene: SKScene {
     var questDialogueLines: [VillageQuestDialogueLine] = []
     weak var activeQuestDialogue: SpeechBubbleNode?
     weak var activeQuestMinigame: ShelfBalanceMinigameNode?
-    var questDialogueCompletion: (() -> Void)?
+    var onQuestDialogueFinished: (() -> Void)?
 
     override func didMove(to view: SKView) {
         backgroundColor = SKColor(red: 0.08, green: 0.09, blue: 0.10, alpha: 1)
