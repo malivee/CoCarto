@@ -25,8 +25,19 @@ struct WorldState: Codable, Equatable, Sendable {
         let result = BuildingPlacementValidator().validate(object, in: self)
         guard result == .valid else { return result }
         guard !buildingObjects.contains(where: { $0.id == object.id }) else { return .overlapsObject }
+        guard !buildingObjects.contains(where: { $0.kind == object.kind }) else { return .overlapsObject }
         buildingObjects.append(object)
         return .valid
+    }
+
+    func buildingObject(id: UUID) -> BuildingObject? {
+        buildingObjects.first { $0.id == id }
+    }
+
+    @discardableResult
+    mutating func removeBuildingObject(id: UUID) -> BuildingObject? {
+        guard let index = buildingObjects.firstIndex(where: { $0.id == id }) else { return nil }
+        return buildingObjects.remove(at: index)
     }
 
     var occupancy: GridOccupancy {

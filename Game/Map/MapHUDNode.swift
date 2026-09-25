@@ -65,7 +65,7 @@ final class MapHUDNode: SKNode {
     private let placeObjectButton = MapButtonNode(title: "Pasang", name: MapNodeName.confirmButton.rawValue)
     private let cancelObjectButton = MapButtonNode(title: "Batal", name: MapNodeName.cancelButton.rawValue)
 
-    private let inventoryItems = BuildingObjectKind.allCases.map { BuildingObjectCatalog.definition(for: $0).title }
+    private let inventoryKinds: [BuildingObjectKind]
 
 //    private let inventoryItems = ["House", "Workshop", "Farm", "Market", "Bridge", "Tower"]
 
@@ -74,7 +74,9 @@ final class MapHUDNode: SKNode {
     private let panelSize = CGSize(width: 166, height: 356)
 
 
-    override init() {
+    init(inventoryKinds: [BuildingObjectKind]) {
+
+        self.inventoryKinds = inventoryKinds
 
         super.init()
 
@@ -287,7 +289,9 @@ final class MapHUDNode: SKNode {
         inventoryCrop.addChild(inventoryContent)
 
 
-        for (index, title) in inventoryItems.enumerated() {
+        for (index, kind) in inventoryKinds.enumerated() {
+
+            let title = BuildingObjectCatalog.definition(for: kind).title
 
             let item = makeInventoryItem(title: title, index: index)
 
@@ -346,7 +350,7 @@ final class MapHUDNode: SKNode {
 
         root.addChild(label)
 
-        let definition = BuildingObjectCatalog.definition(for: BuildingObjectKind.allCases[index])
+        let definition = BuildingObjectCatalog.definition(for: inventoryKinds[index])
         let dimensions = SKLabelNode(fontNamed: "AvenirNext-Regular")
         dimensions.text = "\(definition.mapWidth)×\(definition.mapHeight)"
         dimensions.fontSize = 10
