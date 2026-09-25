@@ -1,6 +1,20 @@
 import SpriteKit
 
 extension GameScene {
+    var isQuest1TutorialActive: Bool {
+        guard !quest1Controller.isCompleted,
+              !quest1Controller.hasCollectedWater,
+              !quest2Controller.isActive,
+              !quest2Controller.isCompleted,
+              !quest3Controller.isUnlocked,
+              !quest4Controller.isUnlocked,
+              !quest5Controller.isUnlocked,
+              !quest6Controller.isUnlocked else {
+            return false
+        }
+        return true
+    }
+
     func mapQuestItems() -> [MapQuestItem] {
         let hasArthurHome = worldState.buildingObjects.contains { $0.kind == .arthurHouse }
         let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
@@ -26,11 +40,11 @@ extension GameScene {
             )]
         }
 
-        if !hasArthurHome {
-            return [MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: false)]
-        }
-        if !hasWell {
-            return [MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: false)]
+        if !quest1Controller.isCompleted && !quest1Controller.hasCollectedWater {
+            return [
+                MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: hasArthurHome),
+                MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: hasWell)
+            ]
         }
         if quest1Controller.hasCollectedWater && !quest2Controller.isCompleted {
             var quest2Items = [
@@ -165,16 +179,16 @@ extension GameScene {
                     title: VillageQuestCatalog.Quest1.mapObjectives[0],
                     isCompleted: false
                 ))
-            } else if !hasWell {
-                items.append(MapQuestItem(
-                    category: "Quest 1",
-                    title: VillageQuestCatalog.Quest1.mapObjectives[1],
-                    isCompleted: false
-                ))
             } else if !quest1Controller.isWellUnlocked {
                 items.append(MapQuestItem(
                     category: "Quest 1",
                     title: "Talk to Grandpa at Arthur Home.",
+                    isCompleted: false
+                ))
+            } else if !hasWell {
+                items.append(MapQuestItem(
+                    category: "Quest 1",
+                    title: VillageQuestCatalog.Quest1.mapObjectives[1],
                     isCompleted: false
                 ))
             } else {
@@ -225,15 +239,21 @@ extension GameScene {
             items.append(MapQuestItem(category: "Quest 6", title: title, isCompleted: false))
         }
         worldQuestTracker.update(with: items)
-        worldQuestTracker.isHidden = gameMode != .exploring || items.isEmpty
+        worldQuestTracker.isHidden = gameMode != .exploring || items.isEmpty || isQuest1TutorialActive
         worldQuestLabel.isHidden = true
+        updateWorldTutorialBanner()
     }
 
     func interactWithQuestObject(id: UUID, in stack: [SKNode]) {
         guard activeQuestMinigame == nil,
               let object = worldState.buildingObject(id: id),
               let playerNode,
-              let objectNode = stack.first(where: { $0.name == BuildingObjectRenderer.nodeName }) else { return }
+              let objectNode = stack.first(where: {
+                  $0.name == BuildingObjectRenderer.nodeName ||
+                  $0.name == "WellTutorialBadge" ||
+                  $0.name?.starts(with: "npc-") == true ||
+                  $0.userData?[BuildingObjectRenderer.objectIDKey] != nil
+              }) else { return }
         let objectPosition = objectNode.convert(CGPoint.zero, to: self)
         let distance = hypot(playerNode.position.x - objectPosition.x, playerNode.position.y - objectPosition.y)
         guard distance <= 220 else {
@@ -268,6 +288,7 @@ extension GameScene {
             return
         }
         updateWorldQuestLabel()
+        updateWorldTutorialBanner()
     }
 
     func interactWithQuest6Pickup(in stack: [SKNode]) {

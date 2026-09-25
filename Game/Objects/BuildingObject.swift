@@ -73,6 +73,105 @@ enum BuildingPlacementResult: Equatable {
     }
 }
 
+enum TutorialBuildingPlacementResolver {
+    static func target(for kind: BuildingObjectKind, in world: WorldState) -> BuildingObject? {
+        if kind == .arthurHouse {
+            return houseAndWellPlan(in: world)?.house
+        }
+        if kind == .well {
+            return houseAndWellPlan(in: world)?.well
+        }
+        return candidates(for: kind, in: world, restrictedTo: nil).first
+    }
+
+    static func matchesTarget(_ object: BuildingObject, in world: WorldState) -> Bool {
+        guard let target = target(for: object.kind, in: world) else { return false }
+        return object.kind == target.kind
+            && object.origin == target.origin
+            && object.rotation == target.rotation
+    }
+
+    private static func houseAndWellPlan(
+        in world: WorldState
+    ) -> (house: BuildingObject, well: BuildingObject)? {
+        let placedHouse = world.buildingObjects.first(where: { $0.kind == .arthurHouse })
+        let preferredWellOrigin = GridPosition(x: -30, y: 0)
+
+        if let placedHouse,
+           let piece = supportingPiece(for: placedHouse, in: world),
+           let well = candidates(for: .well, in: world, restrictedTo: piece)
+            .sorted(by: { isCloser($0.origin, than: $1.origin, to: placedHouse.origin) })
+            .first {
+            return (placedHouse, well)
+        }
+
+        let wellPlans = world.pieces.flatMap { piece in
+            candidates(for: .well, in: world, restrictedTo: piece).map { (piece, $0) }
+        }.sorted {
+            isCloser($0.1.origin, than: $1.1.origin, to: preferredWellOrigin)
+        }
+
+        for (piece, well) in wellPlans {
+            let houses = candidates(for: .arthurHouse, in: world, restrictedTo: piece)
+                .filter { $0.occupiedPositions.isDisjoint(with: well.occupiedPositions) }
+                .sorted { isCloser($0.origin, than: $1.origin, to: well.origin) }
+            if let house = houses.first {
+                return (house, well)
+            }
+        }
+        return nil
+    }
+
+    private static func candidates(
+        for kind: BuildingObjectKind,
+        in world: WorldState,
+        restrictedTo piece: WorldPiece?
+    ) -> [BuildingObject] {
+        let validator = BuildingPlacementValidator()
+        let allowedPositions: Set<GridPosition>
+        if let piece {
+            allowedPositions = validator.villagePositions(for: piece)
+        } else {
+            allowedPositions = validator.villagePositions(in: world)
+        }
+        let occupied = world.buildingObjects.reduce(into: Set<GridPosition>()) {
+            $0.formUnion($1.occupiedPositions)
+        }
+        return allowedPositions.compactMap { origin in
+            let object = BuildingObject(kind: kind, origin: origin, rotation: .degrees0)
+            guard object.occupiedPositions.isSubset(of: allowedPositions),
+                  object.occupiedPositions.isDisjoint(with: occupied) else {
+                return nil
+            }
+            return object
+        }
+    }
+
+    private static func supportingPiece(for object: BuildingObject, in world: WorldState) -> WorldPiece? {
+        let validator = BuildingPlacementValidator()
+        return world.pieces.first {
+            object.occupiedPositions.isSubset(of: validator.villagePositions(for: $0))
+        }
+    }
+
+    private static func isCloser(
+        _ lhs: GridPosition,
+        than rhs: GridPosition,
+        to reference: GridPosition
+    ) -> Bool {
+        let leftX = lhs.x - reference.x
+        let leftY = lhs.y - reference.y
+        let rightX = rhs.x - reference.x
+        let rightY = rhs.y - reference.y
+        let leftDistance = leftX * leftX + leftY * leftY
+        let rightDistance = rightX * rightX + rightY * rightY
+        if leftDistance == rightDistance {
+            return lhs.y == rhs.y ? lhs.x < rhs.x : lhs.y < rhs.y
+        }
+        return leftDistance < rightDistance
+    }
+}
+
 struct BuildingPlacementValidator {
     func villagePositions(in world: WorldState) -> Set<GridPosition> {
         biomePositions(.villageSoil, in: world)

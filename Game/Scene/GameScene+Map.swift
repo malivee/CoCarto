@@ -73,6 +73,58 @@ extension GameScene {
         startMapToWorldTransition()
     }
 
+    func currentMapTutorialStep() -> MapTutorialStep? {
+        // STRICT QUEST 1 CHECK: Tutorial ONLY appears during Quest 1 before water is collected
+        guard isQuest1TutorialActive else { return nil }
+
+        // STEP 1: Click & Rotate Tile Tutorial
+        if !hasRotatedPieceInTutorial {
+            if let preview = mapController.preview {
+                return .rotateTile(isValid: preview.isValid)
+            }
+            return .selectTile
+        }
+
+        if let preview = mapController.preview {
+            return .rotateTile(isValid: preview.isValid)
+        }
+
+        let hasArthurHome = worldState.buildingObjects.contains { $0.kind == .arthurHouse }
+        let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
+
+        if let objectPreview {
+            let isValid = BuildingPlacementValidator().validate(objectPreview, in: worldState) == .valid
+            if objectPreview.kind == .well {
+                return .placeWell(isValid: isValid)
+            } else {
+                return .placeHouse(isValid: isValid)
+            }
+        }
+        if let selectedKind = selectedObjectKind {
+            if selectedKind == .well {
+                return .placeWell(isValid: false)
+            } else {
+                return .placeHouse(isValid: false)
+            }
+        }
+
+        if !hasArthurHome {
+            if mapRenderer.inventoryExpanded {
+                return .dragHouse
+            }
+            return .openSidebar
+        }
+
+        if !hasWell {
+            if mapRenderer.inventoryExpanded {
+                return .dragWell
+            }
+            return .openSidebar
+        }
+
+        return .enterWorld
+    }
+
     func rebuildMapView() {
         mapViewport.recalculateBounds(contentBounds: mapRenderer.contentBounds(for: worldState), sceneSize: size)
         mapRenderer.buildMap(
@@ -87,7 +139,8 @@ extension GameScene {
             selectedObjectKind: selectedObjectKind,
             objectPreview: objectPreview,
             unlockedObjectKinds: questUnlockedObjectKinds(),
-            questItems: mapQuestItems()
+            questItems: mapQuestItems(),
+            tutorialStep: currentMapTutorialStep()
         )
     }
 
@@ -223,13 +276,11 @@ extension GameScene {
         }
 
         if stack.contains(where: { $0.name == MapNodeName.rotateLeftButton.rawValue }) {
-            if selectedObjectKind != nil { rotateObject(clockwise: false); return }
             rotateSelectedPiece(clockwise: false)
             return
         }
 
         if stack.contains(where: { $0.name == MapNodeName.rotateRightButton.rawValue }) {
-            if selectedObjectKind != nil { rotateObject(clockwise: true); return }
             rotateSelectedPiece(clockwise: true)
             return
         }
@@ -247,12 +298,16 @@ extension GameScene {
 
         if stack.contains(where: { $0.name == MapNodeName.confirmButton.rawValue }) {
             if selectedObjectKind != nil {
-                if let objectPreview, worldState.placeBuildingObject(objectPreview) == .valid {
+                if let objectPreview,
+                   worldState.placeBuildingObject(objectPreview) == .valid {
+                    let title = BuildingObjectCatalog.definition(for: objectPreview.kind).title
                     self.objectPreview = nil
                     selectedObjectKind = nil
                     syncQuest2PlacementProgress()
                     worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
                     autosave(reason: "building placed")
+                    AudioService.shared.playSFX("PaperMap")
+                    showProgressionFeedback("\(title.uppercased()) PLACED")
                 }
                 rebuildMapView()
                 return
@@ -320,23 +375,36 @@ extension GameScene {
 
     func updateObjectPreview(at screenPosition: CGPoint, kind: BuildingObjectKind? = nil) {
         guard let kind = kind ?? selectedObjectKind else { return }
+        objectRotation = .degrees0
+        // Lift the actual building preview above the finger during a drag so the
+        // player can see both the asset and its placement border clearly.
+        let previewScreenPosition = isDraggingObjectFromInventory
+            ? CGPoint(x: screenPosition.x, y: screenPosition.y + 54)
+            : screenPosition
         let content = mapRenderer.screenPointToContent(
-            screenPosition,
+            previewScreenPosition,
             contentOffset: mapViewport.contentOffset
         )
         let microSize = mapRenderer.mapper.cellSize / CGFloat(MicroBiomeGrid.dimension)
-        let template = BuildingObject(kind: kind, origin: .zero, rotation: objectRotation)
+        let template = BuildingObject(kind: kind, origin: .zero, rotation: .degrees0)
         let dimensions = template.mapDimensions
         let origin = GridPosition(
             x: Int(floor((content.x + mapRenderer.mapper.cellSize / 2) / microSize)) - dimensions.width / 2,
             y: Int(floor((content.y + mapRenderer.mapper.cellSize / 2) / microSize)) - dimensions.height / 2
         )
-        objectPreview = BuildingObject(
+        let nextPreview = BuildingObject(
             id: objectPreview?.id ?? UUID(),
             kind: kind,
             origin: origin,
-            rotation: objectRotation
+            rotation: .degrees0
         )
+        if let objectPreview,
+           objectPreview.kind == nextPreview.kind,
+           objectPreview.origin == nextPreview.origin,
+           objectPreview.rotation == nextPreview.rotation {
+            return
+        }
+        objectPreview = nextPreview
         rebuildMapView()
     }
 
@@ -352,26 +420,31 @@ extension GameScene {
     }
 
     func finishObjectDrop() {
-        guard let preview = objectPreview,
-              BuildingPlacementValidator().validate(preview, in: worldState) == .valid else {
+        guard let preview = objectPreview else {
             selectedObjectKind = nil
-            objectPreview = nil
-            if isDraggingPlacedObject {
-                isDraggingPlacedObject = false
-                worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
-                autosave(reason: "building returned to inventory")
-            }
+            isDraggingPlacedObject = false
             rebuildMapView()
             return
         }
-        _ = worldState.placeBuildingObject(preview)
-        syncQuest2PlacementProgress()
-        selectedObjectKind = nil
-        objectPreview = nil
-        isDraggingPlacedObject = false
-        worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
-        autosave(reason: "building dropped")
-        rebuildMapView()
+
+        if BuildingPlacementValidator().validate(preview, in: worldState) == .valid {
+            _ = worldState.placeBuildingObject(preview)
+            syncQuest2PlacementProgress()
+            let title = BuildingObjectCatalog.definition(for: preview.kind).title
+            selectedObjectKind = nil
+            objectPreview = nil
+            isDraggingPlacedObject = false
+            worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+            autosave(reason: "building dropped")
+            AudioService.shared.playSFX("PaperMap")
+            showProgressionFeedback("\(title.uppercased()) PLACED")
+            rebuildMapView()
+        } else {
+            // Keep preview active on the map so the user can easily rotate or adjust without starting over
+            isDraggingPlacedObject = false
+            AudioService.shared.playSFX("PaperMap")
+            rebuildMapView()
+        }
     }
 
     func rotateSelectedPiece(clockwise: Bool) {
@@ -388,6 +461,7 @@ extension GameScene {
             rotationInputLocked = false
             return
         }
+        hasRotatedPieceInTutorial = true
 
         gameMode = .mapPieceSelected(preview.pieceID)
         mapRenderer.updatePreviewNode(

@@ -332,6 +332,151 @@ extension GameScene {
 
         cameraNode.position = node.position
     }
+
+    func updateWorldTutorialBanner() {
+        guard isQuest1TutorialActive, gameMode == .exploring, activeQuestDialogue == nil else {
+            worldTutorialBanner.isHidden = true
+            joystickBase.glowWidth = 0
+            joystickBase.strokeColor = SKColor.white.withAlphaComponent(0.62)
+            return
+        }
+        worldTutorialBanner.isHidden = false
+        let bannerWidth = min(size.width - 56, 410)
+        // Keep the in-world tutorial below the top HUD and dialogue area.
+        worldTutorialBanner.position = CGPoint(x: 0, y: size.height * 0.5 - 148)
+        joystickBase.glowWidth = !hasMovedArthurInTutorial ? 5 : 0
+        joystickBase.strokeColor = !hasMovedArthurInTutorial
+            ? SKColor(red: 1.0, green: 0.80, blue: 0.24, alpha: 1.0)
+            : SKColor.white.withAlphaComponent(0.62)
+
+        if !hasMovedArthurInTutorial {
+            worldTutorialBanner.configure(
+                badge: "1",
+                title: "Gerakkan Arthur",
+                subtitle: "Geser kontrol yang menyala.",
+                width: bannerWidth
+            )
+        } else if !quest1Controller.isWellUnlocked {
+            worldTutorialBanner.configure(
+                badge: "2",
+                title: "Temui Kakek",
+                subtitle: "Dekati karakter yang menyala.",
+                width: bannerWidth
+            )
+        } else if !quest1Controller.hasCollectedWater {
+            worldTutorialBanner.configure(
+                badge: "3",
+                title: "Ambil Air di Sumur",
+                subtitle: "Dekati sumur yang menyala.",
+                width: bannerWidth
+            )
+        } else {
+            worldTutorialBanner.configure(
+                badge: "OK",
+                title: "Tutorial Selesai!",
+                subtitle: "Saatnya melanjutkan petualangan.",
+                width: bannerWidth
+            )
+            worldTutorialBanner.run(SKAction.sequence([
+                .wait(forDuration: 3.0),
+                .fadeOut(withDuration: 0.8),
+                .run { [weak self] in
+                    self?.worldTutorialBanner.isHidden = true
+                }
+            ]))
+        }
+    }
+}
+
+final class InWorldTutorialBannerNode: SKNode {
+    private let background = SKShapeNode()
+    private let innerBorder = SKShapeNode()
+    private let sealBg = SKShapeNode()
+    private let sealIcon = SKLabelNode(fontNamed: "AvenirNext-Bold")
+    private let titleLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+    private let subtitleLabel = SKLabelNode(fontNamed: "AvenirNext-Medium")
+
+    override init() {
+        super.init()
+        name = "InWorldTutorialBanner"
+        zPosition = 10_500
+
+        background.fillColor = SKColor(red: 0.98, green: 0.95, blue: 0.88, alpha: 0.96)
+        background.strokeColor = SKColor(red: 0.36, green: 0.24, blue: 0.16, alpha: 0.95)
+        background.lineWidth = 2.0
+        addChild(background)
+
+        innerBorder.fillColor = .clear
+        innerBorder.strokeColor = SKColor(red: 0.84, green: 0.68, blue: 0.34, alpha: 0.70)
+        innerBorder.lineWidth = 1.0
+        addChild(innerBorder)
+
+        sealBg.fillColor = SKColor(red: 0.74, green: 0.28, blue: 0.22, alpha: 1.0)
+        sealBg.strokeColor = SKColor(red: 0.92, green: 0.78, blue: 0.42, alpha: 1.0)
+        sealBg.lineWidth = 1.2
+        addChild(sealBg)
+
+        sealIcon.fontSize = 17
+        sealIcon.verticalAlignmentMode = .center
+        sealIcon.horizontalAlignmentMode = .center
+        addChild(sealIcon)
+
+        titleLabel.fontSize = 13.5
+        titleLabel.fontColor = SKColor(red: 0.22, green: 0.14, blue: 0.08, alpha: 1.0)
+        titleLabel.horizontalAlignmentMode = .left
+        titleLabel.verticalAlignmentMode = .center
+        addChild(titleLabel)
+
+        subtitleLabel.fontSize = 11.5
+        subtitleLabel.fontColor = SKColor(red: 0.44, green: 0.32, blue: 0.22, alpha: 1.0)
+        subtitleLabel.horizontalAlignmentMode = .left
+        subtitleLabel.verticalAlignmentMode = .center
+        addChild(subtitleLabel)
+
+        let bobUp = SKAction.moveBy(x: 0, y: 3, duration: 1.4)
+        bobUp.timingMode = .easeInEaseOut
+        let bobDown = SKAction.moveBy(x: 0, y: -3, duration: 1.4)
+        bobDown.timingMode = .easeInEaseOut
+        run(SKAction.repeatForever(SKAction.sequence([bobUp, bobDown])))
+    }
+
+    required init?(coder aDecoder: NSCoder) { nil }
+
+    func configure(badge: String, title: String, subtitle: String, width: CGFloat) {
+        let bannerWidth = min(width, 410)
+        let bannerHeight: CGFloat = 58
+
+        background.path = CGPath(
+            roundedRect: CGRect(x: -bannerWidth / 2, y: -bannerHeight / 2, width: bannerWidth, height: bannerHeight),
+            cornerWidth: 15,
+            cornerHeight: 15,
+            transform: nil
+        )
+
+        innerBorder.path = CGPath(
+            roundedRect: CGRect(x: -bannerWidth / 2 + 3, y: -bannerHeight / 2 + 3, width: bannerWidth - 6, height: bannerHeight - 6),
+            cornerWidth: 12,
+            cornerHeight: 12,
+            transform: nil
+        )
+
+        let sealRadius: CGFloat = 18
+        let sealX = -bannerWidth / 2 + 24
+        sealBg.path = CGPath(ellipseIn: CGRect(x: sealX - sealRadius, y: -sealRadius, width: sealRadius * 2, height: sealRadius * 2), transform: nil)
+        sealIcon.text = badge
+        sealIcon.position = CGPoint(x: sealX, y: -1)
+
+        let textX = sealX + sealRadius + 14
+        let textWidth = bannerWidth - (textX - (-bannerWidth / 2)) - 14
+
+        titleLabel.text = title
+        titleLabel.position = CGPoint(x: textX, y: 11)
+        titleLabel.preferredMaxLayoutWidth = textWidth
+
+        subtitleLabel.text = subtitle
+        subtitleLabel.position = CGPoint(x: textX, y: -11)
+        subtitleLabel.preferredMaxLayoutWidth = textWidth
+    }
 }
 
 extension Set where Element == GridPosition {

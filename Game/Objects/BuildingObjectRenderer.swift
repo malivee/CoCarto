@@ -60,6 +60,7 @@ enum BuildingObjectRenderer {
         outline.strokeColor = result.map { $0 == .valid ? .systemGreen : .systemRed }
             ?? (usesAsset ? .clear : .white)
         outline.lineWidth = result == nil ? 1.5 : 3
+        outline.zPosition = 2
         root.addChild(outline)
 
         if let assetName {
