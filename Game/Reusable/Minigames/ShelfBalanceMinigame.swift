@@ -1,39 +1,1406 @@
-// Penjelasan file: BuMaraShelfMinigameView.swift
-// Minigame SwiftUI untuk menolong Bu Mara: Mengangkat rak kayu tembikar di pekarangan luar rumah.
-// Menggunakan Gyroscope (CoreMotion) untuk menyeimbangkan rak, lalu QTE (DBD Slider) untuk
-// menyelipkan Batu Bata Merah tepat waktu agar rak berdiri kokoh dan napak tanah.
+// Penjelasan file: ShelfBalanceMinigame.swift
+// Komponen Minigame "Event 1: Menolong Bu Mara" (Shelf Leg Balance & Precision Brick Wedge QTE).
+// Konsistensi Visual & Arsitektur:
+// - Berbasis SpriteKit Node (SKNode) seragam dengan ItemSortingMinigame & SeedSortingMinigame.
+// - Menampilkan dialog naratif Bu Mara dengan SpeechBubbleNode (gaya krayon artistik).
+// - Meja napak tanah: Kaki kiri di atas batu landasan, kaki kanan ambles di lumpur, dan bata ganjalan
+//   menopang kaki kanan tepat di permukaan tanah.
+// - Mekanik: Saat diangkat rak langsung STAY di posisi terangkat, pemain menahan seimbang dengan Gyro,
+//   lalu melakukan Precision Tap pada slider DBD di zona hijau untuk menyelipkan batu bata ganjalan.
 
-import SwiftUI
+import SpriteKit
 import CoreMotion
-import Combine // Ditambahkan untuk fix error autoconnect()
-
 #if canImport(UIKit)
 import UIKit
 #endif
 
-// MARK: - Game States & Models
+// MARK: - Configuration
 
-public enum ShelfGameState: Equatable {
-    case lifting        // Tahap 1: Miringkan HP (Gyro) untuk seimbangkan rak
-    case hammering      // Tahap 2: Ketuk palu 2x untuk mengunci rapat pasak
-    case won            // Menang: Rak berdiri kokoh di pekarangan
-    case failed         // Gagal: Pot jatuh pecah atau meleset
+public struct ShelfBalanceConfig: Sendable {
+    public var balanceTolerance: CGFloat    // Toleransi kemiringan lurus (radian)
+    public var failAngle: CGFloat           // Batas kemiringan sebelum pot jatuh
+    public var dbdSliderSpeed: CGFloat      // Kecepatan slider bata
+    public var dbdTargetStart: CGFloat      // Awal zona hijau (0.0 - 1.0)
+    public var dbdTargetEnd: CGFloat        // Akhir zona hijau (0.0 - 1.0)
+    public var headingText: String
+    
+    public init(
+        balanceTolerance: CGFloat = 0.08,   // ~4.5 derajat
+        failAngle: CGFloat = 0.40,          // ~23 derajat
+        dbdSliderSpeed: CGFloat = 1.35,
+        dbdTargetStart: CGFloat = 0.60,
+        dbdTargetEnd: CGFloat = 0.80,
+        headingText: String = "BANTU BU MARA: GANJAL RAK"
+    ) {
+        self.balanceTolerance = balanceTolerance
+        self.failAngle = failAngle
+        self.dbdSliderSpeed = dbdSliderSpeed
+        self.dbdTargetStart = dbdTargetStart
+        self.dbdTargetEnd = dbdTargetEnd
+        self.headingText = headingText
+    }
 }
 
-public enum ShelfFailReason {
-    case dropped
-    case liftedTooHigh
-    case missedQTE
+// MARK: - SpriteKit Node (Consistent with ItemSorting & SeedSorting)
+
+public final class ShelfBalanceMinigameNode: SKNode {
+    
+    public var onComplete: ((_ isSuccess: Bool) -> Void)?
+    public var onDismiss: (() -> Void)?
+    
+    private let config: ShelfBalanceConfig
+    private var isRunning: Bool = false
+    private var isCompleted: Bool = false
+    
+    // Physics & Lift State
+    private let motionManager = CMMotionManager()
+    private var shelfAngle: CGFloat = 0.17 // Awalnya ambles ~9.8 derajat ke dalam lumpur
+    private var simulatedTilt: CGFloat = 0.0
+    private var isShelfLifted: Bool = false // Begitu diangkat langsung STAY di posisi terangkat
+    private var isBalanced: Bool = false
+    private var isWedgePlaced: Bool = false
+    private var hammerTaps: Int = 0 // 2x ketukan palu untuk mengunci rapat
+    
+    // DBD Slider State
+    private var sliderProgress: CGFloat = 0.0
+    private var sliderDirection: CGFloat = 1.0
+    private var lastUpdateTime: TimeInterval = 0
+    
+    // Hierarchy nodes
+    private let container = SKNode()
+    private let backdrop = SKSpriteNode()
+    private let vignette = SKShapeNode()
+    
+    private let cottageWallNode = SKNode()
+    
+    // Ground & Mud Elements (Napak Tanah)
+    private let groundNode = SKNode()
+    private let groundForegroundNode = SKNode()
+    private let sunkenPitNode = SKShapeNode()
+    private let stonePaverNode = SKShapeNode()
+    
+    // Shelf & Furniture Nodes
+    private let shelfPivotNode = SKNode() // Pivot tumpuan di alas kaki kiri
+    private let shelfBodyNode = SKNode()
+    private let leftLegNode = SKShapeNode()
+    private let rightLegNode = SKShapeNode()
+    private let shelfPlankNode = SKShapeNode()
+    private let brickWedgeNode = SKShapeNode() // Bata ganjalan di bawah kaki kanan
+    
+    // Artisan Clay Pots (3D Shaded)
+    private let pot1Node = SKNode()
+    private let pot2Node = SKNode()
+    private let pot3Node = SKNode()
+    
+    // Waterpass Level Indicator
+    private let waterpassNode = SKNode()
+    private let waterpassBubble = SKShapeNode()
+    private let waterpassGlow = SKShapeNode()
+    
+    // DBD QTE Slider Track
+    private let dbdTrackNode = SKNode()
+    private let dbdCursorNode = SKShapeNode()
+    private let dbdTargetZoneNode = SKShapeNode()
+    private let dbdTrackWidth: CGFloat = 260
+    
+    // Hammer QTE Visual Indicator (Non-text)
+    private let hammerPromptNode = SKNode()
+    private let hammerPip1 = SKShapeNode()
+    private let hammerPip2 = SKShapeNode()
+    
+    // Minimalist Top HUD (Ultra-minimal: Hanya badge kecil "GANJAL RAK" dan tombol tutup)
+    private let headerBar = SKNode()
+    private let headerTitleLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+    
+    // Speech Bubble Dialog (Bu Mara Naratif Ringkas)
+    private var activeSpeechBubble: SpeechBubbleNode?
+    
+    public init(config: ShelfBalanceConfig = ShelfBalanceConfig()) {
+        self.config = config
+        super.init()
+        isUserInteractionEnabled = true
+        zPosition = 800
+        buildVisuals()
+    }
+    
+    public required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    // MARK: - Visual Setup (Outside of the House & Grounded Shelf)
+    
+    private func buildVisuals() {
+        addChild(container)
+        
+        // 1. Suasana Luar Rumah Bu Mara (Outside of the house: Langit, Dinding Pondok Kayu & Batu)
+        buildOutsideCottageBackground()
+        
+        // 2. Tanah Pekarangan Luar Rumah Bu Mara (Garis tanah melintang lurus)
+        buildGroundAndPavers()
+        
+        // 3. Struktur Rak Kayu Jati Desa & Pot Tembikar (Tegak lurus menancap ke tanah)
+        buildArtisanShelf()
+        
+        // 4. Waterpass Kuningan Ramping
+        buildWaterpass()
+        
+        // 5. Track Slider DBD QTE
+        buildDBDTrack()
+        
+        // 6. Header HUD Minimalis (Bersih & Rapi)
+        buildMinimalHUD()
+        
+        // Set orientasi awal miring ambles ke lumpur
+        shelfPivotNode.zRotation = -shelfAngle
+    }
+    
+    private func buildOutsideCottageBackground() {
+        // 1. Langit desa di luar rumah (Open outdoor daylight sky)
+        let sky = SKSpriteNode(color: SKColor(red: 0.55, green: 0.74, blue: 0.86, alpha: 1.0), size: CGSize(width: 3000, height: 3000))
+        sky.zPosition = -50
+        container.addChild(sky)
+        
+        // Pendar hangat matahari di pekarangan luar (Sun & Warm Sunlight)
+        let sunGlow = SKShapeNode(circleOfRadius: 180)
+        sunGlow.position = CGPoint(x: 130, y: 280)
+        sunGlow.fillColor = SKColor(red: 1.0, green: 0.95, blue: 0.78, alpha: 0.40)
+        sunGlow.strokeColor = .clear
+        sunGlow.blendMode = .add
+        sunGlow.zPosition = -45
+        container.addChild(sunGlow)
+        
+        let sunCore = SKShapeNode(circleOfRadius: 38)
+        sunCore.position = CGPoint(x: 130, y: 280)
+        sunCore.fillColor = SKColor(red: 1.0, green: 0.98, blue: 0.88, alpha: 0.95)
+        sunCore.strokeColor = SKColor(red: 1.0, green: 0.92, blue: 0.60, alpha: 0.5)
+        sunCore.lineWidth = 4.0
+        sunCore.zPosition = -44
+        container.addChild(sunCore)
+        
+        // Berkas sinar matahari lembut menembus pekarangan (Sunbeams)
+        for i in 0..<3 {
+            let beam = SKShapeNode()
+            let bp = CGMutablePath()
+            let bx: CGFloat = 130 + CGFloat(i * 45)
+            bp.move(to: CGPoint(x: bx - 15, y: 280))
+            bp.addLine(to: CGPoint(x: bx - 140, y: -120))
+            bp.addLine(to: CGPoint(x: bx - 70, y: -120))
+            bp.addLine(to: CGPoint(x: bx + 25, y: 280))
+            bp.closeSubpath()
+            beam.path = bp
+            beam.fillColor = SKColor(red: 1.0, green: 0.96, blue: 0.82, alpha: 0.08)
+            beam.strokeColor = .clear
+            beam.blendMode = .add
+            beam.zPosition = -43
+            container.addChild(beam)
+        }
+        
+        // Awan-awan putih lembut berarak di langit luar (Drifting Clouds)
+        createCloud(at: CGPoint(x: -80, y: 310), scale: 0.9)
+        createCloud(at: CGPoint(x: 120, y: 230), scale: 0.7)
+        createCloud(at: CGPoint(x: -160, y: 210), scale: 0.6)
+        
+        // 2. Siluet pegunungan desa di kejauhan (Distant Horizon Hills)
+        let distantHills = SKShapeNode()
+        let dhPath = CGMutablePath()
+        dhPath.move(to: CGPoint(x: -600, y: -120))
+        dhPath.addQuadCurve(to: CGPoint(x: -40, y: 20), control: CGPoint(x: -300, y: 70))
+        dhPath.addQuadCurve(to: CGPoint(x: 600, y: -40), control: CGPoint(x: 250, y: 60))
+        dhPath.addLine(to: CGPoint(x: 600, y: -120))
+        dhPath.closeSubpath()
+        distantHills.path = dhPath
+        distantHills.fillColor = SKColor(red: 0.46, green: 0.62, blue: 0.58, alpha: 0.65)
+        distantHills.strokeColor = .clear
+        distantHills.zPosition = -35
+        container.addChild(distantHills)
+        
+        // Perbukitan hijau pekarangan desa lebih dekat (Midground hills)
+        let midHills = SKShapeNode()
+        let mhPath = CGMutablePath()
+        mhPath.move(to: CGPoint(x: -600, y: -120))
+        mhPath.addQuadCurve(to: CGPoint(x: 100, y: -20), control: CGPoint(x: -180, y: 30))
+        mhPath.addQuadCurve(to: CGPoint(x: 600, y: -60), control: CGPoint(x: 380, y: 15))
+        mhPath.addLine(to: CGPoint(x: 600, y: -120))
+        mhPath.closeSubpath()
+        midHills.path = mhPath
+        midHills.fillColor = SKColor(red: 0.35, green: 0.52, blue: 0.30, alpha: 0.85)
+        midHills.strokeColor = .clear
+        midHills.zPosition = -30
+        container.addChild(midHills)
+        
+        // Pepohonan desa di kejauhan
+        for tx in [20.0, 75.0, 160.0, 210.0] {
+            let tree = createDistantTree(height: CGFloat.random(in: 28...38))
+            tree.position = CGPoint(x: tx, y: -25)
+            tree.zPosition = -28
+            container.addChild(tree)
+        }
+        
+        // 3. Pekarangan Luar & Sumur Desa Bu Mara (Outdoor Yard & Village Well Lore)
+        buildOutdoorYardProps()
+        
+        // 4. Dinding Luar Pondok Bu Mara di Sisi Kiri (Exterior Cottage Corner)
+        buildLeftCottageExterior()
+    }
+    
+    private func createCloud(at pos: CGPoint, scale: CGFloat) {
+        let cloud = SKNode()
+        cloud.position = pos
+        cloud.setScale(scale)
+        cloud.zPosition = -40
+        container.addChild(cloud)
+        
+        let cColor = SKColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 0.85)
+        let puff1 = SKShapeNode(ellipseOf: CGSize(width: 70, height: 32))
+        puff1.fillColor = cColor
+        puff1.strokeColor = .clear
+        cloud.addChild(puff1)
+        
+        let puff2 = SKShapeNode(circleOfRadius: 20)
+        puff2.position = CGPoint(x: -18, y: 10)
+        puff2.fillColor = cColor
+        puff2.strokeColor = .clear
+        cloud.addChild(puff2)
+        
+        let puff3 = SKShapeNode(circleOfRadius: 16)
+        puff3.position = CGPoint(x: 18, y: 8)
+        puff3.fillColor = cColor
+        puff3.strokeColor = .clear
+        cloud.addChild(puff3)
+        
+        // Animasi awan berarak perlahan
+        let floatAction = SKAction.sequence([
+            .moveBy(x: 16, y: 0, duration: 4.5),
+            .moveBy(x: -16, y: 0, duration: 4.5)
+        ])
+        cloud.run(.repeatForever(floatAction))
+    }
+    
+    private func createDistantTree(height: CGFloat) -> SKNode {
+        let tree = SKNode()
+        let trunk = SKShapeNode(rectOf: CGSize(width: 4, height: height * 0.4))
+        trunk.position = CGPoint(x: 0, y: height * 0.2)
+        trunk.fillColor = SKColor(red: 0.32, green: 0.22, blue: 0.14, alpha: 0.9)
+        trunk.strokeColor = .clear
+        tree.addChild(trunk)
+        
+        let crown = SKShapeNode(circleOfRadius: height * 0.45)
+        crown.position = CGPoint(x: 0, y: height * 0.65)
+        crown.fillColor = SKColor(red: 0.28, green: 0.46, blue: 0.24, alpha: 0.95)
+        crown.strokeColor = .clear
+        tree.addChild(crown)
+        return tree
+    }
+    
+    private func buildOutdoorYardProps() {
+        let yardNode = SKNode()
+        yardNode.position = CGPoint(x: 0, y: -120)
+        yardNode.zPosition = -20
+        container.addChild(yardNode)
+        
+        // Pagar kayu desa di belakang rak (Rustic post-and-rail fence)
+        let fenceStartX: CGFloat = -40
+        let fenceEndX: CGFloat = 260
+        let fenceRail1 = SKShapeNode(rectOf: CGSize(width: fenceEndX - fenceStartX, height: 6), cornerRadius: 2)
+        fenceRail1.position = CGPoint(x: (fenceStartX + fenceEndX)/2, y: 46)
+        fenceRail1.fillColor = SKColor(red: 0.44, green: 0.30, blue: 0.18, alpha: 0.9)
+        fenceRail1.strokeColor = SKColor(red: 0.26, green: 0.16, blue: 0.08, alpha: 1.0)
+        fenceRail1.lineWidth = 1.0
+        yardNode.addChild(fenceRail1)
+        
+        let fenceRail2 = SKShapeNode(rectOf: CGSize(width: fenceEndX - fenceStartX, height: 6), cornerRadius: 2)
+        fenceRail2.position = CGPoint(x: (fenceStartX + fenceEndX)/2, y: 24)
+        fenceRail2.fillColor = SKColor(red: 0.42, green: 0.28, blue: 0.16, alpha: 0.9)
+        fenceRail2.strokeColor = SKColor(red: 0.24, green: 0.14, blue: 0.08, alpha: 1.0)
+        fenceRail2.lineWidth = 1.0
+        yardNode.addChild(fenceRail2)
+        
+        for fx in stride(from: fenceStartX, through: fenceEndX, by: 45) {
+            let post = SKShapeNode(rectOf: CGSize(width: 8, height: 60), cornerRadius: 2)
+            post.position = CGPoint(x: fx, y: 30)
+            post.fillColor = SKColor(red: 0.38, green: 0.25, blue: 0.15, alpha: 1.0)
+            post.strokeColor = SKColor(red: 0.22, green: 0.13, blue: 0.07, alpha: 1.0)
+            post.lineWidth = 1.0
+            yardNode.addChild(post)
+        }
+        
+        // SUMUR DESA (Village Water Well lore: "Di halaman Bu Mara dekat sumur desa")
+        let wellX: CGFloat = 145
+        let wellBase = SKShapeNode(rectOf: CGSize(width: 54, height: 38), cornerRadius: 5)
+        wellBase.position = CGPoint(x: wellX, y: 19)
+        wellBase.fillColor = SKColor(red: 0.45, green: 0.42, blue: 0.38, alpha: 1.0)
+        wellBase.strokeColor = SKColor(red: 0.25, green: 0.22, blue: 0.18, alpha: 1.0)
+        wellBase.lineWidth = 2.0
+        yardNode.addChild(wellBase)
+        
+        // Batu-batu bundar sumur
+        for si in -2...2 {
+            let stone = SKShapeNode(rectOf: CGSize(width: 14, height: 8), cornerRadius: 2)
+            stone.position = CGPoint(x: wellX + CGFloat(si) * 10, y: 22)
+            stone.fillColor = SKColor(red: 0.52, green: 0.48, blue: 0.44, alpha: 1.0)
+            stone.strokeColor = SKColor(red: 0.28, green: 0.24, blue: 0.20, alpha: 0.8)
+            stone.lineWidth = 0.8
+            yardNode.addChild(stone)
+        }
+        
+        // Tiang kayu sumur
+        for px in [wellX - 22, wellX + 22] {
+            let post = SKShapeNode(rectOf: CGSize(width: 5, height: 50), cornerRadius: 1)
+            post.position = CGPoint(x: px, y: 55)
+            post.fillColor = SKColor(red: 0.36, green: 0.23, blue: 0.13, alpha: 1.0)
+            post.strokeColor = SKColor(red: 0.20, green: 0.11, blue: 0.06, alpha: 1.0)
+            post.lineWidth = 1.0
+            yardNode.addChild(post)
+        }
+        
+        // Atap genteng sumur
+        let wellRoofPath = CGMutablePath()
+        wellRoofPath.move(to: CGPoint(x: wellX - 32, y: 75))
+        wellRoofPath.addLine(to: CGPoint(x: wellX, y: 92))
+        wellRoofPath.addLine(to: CGPoint(x: wellX + 32, y: 75))
+        wellRoofPath.closeSubpath()
+        let wellRoof = SKShapeNode(path: wellRoofPath)
+        wellRoof.fillColor = SKColor(red: 0.70, green: 0.32, blue: 0.18, alpha: 1.0)
+        wellRoof.strokeColor = SKColor(red: 0.42, green: 0.16, blue: 0.08, alpha: 1.0)
+        wellRoof.lineWidth = 1.5
+        yardNode.addChild(wellRoof)
+        
+        // Ember kayu sumur
+        let bucket = SKShapeNode(rectOf: CGSize(width: 12, height: 14), cornerRadius: 2)
+        bucket.position = CGPoint(x: wellX, y: 52)
+        bucket.fillColor = SKColor(red: 0.48, green: 0.34, blue: 0.20, alpha: 1.0)
+        bucket.strokeColor = SKColor(red: 0.26, green: 0.16, blue: 0.08, alpha: 1.0)
+        bucket.lineWidth = 1.0
+        yardNode.addChild(bucket)
+        
+        // Drum air liat / tong tanah tembikar Bu Mara di dekat sumur
+        let barrel = SKShapeNode(rectOf: CGSize(width: 22, height: 28), cornerRadius: 4)
+        barrel.position = CGPoint(x: wellX - 38, y: 14)
+        barrel.fillColor = SKColor(red: 0.42, green: 0.28, blue: 0.16, alpha: 1.0)
+        barrel.strokeColor = SKColor(red: 0.22, green: 0.13, blue: 0.07, alpha: 1.0)
+        barrel.lineWidth = 1.5
+        yardNode.addChild(barrel)
+        
+        // Pot tembikar jemur di pekarangan luar (Drying pottery in the yard)
+        let dryPot1 = createClayPot(width: 24, height: 28, color: SKColor(red: 0.65, green: 0.40, blue: 0.24, alpha: 0.95))
+        dryPot1.position = CGPoint(x: -30, y: 0)
+        yardNode.addChild(dryPot1)
+        
+        let dryPot2 = createClayPot(width: 20, height: 22, color: SKColor(red: 0.58, green: 0.36, blue: 0.20, alpha: 0.95))
+        dryPot2.position = CGPoint(x: -12, y: 0)
+        yardNode.addChild(dryPot2)
+    }
+    
+    private func buildLeftCottageExterior() {
+        cottageWallNode.position = CGPoint(x: -190, y: 70)
+        cottageWallNode.zPosition = -15
+        container.addChild(cottageWallNode)
+        
+        let wallW: CGFloat = 160
+        let wallH: CGFloat = 380
+        
+        // Dinding plester luar pondok
+        let wallRect = CGRect(x: -wallW/2, y: -wallH/2, width: wallW, height: wallH)
+        let wall = SKShapeNode(rect: wallRect)
+        wall.fillColor = SKColor(red: 0.88, green: 0.85, blue: 0.79, alpha: 1.0)
+        wall.strokeColor = SKColor(red: 0.38, green: 0.26, blue: 0.16, alpha: 1.0)
+        wall.lineWidth = 2.5
+        cottageWallNode.addChild(wall)
+        
+        // Pondasi batu sungai di bawah dinding luar pondok
+        let stoneBaseH: CGFloat = 55
+        let stoneBase = SKShapeNode(rect: CGRect(x: -wallW/2, y: -wallH/2, width: wallW, height: stoneBaseH))
+        stoneBase.fillColor = SKColor(red: 0.48, green: 0.44, blue: 0.40, alpha: 1.0)
+        stoneBase.strokeColor = SKColor(red: 0.28, green: 0.24, blue: 0.20, alpha: 1.0)
+        stoneBase.lineWidth = 2.0
+        cottageWallNode.addChild(stoneBase)
+        
+        // Garis-garis batu pada pondasi
+        for bx in [-55, -20, 15, 50] {
+            let stoneLine = SKShapeNode(rectOf: CGSize(width: 28, height: 14), cornerRadius: 3)
+            stoneLine.position = CGPoint(x: CGFloat(bx), y: -wallH/2 + 26)
+            stoneLine.fillColor = SKColor(red: 0.55, green: 0.51, blue: 0.46, alpha: 1.0)
+            stoneLine.strokeColor = SKColor(red: 0.32, green: 0.28, blue: 0.24, alpha: 0.8)
+            stoneLine.lineWidth = 1.0
+            cottageWallNode.addChild(stoneLine)
+        }
+        
+        // Balok kayu vertikal penyangga dinding pondok (Timber Framing luar)
+        for bx in [-wallW/2 + 6, wallW/2 - 6] {
+            let beam = SKShapeNode(rectOf: CGSize(width: 14, height: wallH))
+            beam.position = CGPoint(x: bx, y: 0)
+            beam.fillColor = SKColor(red: 0.40, green: 0.26, blue: 0.15, alpha: 1.0)
+            beam.strokeColor = SKColor(red: 0.22, green: 0.13, blue: 0.07, alpha: 1.0)
+            beam.lineWidth = 1.5
+            cottageWallNode.addChild(beam)
+        }
+        
+        // Balok kayu horizontal
+        let hBeam = SKShapeNode(rectOf: CGSize(width: wallW, height: 12))
+        hBeam.position = CGPoint(x: 0, y: -wallH/2 + stoneBaseH)
+        hBeam.fillColor = SKColor(red: 0.36, green: 0.23, blue: 0.13, alpha: 1.0)
+        hBeam.strokeColor = SKColor(red: 0.20, green: 0.11, blue: 0.06, alpha: 1.0)
+        hBeam.lineWidth = 1.5
+        cottageWallNode.addChild(hBeam)
+        
+        // Jendela kayu luar dengan daun jendela & kotak bunga mekar
+        let winNode = SKNode()
+        winNode.position = CGPoint(x: 10, y: 25)
+        cottageWallNode.addChild(winNode)
+        
+        let winFrame = SKShapeNode(rectOf: CGSize(width: 48, height: 56), cornerRadius: 4)
+        winFrame.fillColor = SKColor(red: 0.32, green: 0.20, blue: 0.12, alpha: 1.0)
+        winFrame.strokeColor = SKColor(red: 0.18, green: 0.10, blue: 0.05, alpha: 1.0)
+        winFrame.lineWidth = 2.0
+        winNode.addChild(winFrame)
+        
+        let winGlass = SKShapeNode(rectOf: CGSize(width: 38, height: 46))
+        winGlass.fillColor = SKColor(red: 0.22, green: 0.36, blue: 0.44, alpha: 0.85)
+        winGlass.strokeColor = SKColor(red: 0.85, green: 0.75, blue: 0.50, alpha: 0.5)
+        winGlass.lineWidth = 1.0
+        winNode.addChild(winGlass)
+        
+        // Daun jendela kayu luar (Shutters)
+        let leftShutter = SKShapeNode(rectOf: CGSize(width: 14, height: 56), cornerRadius: 2)
+        leftShutter.position = CGPoint(x: -30, y: 0)
+        leftShutter.fillColor = SKColor(red: 0.42, green: 0.28, blue: 0.16, alpha: 1.0)
+        leftShutter.strokeColor = SKColor(red: 0.22, green: 0.13, blue: 0.07, alpha: 1.0)
+        leftShutter.lineWidth = 1.2
+        winNode.addChild(leftShutter)
+        
+        let rightShutter = SKShapeNode(rectOf: CGSize(width: 14, height: 56), cornerRadius: 2)
+        rightShutter.position = CGPoint(x: 30, y: 0)
+        rightShutter.fillColor = SKColor(red: 0.42, green: 0.28, blue: 0.16, alpha: 1.0)
+        rightShutter.strokeColor = SKColor(red: 0.22, green: 0.13, blue: 0.07, alpha: 1.0)
+        rightShutter.lineWidth = 1.2
+        winNode.addChild(rightShutter)
+        
+        // Kotak bunga mekar di luar jendela
+        let flowerBox = SKShapeNode(rectOf: CGSize(width: 56, height: 12), cornerRadius: 2)
+        flowerBox.position = CGPoint(x: 0, y: -33)
+        flowerBox.fillColor = SKColor(red: 0.46, green: 0.30, blue: 0.17, alpha: 1.0)
+        flowerBox.strokeColor = SKColor(red: 0.24, green: 0.14, blue: 0.08, alpha: 1.0)
+        flowerBox.lineWidth = 1.5
+        winNode.addChild(flowerBox)
+        
+        for fi in -3...3 {
+            let flower = SKShapeNode(circleOfRadius: 3.0)
+            flower.position = CGPoint(x: CGFloat(fi) * 7.5, y: -26)
+            flower.fillColor = fi % 2 == 0 ? SKColor(red: 0.95, green: 0.38, blue: 0.38, alpha: 1.0) : SKColor(red: 0.98, green: 0.84, blue: 0.32, alpha: 1.0)
+            flower.strokeColor = .clear
+            winNode.addChild(flower)
+        }
+        
+        // Lentera dinding besi antik di luar rumah
+        let lantern = SKShapeNode(rectOf: CGSize(width: 12, height: 18), cornerRadius: 2)
+        lantern.position = CGPoint(x: wallW/2 - 16, y: 70)
+        lantern.fillColor = SKColor(red: 0.98, green: 0.88, blue: 0.50, alpha: 0.85)
+        lantern.strokeColor = SKColor(red: 0.20, green: 0.15, blue: 0.10, alpha: 1.0)
+        lantern.lineWidth = 1.5
+        cottageWallNode.addChild(lantern)
+        
+        // Atap genteng terakota miring di bagian atas (Sloping Roof Eaves)
+        let eavesPath = CGMutablePath()
+        eavesPath.move(to: CGPoint(x: -wallW/2 - 15, y: wallH/2 + 25))
+        eavesPath.addLine(to: CGPoint(x: wallW/2 + 25, y: wallH/2 - 35))
+        eavesPath.addLine(to: CGPoint(x: wallW/2 + 25, y: wallH/2 - 55))
+        eavesPath.addLine(to: CGPoint(x: -wallW/2 - 15, y: wallH/2 + 5))
+        eavesPath.closeSubpath()
+        let roofEaves = SKShapeNode(path: eavesPath)
+        roofEaves.fillColor = SKColor(red: 0.72, green: 0.34, blue: 0.20, alpha: 1.0)
+        roofEaves.strokeColor = SKColor(red: 0.42, green: 0.16, blue: 0.08, alpha: 1.0)
+        roofEaves.lineWidth = 2.0
+        cottageWallNode.addChild(roofEaves)
+        
+        // Tanaman rambat ivy hijau di sudut pondok
+        for vi in 0...6 {
+            let vy = CGFloat(vi) * 34 - 120
+            let vx = wallW/2 - 6 + CGFloat.random(in: -6...6)
+            let ivyCluster = SKShapeNode(circleOfRadius: CGFloat.random(in: 7...12))
+            ivyCluster.position = CGPoint(x: vx, y: vy)
+            ivyCluster.fillColor = SKColor(red: 0.28, green: 0.52, blue: 0.22, alpha: 0.85)
+            ivyCluster.strokeColor = SKColor(red: 0.16, green: 0.34, blue: 0.12, alpha: 0.8)
+            ivyCluster.lineWidth = 1.0
+            cottageWallNode.addChild(ivyCluster)
+        }
+    }
+    
+    private func buildGroundAndPavers() {
+        groundNode.position = CGPoint(x: 0, y: -120)
+        groundNode.zPosition = 2
+        container.addChild(groundNode)
+        
+        let groundW: CGFloat = 2000
+        let groundH: CGFloat = 500
+        
+        // 1. Lapisan tanah padat pekarangan luar (Earth / Soil strata)
+        let groundRect = CGRect(x: -groundW/2, y: -groundH, width: groundW, height: groundH)
+        let ground = SKShapeNode(rect: groundRect)
+        ground.fillColor = SKColor(red: 0.20, green: 0.14, blue: 0.09, alpha: 1.0)
+        ground.strokeColor = SKColor(red: 0.10, green: 0.07, blue: 0.04, alpha: 1.0)
+        ground.lineWidth = 2.0
+        groundNode.addChild(ground)
+        
+        // Lapisan tanah bawah lebih gelap (Subsoil)
+        let subsoil = SKShapeNode(rect: CGRect(x: -groundW/2, y: -groundH, width: groundW, height: groundH - 35))
+        subsoil.fillColor = SKColor(red: 0.14, green: 0.09, blue: 0.06, alpha: 1.0)
+        subsoil.strokeColor = .clear
+        groundNode.addChild(subsoil)
+        
+        // Kerikil & batu sungai tertanam di dalam tanah
+        for px in [-220, -150, -40, 30, 160, 240] {
+            let pebble = SKShapeNode(ellipseOf: CGSize(width: CGFloat.random(in: 8...14), height: CGFloat.random(in: 5...8)))
+            pebble.position = CGPoint(x: CGFloat(px), y: CGFloat.random(in: -80 ... -25))
+            pebble.fillColor = SKColor(red: 0.35, green: 0.30, blue: 0.26, alpha: 0.8)
+            pebble.strokeColor = .clear
+            groundNode.addChild(pebble)
+        }
+        
+        // 2. Garis rumput hijau pekarangan melintang lurus (Lush grass turf line)
+        let grassLine = SKShapeNode()
+        let gPath = CGMutablePath()
+        gPath.move(to: CGPoint(x: -groundW/2, y: 0))
+        gPath.addLine(to: CGPoint(x: groundW/2, y: 0))
+        grassLine.path = gPath
+        grassLine.strokeColor = SKColor(red: 0.30, green: 0.56, blue: 0.22, alpha: 1.0)
+        grassLine.lineWidth = 6.0
+        groundNode.addChild(grassLine)
+        
+        // Rerumputan & bunga liar di pekarangan luar
+        for i in -25...25 {
+            let rx = CGFloat(i) * 18 + CGFloat.random(in: -4...4)
+            // Lewati area batu dan lubang lumpur agar bersih
+            if (rx > -110 && rx < -60) || (rx > 68 && rx < 112) { continue }
+            
+            let blade = SKShapeNode()
+            let bp = CGMutablePath()
+            bp.move(to: CGPoint(x: rx, y: 0))
+            bp.addLine(to: CGPoint(x: rx - 3, y: CGFloat.random(in: 6...11)))
+            bp.move(to: CGPoint(x: rx + 2, y: 0))
+            bp.addLine(to: CGPoint(x: rx + 4, y: CGFloat.random(in: 7...13)))
+            blade.path = bp
+            blade.strokeColor = SKColor(red: 0.36, green: 0.64, blue: 0.26, alpha: 0.9)
+            blade.lineWidth = 1.5
+            groundNode.addChild(blade)
+            
+            if i % 5 == 0 {
+                let flower = SKShapeNode(circleOfRadius: 2.2)
+                flower.position = CGPoint(x: rx, y: 9)
+                flower.fillColor = i % 2 == 0 ? SKColor(red: 0.98, green: 0.88, blue: 0.40, alpha: 0.95) : SKColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 0.9)
+                flower.strokeColor = .clear
+                groundNode.addChild(flower)
+            }
+        }
+        
+        // 3. BATU UBIN TUMPUAN KAKI KIRI (Stone flagstone paver tertanam lurus ke tanah)
+        let paverW: CGFloat = 46
+        let paverH: CGFloat = 14
+        let paverRect = CGRect(x: -85 - (paverW/2), y: -paverH + 2, width: paverW, height: paverH)
+        stonePaverNode.path = CGPath(roundedRect: paverRect, cornerWidth: 3, cornerHeight: 3, transform: nil)
+        stonePaverNode.fillColor = SKColor(red: 0.48, green: 0.45, blue: 0.42, alpha: 1.0)
+        stonePaverNode.strokeColor = SKColor(red: 0.24, green: 0.22, blue: 0.20, alpha: 1.0)
+        stonePaverNode.lineWidth = 2.0
+        groundNode.addChild(stonePaverNode)
+        
+        let stoneBevel = SKShapeNode(rectOf: CGSize(width: paverW - 6, height: 2), cornerRadius: 1)
+        stoneBevel.position = CGPoint(x: -85, y: 1)
+        stoneBevel.fillColor = SKColor(red: 0.65, green: 0.62, blue: 0.58, alpha: 0.8)
+        stoneBevel.strokeColor = .clear
+        groundNode.addChild(stoneBevel)
+        
+        // 4. LUBANG LUMPUR AMBLES KAKI KANAN (Sunken mud pit into the ground)
+        let pitW: CGFloat = 62
+        let pitH: CGFloat = 26
+        let pitRect = CGRect(x: 90 - (pitW/2), y: -pitH, width: pitW, height: pitH)
+        sunkenPitNode.path = CGPath(ellipseIn: pitRect, transform: nil)
+        sunkenPitNode.fillColor = SKColor(red: 0.12, green: 0.08, blue: 0.05, alpha: 0.98)
+        sunkenPitNode.strokeColor = SKColor(red: 0.30, green: 0.18, blue: 0.10, alpha: 0.9)
+        sunkenPitNode.lineWidth = 2.0
+        groundNode.addChild(sunkenPitNode)
+        
+        // Lapisan lumpur basah dalam
+        let wetMud = SKShapeNode(ellipseOf: CGSize(width: pitW - 12, height: pitH - 10))
+        wetMud.position = CGPoint(x: 90, y: -pitH/2)
+        wetMud.fillColor = SKColor(red: 0.08, green: 0.05, blue: 0.03, alpha: 1.0)
+        wetMud.strokeColor = .clear
+        groundNode.addChild(wetMud)
+        
+        // 5. FOREGROUND GROUND OVERLAY (Menutup dasar kaki agar terlihat menancap lurus ke tanah)
+        buildForegroundGround()
+    }
+    
+    private func buildForegroundGround() {
+        groundForegroundNode.position = CGPoint(x: 0, y: -120)
+        groundForegroundNode.zPosition = 6
+        container.addChild(groundForegroundNode)
+        
+        // Rerumputan & tanah depan di sekitar tumpuan batu kaki kiri
+        for gx in [-106, -100, -94, -76, -70, -64] {
+            let grass = SKShapeNode()
+            let gp = CGMutablePath()
+            gp.move(to: CGPoint(x: CGFloat(gx), y: -3))
+            gp.addLine(to: CGPoint(x: CGFloat(gx) - 2, y: CGFloat.random(in: 4...8)))
+            gp.move(to: CGPoint(x: CGFloat(gx) + 2, y: -3))
+            gp.addLine(to: CGPoint(x: CGFloat(gx) + 3, y: CGFloat.random(in: 5...9)))
+            grass.path = gp
+            grass.strokeColor = SKColor(red: 0.32, green: 0.60, blue: 0.24, alpha: 0.95)
+            grass.lineWidth = 1.5
+            groundForegroundNode.addChild(grass)
+        }
+        
+        // Bibir lumpur depan di tepi lubang ambles kaki kanan (Mud lip)
+        let mudLipPath = CGMutablePath()
+        mudLipPath.move(to: CGPoint(x: 62, y: 0))
+        mudLipPath.addQuadCurve(to: CGPoint(x: 118, y: 0), control: CGPoint(x: 90, y: -6))
+        mudLipPath.addQuadCurve(to: CGPoint(x: 62, y: 0), control: CGPoint(x: 90, y: 2))
+        mudLipPath.closeSubpath()
+        let mudLip = SKShapeNode(path: mudLipPath)
+        mudLip.fillColor = SKColor(red: 0.18, green: 0.11, blue: 0.07, alpha: 0.95)
+        mudLip.strokeColor = SKColor(red: 0.28, green: 0.16, blue: 0.10, alpha: 0.9)
+        mudLip.lineWidth = 1.0
+        groundForegroundNode.addChild(mudLip)
+    }
+    
+    private func buildArtisanShelf() {
+        // Tumpuan kaki kiri menancap lurus ke tanah di atas batu landasan (Napak Tanah: y = -120)
+        shelfPivotNode.position = CGPoint(x: -85, y: -120)
+        shelfPivotNode.zPosition = 4
+        container.addChild(shelfPivotNode)
+        
+        shelfPivotNode.addChild(shelfBodyNode)
+        
+        let legW: CGFloat = 18
+        let legH: CGFloat = 108
+        let span: CGFloat = 175 // Jarak antara kaki kiri dan kaki kanan (dari x: -85 ke x: 90)
+        
+        // 1. KAKI KIRI (Menancap tegak lurus lurus ke tanah di atas batu ubin)
+        let leftLegRect = CGRect(x: -legW/2, y: 0, width: legW, height: legH)
+        leftLegNode.path = CGPath(roundedRect: leftLegRect, cornerWidth: 3, cornerHeight: 3, transform: nil)
+        leftLegNode.fillColor = SKColor(red: 0.38, green: 0.24, blue: 0.14, alpha: 1.0)
+        leftLegNode.strokeColor = SKColor(red: 0.22, green: 0.13, blue: 0.07, alpha: 1.0)
+        leftLegNode.lineWidth = 2.0
+        shelfBodyNode.addChild(leftLegNode)
+        
+        // Tekstur urat serat kayu kaki kiri
+        let leftGrain = SKShapeNode(rectOf: CGSize(width: 3, height: legH - 12), cornerRadius: 1)
+        leftGrain.position = CGPoint(x: -2, y: legH/2)
+        leftGrain.fillColor = SKColor(red: 0.48, green: 0.32, blue: 0.18, alpha: 0.7)
+        leftGrain.strokeColor = .clear
+        shelfBodyNode.addChild(leftGrain)
+        
+        // 2. KAKI KANAN (Menancap tegak lurus ke lubang lumpur tanah)
+        let rightLegRect = CGRect(x: span - legW/2, y: 0, width: legW, height: legH)
+        rightLegNode.path = CGPath(roundedRect: rightLegRect, cornerWidth: 3, cornerHeight: 3, transform: nil)
+        rightLegNode.fillColor = SKColor(red: 0.38, green: 0.24, blue: 0.14, alpha: 1.0)
+        rightLegNode.strokeColor = SKColor(red: 0.22, green: 0.13, blue: 0.07, alpha: 1.0)
+        rightLegNode.lineWidth = 2.0
+        shelfBodyNode.addChild(rightLegNode)
+        
+        // Tekstur urat serat kayu kaki kanan
+        let rightGrain = SKShapeNode(rectOf: CGSize(width: 3, height: legH - 12), cornerRadius: 1)
+        rightGrain.position = CGPoint(x: span - 2, y: legH/2)
+        rightGrain.fillColor = SKColor(red: 0.48, green: 0.32, blue: 0.18, alpha: 0.7)
+        rightGrain.strokeColor = .clear
+        shelfBodyNode.addChild(rightGrain)
+        
+        // Palang kayu penguat tengah (Timber Crossbar)
+        let braceRect = CGRect(x: -legW/2, y: legH * 0.35, width: span + legW, height: 12)
+        let brace = SKShapeNode(rect: braceRect, cornerRadius: 2)
+        brace.fillColor = SKColor(red: 0.34, green: 0.21, blue: 0.12, alpha: 1.0)
+        brace.strokeColor = SKColor(red: 0.18, green: 0.10, blue: 0.05, alpha: 1.0)
+        brace.lineWidth = 1.5
+        shelfBodyNode.addChild(brace)
+        
+        // Pasak kayu pengikat sambungan palang
+        for bx in [0.0, span] {
+            let bolt = SKShapeNode(circleOfRadius: 2.5)
+            bolt.position = CGPoint(x: bx, y: legH * 0.35 + 6.0)
+            bolt.fillColor = SKColor(red: 0.78, green: 0.62, blue: 0.32, alpha: 0.95)
+            bolt.strokeColor = SKColor(red: 0.40, green: 0.26, blue: 0.12, alpha: 1.0)
+            bolt.lineWidth = 0.8
+            shelfBodyNode.addChild(bolt)
+        }
+        
+        // Siku penyangga kayu sudut (Corner wooden braces)
+        let leftKneePath = CGMutablePath()
+        leftKneePath.move(to: CGPoint(x: 0, y: legH - 18))
+        leftKneePath.addLine(to: CGPoint(x: 20, y: legH))
+        leftKneePath.addLine(to: CGPoint(x: 0, y: legH))
+        leftKneePath.closeSubpath()
+        let leftKnee = SKShapeNode(path: leftKneePath)
+        leftKnee.fillColor = SKColor(red: 0.32, green: 0.20, blue: 0.11, alpha: 1.0)
+        leftKnee.strokeColor = .clear
+        shelfBodyNode.addChild(leftKnee)
+        
+        let rightKneePath = CGMutablePath()
+        rightKneePath.move(to: CGPoint(x: span, y: legH - 18))
+        rightKneePath.addLine(to: CGPoint(x: span - 20, y: legH))
+        rightKneePath.addLine(to: CGPoint(x: span, y: legH))
+        rightKneePath.closeSubpath()
+        let rightKnee = SKShapeNode(path: rightKneePath)
+        rightKnee.fillColor = SKColor(red: 0.32, green: 0.20, blue: 0.11, alpha: 1.0)
+        rightKnee.strokeColor = .clear
+        shelfBodyNode.addChild(rightKnee)
+        
+        // 3. PAPAN RAK ATAS (Heavy Solid Timber Tabletop Plank)
+        let plankOverhang: CGFloat = 25
+        let plankW = span + (plankOverhang * 2)
+        let plankH: CGFloat = 18
+        let plankRect = CGRect(x: -plankOverhang, y: legH, width: plankW, height: plankH)
+        shelfPlankNode.path = CGPath(roundedRect: plankRect, cornerWidth: 4, cornerHeight: 4, transform: nil)
+        shelfPlankNode.fillColor = SKColor(red: 0.50, green: 0.32, blue: 0.18, alpha: 1.0)
+        shelfPlankNode.strokeColor = SKColor(red: 0.26, green: 0.14, blue: 0.08, alpha: 1.0)
+        shelfPlankNode.lineWidth = 2.5
+        shelfBodyNode.addChild(shelfPlankNode)
+        
+        // Highlight kilau tepi atas papan kayu
+        let plankTopHighlight = SKShapeNode(rectOf: CGSize(width: plankW - 8, height: 2.5), cornerRadius: 1)
+        plankTopHighlight.position = CGPoint(x: span/2, y: legH + plankH - 2)
+        plankTopHighlight.fillColor = SKColor(red: 0.65, green: 0.45, blue: 0.28, alpha: 0.7)
+        plankTopHighlight.strokeColor = .clear
+        shelfBodyNode.addChild(plankTopHighlight)
+        
+        // 4. POT TEMBIKAR BU MARA (Di atas papan rak kayu)
+        // Pot 1: Guci terracotta di sebelah kiri
+        pot1Node.position = CGPoint(x: 20, y: legH + plankH)
+        pot1Node.addChild(createClayPot(width: 44, height: 52, color: SKColor(red: 0.76, green: 0.44, blue: 0.26, alpha: 1.0)))
+        shelfBodyNode.addChild(pot1Node)
+        
+        // Pot 2: Mangkuk glasir hijau celadon di tengah
+        pot2Node.position = CGPoint(x: span * 0.5, y: legH + plankH)
+        pot2Node.addChild(createGlazedPot(width: 38, height: 36, color: SKColor(red: 0.26, green: 0.60, blue: 0.48, alpha: 1.0)))
+        shelfBodyNode.addChild(pot2Node)
+        
+        // Pot 3: Gerabah besar di sebelah kanan
+        pot3Node.position = CGPoint(x: span - 20, y: legH + plankH)
+        pot3Node.addChild(createClayPot(width: 52, height: 60, color: SKColor(red: 0.68, green: 0.38, blue: 0.20, alpha: 1.0)))
+        shelfBodyNode.addChild(pot3Node)
+        
+        // 5. BATU BATA PENGGANJAL & PASAK (Mengganjal kaki kanan tegak lurus ke tanah)
+        let brickW: CGFloat = 42
+        let brickH: CGFloat = 20
+        brickWedgeNode.position = CGPoint(x: span, y: 0)
+        let brickRect = CGRect(x: -brickW/2, y: -brickH, width: brickW, height: brickH)
+        brickWedgeNode.path = CGPath(roundedRect: brickRect, cornerWidth: 3, cornerHeight: 3, transform: nil)
+        brickWedgeNode.fillColor = SKColor(red: 0.82, green: 0.34, blue: 0.22, alpha: 1.0)
+        brickWedgeNode.strokeColor = SKColor(red: 0.45, green: 0.16, blue: 0.10, alpha: 1.0)
+        brickWedgeNode.lineWidth = 2.0
+        brickWedgeNode.alpha = 0
+        shelfBodyNode.addChild(brickWedgeNode)
+        
+        let brickMortar = SKShapeNode(rectOf: CGSize(width: brickW - 6, height: 1.5))
+        brickMortar.position = CGPoint(x: 0, y: -brickH/2)
+        brickMortar.fillColor = SKColor(red: 0.95, green: 0.88, blue: 0.80, alpha: 0.6)
+        brickMortar.strokeColor = .clear
+        brickWedgeNode.addChild(brickMortar)
+        
+        // Pasak kayu pengunci ganjalan di samping bata
+        let pasak = SKShapeNode()
+        let pp = CGMutablePath()
+        pp.move(to: CGPoint(x: -brickW/2 - 8, y: -brickH))
+        pp.addLine(to: CGPoint(x: -brickW/2 + 3, y: 0))
+        pp.addLine(to: CGPoint(x: -brickW/2 - 4, y: 0))
+        pp.closeSubpath()
+        pasak.path = pp
+        pasak.fillColor = SKColor(red: 0.58, green: 0.38, blue: 0.20, alpha: 1.0)
+        pasak.strokeColor = SKColor(red: 0.30, green: 0.18, blue: 0.08, alpha: 1.0)
+        pasak.lineWidth = 1.0
+        brickWedgeNode.addChild(pasak)
+    }
+    
+    private func createClayPot(width: CGFloat, height: CGFloat, color: SKColor) -> SKNode {
+        let pot = SKNode()
+        let shadow = SKShapeNode(ellipseOf: CGSize(width: width * 0.85, height: 7))
+        shadow.fillColor = SKColor.black.withAlphaComponent(0.35)
+        shadow.strokeColor = .clear
+        pot.addChild(shadow)
+        
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: -width * 0.25, y: 2))
+        path.addQuadCurve(to: CGPoint(x: -width * 0.5, y: height * 0.45), control: CGPoint(x: -width * 0.55, y: height * 0.15))
+        path.addQuadCurve(to: CGPoint(x: -width * 0.25, y: height * 0.85), control: CGPoint(x: -width * 0.45, y: height * 0.7))
+        path.addLine(to: CGPoint(x: -width * 0.32, y: height))
+        path.addLine(to: CGPoint(x: width * 0.32, y: height))
+        path.addLine(to: CGPoint(x: width * 0.25, y: height * 0.85))
+        path.addQuadCurve(to: CGPoint(x: width * 0.5, y: height * 0.45), control: CGPoint(x: width * 0.45, y: height * 0.7))
+        path.addQuadCurve(to: CGPoint(x: width * 0.25, y: 2), control: CGPoint(x: width * 0.55, y: height * 0.15))
+        path.closeSubpath()
+        
+        let body = SKShapeNode(path: path)
+        body.fillColor = color
+        body.strokeColor = SKColor(red: 0.36, green: 0.18, blue: 0.08, alpha: 1.0)
+        body.lineWidth = 1.8
+        pot.addChild(body)
+        
+        let rim = SKShapeNode(ellipseOf: CGSize(width: width * 0.7, height: 8))
+        rim.position = CGPoint(x: 0, y: height)
+        rim.fillColor = SKColor(red: 0.52, green: 0.28, blue: 0.15, alpha: 1.0)
+        rim.strokeColor = SKColor(red: 0.30, green: 0.14, blue: 0.06, alpha: 1.0)
+        rim.lineWidth = 1.2
+        pot.addChild(rim)
+        
+        return pot
+    }
+    
+    private func createGlazedPot(width: CGFloat, height: CGFloat, color: SKColor) -> SKNode {
+        let pot = SKNode()
+        let shadow = SKShapeNode(ellipseOf: CGSize(width: width * 0.85, height: 6))
+        shadow.fillColor = SKColor.black.withAlphaComponent(0.3)
+        shadow.strokeColor = .clear
+        pot.addChild(shadow)
+        
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: -width * 0.28, y: 2))
+        path.addQuadCurve(to: CGPoint(x: -width * 0.45, y: height * 0.5), control: CGPoint(x: -width * 0.5, y: height * 0.2))
+        path.addQuadCurve(to: CGPoint(x: -width * 0.28, y: height), control: CGPoint(x: -width * 0.4, y: height * 0.8))
+        path.addLine(to: CGPoint(x: width * 0.28, y: height))
+        path.addQuadCurve(to: CGPoint(x: width * 0.45, y: height * 0.5), control: CGPoint(x: width * 0.4, y: height * 0.8))
+        path.addQuadCurve(to: CGPoint(x: width * 0.28, y: 2), control: CGPoint(x: width * 0.5, y: height * 0.2))
+        path.closeSubpath()
+        
+        let body = SKShapeNode(path: path)
+        body.fillColor = color
+        body.strokeColor = SKColor(red: 0.12, green: 0.35, blue: 0.28, alpha: 1.0)
+        body.lineWidth = 1.8
+        pot.addChild(body)
+        
+        return pot
+    }
+    
+    private func buildWaterpass() {
+        waterpassNode.position = CGPoint(x: 0, y: 70)
+        waterpassNode.zPosition = 6
+        container.addChild(waterpassNode)
+        
+        // Casing Kuningan Elegan dengan bevel
+        let casing = SKShapeNode(rectOf: CGSize(width: 130, height: 22), cornerRadius: 11)
+        casing.fillColor = SKColor(red: 0.22, green: 0.17, blue: 0.10, alpha: 0.95)
+        casing.strokeColor = SKColor(red: 0.78, green: 0.62, blue: 0.32, alpha: 1.0)
+        casing.lineWidth = 1.8
+        waterpassNode.addChild(casing)
+        
+        // Tabung Kaca Gelap
+        let tube = SKShapeNode(rectOf: CGSize(width: 106, height: 13), cornerRadius: 6.5)
+        tube.fillColor = SKColor(red: 0.08, green: 0.10, blue: 0.08, alpha: 0.9)
+        tube.strokeColor = SKColor(red: 0.35, green: 0.28, blue: 0.18, alpha: 0.6)
+        tube.lineWidth = 1.0
+        waterpassNode.addChild(tube)
+        
+        // Zona Seimbang Tengah (Center Target)
+        let centerLine = SKShapeNode(rectOf: CGSize(width: 22, height: 13), cornerRadius: 3)
+        centerLine.fillColor = SKColor(red: 0.25, green: 0.85, blue: 0.45, alpha: 0.18)
+        centerLine.strokeColor = SKColor(red: 0.85, green: 0.75, blue: 0.45, alpha: 0.5)
+        centerLine.lineWidth = 1.0
+        waterpassNode.addChild(centerLine)
+        
+        // Glow pendar hijau saat seimbang
+        waterpassGlow.path = CGPath(roundedRect: CGRect(x: -60, y: -10, width: 120, height: 20), cornerWidth: 10, cornerHeight: 10, transform: nil)
+        waterpassGlow.fillColor = SKColor(red: 0.25, green: 0.95, blue: 0.45, alpha: 0.25)
+        waterpassGlow.strokeColor = .clear
+        waterpassGlow.blendMode = .add
+        waterpassGlow.alpha = 0.0
+        waterpassNode.addChild(waterpassGlow)
+        
+        // Gelembung Cairan Spirit
+        waterpassBubble.path = CGPath(ellipseIn: CGRect(x: -7, y: -5.5, width: 14, height: 11), transform: nil)
+        waterpassBubble.fillColor = SKColor(red: 0.95, green: 0.75, blue: 0.35, alpha: 0.95)
+        waterpassBubble.strokeColor = SKColor.white
+        waterpassBubble.lineWidth = 1.0
+        waterpassNode.addChild(waterpassBubble)
+    }
+    
+    private func buildDBDTrack() {
+        // Track diletakkan tepat di celah bawah kaki kanan tempat batu bata akan diselipkan
+        dbdTrackNode.position = CGPoint(x: 0, y: -205)
+        dbdTrackNode.zPosition = 8
+        container.addChild(dbdTrackNode)
+        
+        // Alas kayu berukir
+        let trackBg = SKShapeNode(rectOf: CGSize(width: dbdTrackWidth + 14, height: 26), cornerRadius: 13)
+        trackBg.fillColor = SKColor(red: 0.14, green: 0.10, blue: 0.07, alpha: 0.96)
+        trackBg.strokeColor = SKColor(red: 0.52, green: 0.38, blue: 0.22, alpha: 1.0)
+        trackBg.lineWidth = 2.0
+        dbdTrackNode.addChild(trackBg)
+        
+        // Alur dalam slider
+        let trackInner = SKShapeNode(rectOf: CGSize(width: dbdTrackWidth, height: 12), cornerRadius: 6)
+        trackInner.fillColor = SKColor(red: 0.08, green: 0.06, blue: 0.04, alpha: 1.0)
+        trackInner.strokeColor = SKColor(red: 0.25, green: 0.18, blue: 0.12, alpha: 0.7)
+        trackInner.lineWidth = 1.0
+        dbdTrackNode.addChild(trackInner)
+        
+        // Rivet kuningan di ujung kiri dan kanan
+        for xOffset in [-(dbdTrackWidth/2 + 2), (dbdTrackWidth/2 + 2)] {
+            let rivet = SKShapeNode(circleOfRadius: 2.5)
+            rivet.fillColor = SKColor(red: 0.85, green: 0.70, blue: 0.35, alpha: 0.9)
+            rivet.strokeColor = SKColor(red: 0.4, green: 0.3, blue: 0.15, alpha: 1.0)
+            rivet.lineWidth = 0.8
+            rivet.position = CGPoint(x: xOffset, y: 0)
+            dbdTrackNode.addChild(rivet)
+        }
+        
+        // Zona Hijau (Target Area Presisi dengan glow halus)
+        let zoneW = dbdTrackWidth * (config.dbdTargetEnd - config.dbdTargetStart)
+        let zoneX = (-dbdTrackWidth / 2) + (dbdTrackWidth * config.dbdTargetStart) + (zoneW / 2)
+        
+        dbdTargetZoneNode.path = CGPath(roundedRect: CGRect(x: -zoneW/2, y: -7, width: zoneW, height: 14), cornerWidth: 4, cornerHeight: 4, transform: nil)
+        dbdTargetZoneNode.fillColor = SKColor(red: 0.20, green: 0.82, blue: 0.40, alpha: 0.85)
+        dbdTargetZoneNode.strokeColor = SKColor(red: 0.60, green: 1.0, blue: 0.70, alpha: 1.0)
+        dbdTargetZoneNode.lineWidth = 1.5
+        dbdTargetZoneNode.position = CGPoint(x: zoneX, y: 0)
+        dbdTrackNode.addChild(dbdTargetZoneNode)
+        
+        // Kursor Batu Bata Merah (Artisan Terracotta Brick)
+        let cursorPath = CGMutablePath()
+        cursorPath.addRoundedRect(in: CGRect(x: -12, y: -13, width: 24, height: 26), cornerWidth: 3, cornerHeight: 3)
+        dbdCursorNode.path = cursorPath
+        dbdCursorNode.fillColor = SKColor(red: 0.82, green: 0.32, blue: 0.20, alpha: 1.0)
+        dbdCursorNode.strokeColor = SKColor(red: 0.98, green: 0.88, blue: 0.75, alpha: 1.0)
+        dbdCursorNode.lineWidth = 1.8
+        dbdCursorNode.position = CGPoint(x: -dbdTrackWidth/2, y: 0)
+        dbdTrackNode.addChild(dbdCursorNode)
+        
+        let mortar = SKShapeNode(rectOf: CGSize(width: 20, height: 1.5))
+        mortar.fillColor = SKColor(red: 0.95, green: 0.85, blue: 0.75, alpha: 0.5)
+        mortar.strokeColor = .clear
+        dbdCursorNode.addChild(mortar)
+        
+        dbdTrackNode.alpha = 0.0 // Tersembunyi sampai rak diangkat seimbang
+    }
+    
+    private func buildMinimalHUD() {
+        // Ultra-minimalist HUD: Tanpa teks panjang, hanya badge kecil & tombol dismiss
+        headerBar.position = CGPoint(x: 0, y: 330)
+        headerBar.zPosition = 10
+        container.addChild(headerBar)
+        
+        let pillBg = SKShapeNode(rectOf: CGSize(width: 120, height: 26), cornerRadius: 13)
+        pillBg.fillColor = SKColor(red: 0.14, green: 0.10, blue: 0.07, alpha: 0.92)
+        pillBg.strokeColor = SKColor(red: 0.70, green: 0.54, blue: 0.30, alpha: 0.8)
+        pillBg.lineWidth = 1.5
+        headerBar.addChild(pillBg)
+        
+        headerTitleLabel.text = "GANJAL RAK"
+        headerTitleLabel.fontName = "AvenirNext-Bold"
+        headerTitleLabel.fontSize = 11
+        headerTitleLabel.fontColor = SKColor(red: 0.95, green: 0.88, blue: 0.72, alpha: 1.0)
+        headerTitleLabel.verticalAlignmentMode = .center
+        headerTitleLabel.position = CGPoint(x: 0, y: 0)
+        headerBar.addChild(headerTitleLabel)
+        
+        // Tombol Close/Dismiss Artistik (Kayu & Emas)
+        let dismissBtn = SKShapeNode(circleOfRadius: 16)
+        dismissBtn.fillColor = SKColor(red: 0.16, green: 0.12, blue: 0.08, alpha: 0.9)
+        dismissBtn.strokeColor = SKColor(red: 0.65, green: 0.50, blue: 0.30, alpha: 0.8)
+        dismissBtn.lineWidth = 1.5
+        dismissBtn.position = CGPoint(x: 155, y: 0)
+        dismissBtn.name = "dismissBtn"
+        
+        let xLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        xLabel.text = "✕"
+        xLabel.fontSize = 12
+        xLabel.fontColor = SKColor(red: 0.95, green: 0.88, blue: 0.72, alpha: 0.9)
+        xLabel.verticalAlignmentMode = .center
+        xLabel.horizontalAlignmentMode = .center
+        dismissBtn.addChild(xLabel)
+        headerBar.addChild(dismissBtn)
+        
+        // Indikator Ketukan Palu (Visual Pips, bukan teks!)
+        buildHammerIndicator()
+    }
+    
+    private func buildHammerIndicator() {
+        hammerPromptNode.position = CGPoint(x: 82, y: -70)
+        hammerPromptNode.zPosition = 9
+        hammerPromptNode.alpha = 0.0
+        container.addChild(hammerPromptNode)
+        
+        let promptBg = SKShapeNode(rectOf: CGSize(width: 52, height: 24), cornerRadius: 12)
+        promptBg.fillColor = SKColor(red: 0.12, green: 0.09, blue: 0.06, alpha: 0.95)
+        promptBg.strokeColor = SKColor(red: 0.85, green: 0.65, blue: 0.32, alpha: 1.0)
+        promptBg.lineWidth = 1.5
+        hammerPromptNode.addChild(promptBg)
+        
+        // Pip 1
+        hammerPip1.path = CGPath(ellipseIn: CGRect(x: -14, y: -4, width: 8, height: 8), transform: nil)
+        hammerPip1.fillColor = SKColor.white.withAlphaComponent(0.25)
+        hammerPip1.strokeColor = SKColor.white.withAlphaComponent(0.7)
+        hammerPip1.lineWidth = 1.0
+        hammerPromptNode.addChild(hammerPip1)
+        
+        // Pip 2
+        hammerPip2.path = CGPath(ellipseIn: CGRect(x: 6, y: -4, width: 8, height: 8), transform: nil)
+        hammerPip2.fillColor = SKColor.white.withAlphaComponent(0.25)
+        hammerPip2.strokeColor = SKColor.white.withAlphaComponent(0.7)
+        hammerPip2.lineWidth = 1.0
+        hammerPromptNode.addChild(hammerPip2)
+    }
+    
+    // MARK: - CoreMotion & Update Loop
+    
+    public func start() {
+        guard !isRunning && !isCompleted else { return }
+        isRunning = true
+        lastUpdateTime = 0
+        
+        container.setScale(0.88)
+        container.alpha = 0
+        container.run(.group([
+            .fadeIn(withDuration: 0.3),
+            .scale(to: 1.0, duration: 0.35).applyTimingMode(.easeOut)
+        ]))
+        
+        #if canImport(UIKit)
+        HapticsService.shared.playSelection()
+        #endif
+        
+        if motionManager.isDeviceMotionAvailable {
+            motionManager.deviceMotionUpdateInterval = 1.0 / 60.0
+            motionManager.startDeviceMotionUpdates()
+        }
+        
+        // Dialogue pembuka Bu Mara dengan SpeechBubbleNode
+        showBuMaraDialog("Arthur! Tolong aku, rak tembikarku miring dan potnya mau jatuh!")
+        
+        let loop = SKAction.customAction(withDuration: 1000.0) { [weak self] _, elapsedTime in
+            guard let self, self.isRunning else { return }
+            let dt = self.lastUpdateTime == 0 ? 1.0/60.0 : min(0.05, Double(elapsedTime) - self.lastUpdateTime)
+            self.lastUpdateTime = Double(elapsedTime)
+            
+            self.updatePhysics(deltaTime: dt)
+        }
+        run(loop, withKey: "shelfLoop")
+    }
+    
+    private func updatePhysics(deltaTime: TimeInterval) {
+        if isWedgePlaced {
+            // Rak sudah diganjal batu bata: Berdiri kokoh tegak lurus sama tanah, setara dan gak ngangkat!
+            shelfAngle = 0.0
+            shelfPivotNode.zRotation = 0.0
+            waterpassBubble.position.x = 0.0
+            return
+        }
+        
+        // CoreMotion: Membaca tilt perangkat di mode portrait
+        var tilt: CGFloat = simulatedTilt
+        if let motion = motionManager.deviceMotion {
+            tilt = CGFloat(motion.gravity.x)
+        }
+        
+        if isShelfLifted {
+            // SAAT RAK SUDAH DIANGKAT: Langsung STAY di posisi terangkat,
+            // dan pemain menyeimbangkannya menggunakan Gyro (CoreMotion)
+            let targetTilt = -tilt * 0.35
+            shelfAngle += (targetTilt - shelfAngle) * CGFloat(deltaTime * 6.0)
+            
+            // Batasi agar tidak melayang terlalu tinggi (gak ngangkat di atas tanah)
+            shelfAngle = max(-0.09, min(0.18, shelfAngle))
+            
+            // Cek status seimbang
+            let prevBalanced = isBalanced
+            isBalanced = abs(shelfAngle) <= config.balanceTolerance
+            
+            if isBalanced && !prevBalanced {
+                dbdTrackNode.run(.fadeAlpha(to: 1.0, duration: 0.2))
+                waterpassBubble.fillColor = SKColor(red: 0.25, green: 0.95, blue: 0.45, alpha: 1.0)
+                waterpassGlow.run(.fadeAlpha(to: 0.7, duration: 0.2))
+                #if canImport(UIKit)
+                HapticsService.shared.playImpact(style: .light)
+                #endif
+            } else if !isBalanced && prevBalanced {
+                dbdTrackNode.run(.fadeAlpha(to: 0.35, duration: 0.2))
+                waterpassBubble.fillColor = SKColor(red: 0.95, green: 0.75, blue: 0.35, alpha: 1.0)
+                waterpassGlow.run(.fadeAlpha(to: 0.0, duration: 0.2))
+            }
+            
+            // Gerakkan slider DBD hanya saat seimbang
+            if isBalanced && !isWedgePlaced {
+                sliderProgress += (config.dbdSliderSpeed * CGFloat(deltaTime)) * sliderDirection
+                if sliderProgress >= 1.0 { sliderProgress = 1.0; sliderDirection = -1.0 }
+                if sliderProgress <= 0.0 { sliderProgress = 0.0; sliderDirection = 1.0 }
+                
+                let cursorX = (-dbdTrackWidth / 2) + (sliderProgress * dbdTrackWidth)
+                dbdCursorNode.position.x = cursorX
+            }
+            
+        } else {
+            // SEBELUM DIANGKAT: Kemiringan gyro / drag mengangkat kaki rak dari posisi ambles ke lurus
+            let targetTilt = 0.17 - (tilt * 0.35)
+            shelfAngle += (targetTilt - shelfAngle) * CGFloat(deltaTime * 5.0)
+            
+            // Begitu terangkat mendekati 0 derajat, LANGSUNG STAY di atas!
+            if abs(shelfAngle) <= config.balanceTolerance {
+                isShelfLifted = true
+                shelfAngle = 0.0
+                #if canImport(UIKit)
+                HapticsService.shared.playImpact(style: .medium)
+                #endif
+            }
+        }
+        
+        // Terapkan rotasi rak berpusat di kaki kiri
+        shelfPivotNode.zRotation = -shelfAngle
+        
+        // Update posisi gelembung waterpass
+        let bubbleX = max(-45, min(45, -shelfAngle * 180))
+        waterpassBubble.position.x = bubbleX
+        
+        // Cek jika miring melampaui batas (Pot Tergelincir & Pecah)
+        if abs(shelfAngle) > config.failAngle {
+            handleFailTippedOver()
+        }
+    }
+    
+    // MARK: - Touch Handling (Precision Tap & Drag Fallback)
+    
+    #if canImport(UIKit)
+    public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard isRunning else { return }
+        
+        // Cek tombol dismiss / tutup
+        if let touch = touches.first {
+            let locInHeader = touch.location(in: headerBar)
+            if hypot(locInHeader.x - 155, locInHeader.y) <= 24 {
+                cancel()
+                onDismiss?()
+                return
+            }
+        }
+        
+        if isShelfLifted && !isWedgePlaced {
+            // Precision Tap DBD Slider
+            evaluateDBDTap()
+        } else if !isShelfLifted {
+            // Tap untuk langsung mengangkat rak dan STAY tegak lurus
+            isShelfLifted = true
+            shelfAngle = 0.0
+            shelfPivotNode.zRotation = 0.0
+            #if canImport(UIKit)
+            HapticsService.shared.playImpact(style: .medium)
+            #endif
+        } else if isWedgePlaced && hammerTaps < 2 {
+            // Ketuk palu mengunci pasak
+            handleHammerTap()
+        }
+    }
+    
+    public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard isRunning && !isWedgePlaced, let touch = touches.first else { return }
+        let loc = touch.location(in: self)
+        simulatedTilt = (loc.x / 140.0)
+    }
+    #endif
+    
+    // MARK: - QTE Evaluation & Success/Fail
+    
+    private func evaluateDBDTap() {
+        if isBalanced && sliderProgress >= config.dbdTargetStart && sliderProgress <= config.dbdTargetEnd {
+            // SUKSES! Bata tepat masuk mengganjal kaki kanan
+            handleSuccessWedge()
+        } else {
+            // MELESET! Kaki anjlok kembali ke lumpur
+            handleMissedTap()
+        }
+    }
+    
+    private func handleSuccessWedge() {
+        isWedgePlaced = true
+        shelfAngle = 0.0
+        shelfPivotNode.zRotation = 0.0
+        motionManager.stopDeviceMotionUpdates()
+        
+        #if canImport(UIKit)
+        HapticsService.shared.playNotification(.success)
+        #endif
+        
+        dbdTrackNode.run(.fadeOut(withDuration: 0.15))
+        
+        // Bata muncul mengganjal kaki kanan napak tanah sehingga setara dan tegak
+        brickWedgeNode.alpha = 1.0
+        brickWedgeNode.setScale(0.2)
+        brickWedgeNode.run(.scale(to: 1.0, duration: 0.15).applyTimingMode(.easeOut))
+        
+        // Waterpass langsung seimbang sempurna
+        waterpassBubble.position.x = 0.0
+        waterpassBubble.fillColor = SKColor(red: 0.25, green: 0.95, blue: 0.45, alpha: 1.0)
+        waterpassGlow.run(.fadeAlpha(to: 0.8, duration: 0.15))
+        
+        // Indikator visual ketukan palu muncul
+        hammerPromptNode.run(.fadeIn(withDuration: 0.2))
+        
+        showBuMaraDialog("Kunci batanya sekarang!", isSuccess: true)
+    }
+    
+    private func handleHammerTap() {
+        hammerTaps += 1
+        
+        #if canImport(UIKit)
+        HapticsService.shared.playImpact(style: hammerTaps == 2 ? .heavy : .medium)
+        #endif
+        
+        // Efek ketukan palu yang mantap mengunci pasak ke dalam tanah (tidak melayang/ngangkat)
+        shelfPivotNode.run(.sequence([
+            .moveBy(x: 0, y: -2.5, duration: 0.03),
+            .moveBy(x: 0, y: 2.5, duration: 0.03)
+        ]))
+        
+        // Update visual pip indikator (tanpa teks!)
+        if hammerTaps == 1 {
+            hammerPip1.fillColor = SKColor(red: 0.95, green: 0.82, blue: 0.35, alpha: 1.0)
+            hammerPromptNode.run(.sequence([
+                .scale(to: 1.25, duration: 0.08),
+                .scale(to: 1.0, duration: 0.08)
+            ]))
+        } else if hammerTaps >= 2 {
+            hammerPip2.fillColor = SKColor(red: 0.95, green: 0.82, blue: 0.35, alpha: 1.0)
+            hammerPromptNode.run(.sequence([
+                .scale(to: 1.25, duration: 0.08),
+                .scale(to: 1.0, duration: 0.08)
+            ]))
+            finishGameSuccess()
+        }
+    }
+    
+    private func finishGameSuccess() {
+        isRunning = false
+        isCompleted = true
+        removeAction(forKey: "shelfLoop")
+        motionManager.stopDeviceMotionUpdates()
+        
+        #if canImport(UIKit)
+        HapticsService.shared.playNotification(.success)
+        #endif
+        
+        hammerPromptNode.run(.fadeOut(withDuration: 0.2))
+        
+        // Efek pendar berkilau kemenangan
+        let winGlow = SKShapeNode(rectOf: CGSize(width: 280, height: 140), cornerRadius: 8)
+        winGlow.position = CGPoint(x: 85, y: 55)
+        winGlow.fillColor = SKColor(red: 0.95, green: 0.85, blue: 0.45, alpha: 0.35)
+        winGlow.strokeColor = .clear
+        winGlow.blendMode = .add
+        winGlow.zPosition = 6
+        shelfBodyNode.addChild(winGlow)
+        winGlow.run(.sequence([
+            .scale(to: 1.15, duration: 0.35).applyTimingMode(.easeOut),
+            .fadeOut(withDuration: 0.4),
+            .removeFromParent()
+        ]))
+        
+        showBuMaraDialog("Rak sudah kokoh! Terima kasih!", isSuccess: true)
+        
+        onComplete?(true)
+        
+        run(.sequence([
+            .wait(forDuration: 2.8),
+            .run { [weak self] in
+                self?.onDismiss?()
+                self?.removeFromParent()
+            }
+        ]))
+    }
+    
+    private func handleMissedTap() {
+        #if canImport(UIKit)
+        HapticsService.shared.playNotification(.error)
+        #endif
+        
+        // Kaki anjlok kembali ke lumpur
+        isShelfLifted = false
+        shelfAngle = 0.17
+        shelfPivotNode.zRotation = -shelfAngle
+        
+        dbdTrackNode.run(.fadeAlpha(to: 0.0, duration: 0.15))
+        
+        // Goyangan benturan keras
+        container.run(.sequence([
+            .moveBy(x: -8, y: 0, duration: 0.04),
+            .moveBy(x: 16, y: 0, duration: 0.08),
+            .moveBy(x: -8, y: 0, duration: 0.04)
+        ]))
+        
+        showBuMaraDialog("Aduh, batanya meleset!")
+    }
+    
+    private func handleFailTippedOver() {
+        guard isRunning else { return }
+        isRunning = false
+        isCompleted = true
+        removeAction(forKey: "shelfLoop")
+        motionManager.stopDeviceMotionUpdates()
+        
+        #if canImport(UIKit)
+        HapticsService.shared.playNotification(.error)
+        #endif
+        
+        // Pot jatuh dan pecah
+        pot1Node.run(.moveBy(x: -60, y: -90, duration: 0.3).applyTimingMode(.easeIn))
+        pot2Node.run(.moveBy(x: 40, y: -100, duration: 0.3).applyTimingMode(.easeIn))
+        pot3Node.run(.moveBy(x: 80, y: -110, duration: 0.3).applyTimingMode(.easeIn))
+        
+        showBuMaraDialog("Astaga, potnya pecah!")
+        
+        onComplete?(false)
+        
+        run(.sequence([
+            .wait(forDuration: 2.8),
+            .run { [weak self] in
+                self?.onDismiss?()
+                self?.removeFromParent()
+            }
+        ]))
+    }
+    
+    // MARK: - SpeechBubble Dialog System
+    
+    private func showBuMaraDialog(_ message: String, isSuccess: Bool = false) {
+        activeSpeechBubble?.popOut()
+        activeSpeechBubble = nil
+        
+        let config = SpeechBubbleConfig(
+            text: message,
+            speaker: "BU MARA",
+            fontName: "AvenirNext-Bold",
+            fontSize: 13,
+            fontColor: .white,
+            speakerColor: isSuccess ? SKColor(red: 0.45, green: 0.90, blue: 0.55, alpha: 1.0) : SKColor(red: 0.96, green: 0.83, blue: 0.48, alpha: 1.0),
+            backgroundColor: SKColor(red: 0.08, green: 0.07, blue: 0.09, alpha: 0.96),
+            crayonStrokeColor: isSuccess ? SKColor(red: 0.25, green: 0.70, blue: 0.35, alpha: 0.9) : SKColor(red: 0.85, green: 0.50, blue: 0.30, alpha: 0.9),
+            padding: CGSize(width: 20, height: 12),
+            maxWidth: 280,
+            cornerRadius: 15
+        )
+        
+        let bubble = SpeechBubbleNode(config: config, tailTipOffset: CGPoint(x: -60, y: -40))
+        bubble.position = CGPoint(x: 0, y: -310)
+        bubble.zPosition = 100
+        container.addChild(bubble)
+        bubble.popIn()
+        activeSpeechBubble = bubble
+        
+        bubble.run(.sequence([
+            .wait(forDuration: 2.2),
+            .run { [weak self, weak bubble] in
+                if self?.activeSpeechBubble == bubble {
+                    self?.activeSpeechBubble = nil
+                }
+                bubble?.popOut()
+            }
+        ]))
+    }
+    
+    public func cancel() {
+        isRunning = false
+        motionManager.stopDeviceMotionUpdates()
+        removeAllActions()
+        removeFromParent()
+    }
 }
 
-public struct PotDebris: Identifiable {
-    public let id = UUID()
-    public var position: CGPoint
-    public var rotation: Double
-    public var scale: CGFloat
-}
+// MARK: - SwiftUI View Wrapper (Consistent API & Previews)
 
-// MARK: - Main Minigame View
+#if canImport(SwiftUI)
+import SwiftUI
 
 public struct BuMaraShelfMinigameView: View {
     public var onComplete: ((Bool) -> Void)?
@@ -44,1167 +1411,32 @@ public struct BuMaraShelfMinigameView: View {
         self.onDismiss = onDismiss
     }
     
-    // Game States
-    @State private var gameState: ShelfGameState = .lifting
-    @State private var failReason: ShelfFailReason = .dropped
-    
-    // Physics: 14 derajat kemiringan awal ambles ke tanah
-    @State private var shelfAngle: Double = 14.0
-    
-    // Gyroscope Motion Manager
-    private let motionManager = CMMotionManager()
-    @State private var isGyroActive: Bool = false
-    
-    // DBD Slider States (Quick Time Event)
-    @State private var dbdProgress: Double = 0.0
-    @State private var dbdDirection: Double = 1.0
-    private let dbdSpeed: Double = 1.15
-    private let targetStart: Double = 0.65
-    private let targetEnd: Double = 0.82
-    private let timer = Timer.publish(every: 0.02, on: .main, in: .common).autoconnect()
-    
-    // Wedge & Hammer States
-    @State private var isWedgePlaced: Bool = false
-    @State private var hammerTaps: Int = 0
-    @State private var hammerWiggle: CGFloat = 0.0
-    
-    // Visual FX & Pot Physics
-    @State private var potSlideOffset: CGFloat = 8.0
-    @State private var potOpacity: Double = 1.0
-    @State private var shatteredPieces: [PotDebris] = []
-    @State private var plantRustle: Double = 0.0
-    
-    // Screen Feedback & Ambient
-    @State private var screenShake: CGFloat = 0.0
-    @State private var warningFlash: Double = 0.0
-    @State private var successFlash: Double = 0.0
-    @State private var lastHapticAngle: Int = 14
-    @State private var gardenBreeze: Double = 0.0
-    
-    // Limits
-    private let balancedRange: ClosedRange<Double> = -2.5...2.5
-    private let failAngleUp: Double = -13.0
-    
-    // Dimensions
-    private let shelfWidth: CGFloat = 330
-    private let legWidth: CGFloat = 24
-    private let legHeight: CGFloat = 110
-    private let plankHeight: CGFloat = 20
-    private let potsHeight: CGFloat = 55
-    
     public var body: some View {
-        GeometryReader { proxy in
-            let screenSize = CGSize(
-                width: proxy.size.width > 50 ? proxy.size.width : 844,
-                height: proxy.size.height > 50 ? proxy.size.height : 390
-            )
+        SpriteView(scene: {
+            let scene = SKScene(size: CGSize(width: 393, height: 852)) // Portrait size
+            scene.scaleMode = .resizeFill
+            scene.backgroundColor = SKColor(red: 0.55, green: 0.74, blue: 0.86, alpha: 1.0)
             
-            let groundY = screenSize.height * 0.75
-            let pivotX = max(screenSize.width * 0.18, (screenSize.width - shelfWidth) * 0.35)
-            let pivotY = groundY
-            let rightFootTarget = CGPoint(x: pivotX + shelfWidth - legWidth / 2, y: groundY)
-            let initialWedgePos = CGPoint(x: min(rightFootTarget.x + 85, screenSize.width - 65), y: groundY + 14)
+            let minigame = ShelfBalanceMinigameNode()
+            minigame.position = CGPoint(x: scene.size.width/2, y: scene.size.height/2)
+            minigame.onComplete = onComplete
+            minigame.onDismiss = onDismiss
+            scene.addChild(minigame)
+            minigame.start()
             
-            ZStack {
-                // 1. Background Luar Rumah Bu Mara
-                OutdoorCottageGardenBackground(groundY: groundY, breeze: gardenBreeze)
-                    .ignoresSafeArea()
-                
-                SunlightRayOverlay()
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-                
-                // FX Screen Flash
-                Color.red.opacity(warningFlash).ignoresSafeArea().allowsHitTesting(false)
-                Color.green.opacity(successFlash).ignoresSafeArea().allowsHitTesting(false)
-                
-                // 2. Teks Status Minimalis (Di Atas)
-                CinematicHeader(gameState: gameState, isBalanced: balancedRange.contains(shelfAngle))
-                    .position(x: screenSize.width / 2, y: 40)
-                
-                // 3. Ground Elements
-                MudSinkholePit(isWedgePlaced: isWedgePlaced)
-                    .position(x: rightFootTarget.x, y: groundY + 16)
-                
-                LeftFootStonePaver()
-                    .position(x: pivotX + legWidth / 2, y: groundY + 6)
-                
-                Ellipse()
-                    .fill(Color.black.opacity(0.45))
-                    .frame(width: 44, height: 10)
-                    .position(x: pivotX + legWidth / 2, y: groundY + 8)
-                
-                // 4. DBD Slider (Hanya muncul saat seimbang sebelum diganjal)
-                if balancedRange.contains(shelfAngle) && !isWedgePlaced && gameState == .lifting {
-                    DBDTrackView(progress: dbdProgress, targetStart: targetStart, targetEnd: targetEnd)
-                        .position(x: rightFootTarget.x, y: groundY - 30)
-                        .transition(.scale.combined(with: .opacity))
-                }
-                
-                // 5. PENGGANJAL (Otomatis geser saat QTE Berhasil)
-                let wedgeCurrentX = isWedgePlaced ? rightFootTarget.x : initialWedgePos.x
-                let wedgeCurrentY = isWedgePlaced ? (groundY + 14) : initialWedgePos.y
-                
-                InteractivePengganjalView(
-                    isPlaced: isWedgePlaced,
-                    hammerTaps: hammerTaps,
-                    onTapToHammer: handleHammerTap
-                )
-                .offset(x: hammerWiggle)
-                .position(x: wedgeCurrentX, y: wedgeCurrentY)
-                .allowsHitTesting(isWedgePlaced && hammerTaps < 2) // Hanya bisa ditap saat fase hammering
-                
-                // 6. RAK KAYU & TEMBIKAR UTUH
-                SinglePieceShelfFurniture(
-                    shelfWidth: shelfWidth,
-                    legWidth: legWidth,
-                    legHeight: legHeight,
-                    plankHeight: plankHeight,
-                    potsHeight: potsHeight,
-                    isWedgePlaced: isWedgePlaced,
-                    potSlideOffset: potSlideOffset,
-                    potOpacity: potOpacity,
-                    plantRustle: plantRustle,
-                    onTapPot: {
-                        withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) {
-                            plantRustle = Double.random(in: -10...10)
-                        }
-                        #if canImport(UIKit)
-                        HapticsService.shared.playImpact(style: .light)
-                        #endif
-                    }
-                )
-                .rotationEffect(
-                    .degrees(shelfAngle),
-                    anchor: UnitPoint(x: (legWidth / 2) / shelfWidth, y: 1.0)
-                )
-                .position(x: pivotX + shelfWidth / 2 - legWidth / 2, y: pivotY - (legHeight + plankHeight + potsHeight) / 2)
-                
-                // 7. Tombol Palu Cepat (Fase Hammering)
-                if isWedgePlaced && hammerTaps < 2 {
-                    Button(action: handleHammerTap) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "hammer.fill").font(.system(size: 14, weight: .bold))
-                            Text("KETUK PALU MENGUNCI RAPAT (\(hammerTaps)/2)")
-                                .font(.system(size: 12, weight: .black, design: .rounded))
-                        }
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 11)
-                        .background(
-                            LinearGradient(colors: [Color(red: 1.0, green: 0.82, blue: 0.35), Color(red: 0.95, green: 0.62, blue: 0.15)], startPoint: .top, endPoint: .bottom)
-                        )
-                        .cornerRadius(16)
-                        .shadow(color: .orange.opacity(0.6), radius: 8, y: 3)
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white, lineWidth: 1.5))
-                    }
-                    .position(x: screenSize.width * 0.5, y: screenSize.height - 40)
-                    .transition(.scale.combined(with: .opacity))
-                }
-                
-                // 8. Pecahan Pot jika Gagal
-                ForEach(shatteredPieces) { piece in
-                    PotShardShape()
-                        .fill(Color(red: 0.68, green: 0.38, blue: 0.20))
-                        .frame(width: 18 * piece.scale, height: 18 * piece.scale)
-                        .rotationEffect(.degrees(piece.rotation))
-                        .position(piece.position)
-                        .shadow(color: .black.opacity(0.5), radius: 2)
-                }
-                
-                // 9. Modals
-                if gameState == .failed {
-                    FailurePopupModal(reason: failReason, onRetry: resetGame)
-                }
-                if gameState == .won {
-                    VictoryPopupModal(onContinue: {
-                        onComplete?(true)
-                        onDismiss?()
-                    })
-                }
-                
-                // 10. Close Button
-                if let onDismiss = onDismiss {
-                    Button(action: onDismiss) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white.opacity(0.85))
-                            .frame(width: 32, height: 32)
-                            .background(Color.black.opacity(0.6))
-                            .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 1))
-                    }
-                    .position(x: screenSize.width - 40, y: 40)
-                }
-            }
-            .offset(x: screenShake)
-            .contentShape(Rectangle()) // Make the whole screen tappable
-            .onTapGesture {
-                // Precision Tap untuk DBD
-                if balancedRange.contains(shelfAngle) && !isWedgePlaced && gameState == .lifting {
-                    evaluateDBDTap()
-                }
-            }
-            .onAppear {
-                startGyroscope()
-                withAnimation(.easeInOut(duration: 3.5).repeatForever(autoreverses: true)) {
-                    gardenBreeze = 4.0
-                }
-            }
-            .onDisappear {
-                stopGyroscope()
-            }
-            .onReceive(timer) { _ in
-                // Update DBD Slider progress
-                guard gameState == .lifting, !isWedgePlaced, balancedRange.contains(shelfAngle) else { return }
-                dbdProgress += (0.02 * dbdSpeed) * dbdDirection
-                if dbdProgress >= 1.0 { dbdProgress = 1.0; dbdDirection = -1.0 }
-                if dbdProgress <= 0.0 { dbdProgress = 0.0; dbdDirection = 1.0 }
-            }
-        }
-    }
-    
-    // MARK: - CoreMotion (Gyroscope)
-    
-    private func startGyroscope() {
-        guard motionManager.isDeviceMotionAvailable else {
-            isGyroActive = false
-            return
-        }
-        isGyroActive = true
-        motionManager.deviceMotionUpdateInterval = 1.0 / 60.0
-        motionManager.startDeviceMotionUpdates(to: .main) { motion, _ in
-            guard let motion = motion, gameState == .lifting else { return }
-            
-            // Evaluasi kemiringan HP (Roll/Pitch dinamis)
-            let roll = motion.gravity.x
-            let pitch = motion.gravity.y
-            let dominantTilt = abs(roll) > abs(pitch) ? -roll : pitch
-            
-            // Hitung target sudut rak dari kemiringan gyro
-            let targetAngle = 14.0 + (Double(dominantTilt) * 25.0)
-            let clamped = max(-14.0, min(18.0, targetAngle))
-            
-            withAnimation(.interactiveSpring(response: 0.1, dampingFraction: 0.8)) {
-                shelfAngle = clamped
-            }
-            
-            evaluateAnglePhysics(shelfAngle)
-        }
-    }
-    
-    private func stopGyroscope() {
-        if motionManager.isDeviceMotionActive {
-            motionManager.stopDeviceMotionUpdates()
-        }
-    }
-    
-    // MARK: - Handlers & Physics
-    
-    private func evaluateAnglePhysics(_ angle: Double) {
-        let intAngle = Int(angle)
-        if intAngle != lastHapticAngle {
-            lastHapticAngle = intAngle
-            #if canImport(UIKit)
-            if balancedRange.contains(angle) {
-                HapticsService.shared.playImpact(style: .rigid)
-            } else {
-                HapticsService.shared.playImpact(style: .light)
-            }
-            #endif
-        }
-        
-        // Geseran pot di atas papan
-        if angle > 4.0 {
-            potSlideOffset = CGFloat((angle - 4.0) * 1.5)
-        } else if angle < -3.5 {
-            potSlideOffset = CGFloat((angle + 3.5) * 1.8)
-        } else {
-            potSlideOffset = 0.0
-        }
-        
-        // Terangkat melampaui batas
-        if angle <= failAngleUp {
-            handleFail(reason: .liftedTooHigh)
-        }
-    }
-    
-    private func evaluateDBDTap() {
-        if dbdProgress >= targetStart && dbdProgress <= targetEnd {
-            // SUCCESS
-            withAnimation(.easeOut(duration: 0.15)) { successFlash = 0.4 }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                withAnimation(.easeIn(duration: 0.25)) { successFlash = 0.0 }
-            }
-            snapWedgeInPlace()
-        } else {
-            // MISS
-            handleFail(reason: .missedQTE)
-        }
-    }
-    
-    private func snapWedgeInPlace() {
-        isWedgePlaced = true
-        gameState = .hammering
-        
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-            shelfAngle = 0.0
-            potSlideOffset = 0.0
-        }
-        
-        #if canImport(UIKit)
-        HapticsService.shared.playNotification(.success)
-        #endif
-        triggerShake(intensity: 4.0)
-    }
-    
-    private func handleHammerTap() {
-        guard isWedgePlaced, hammerTaps < 2 else { return }
-        hammerTaps += 1
-        
-        #if canImport(UIKit)
-        HapticsService.shared.playImpact(style: hammerTaps == 2 ? .heavy : .medium)
-        #endif
-        triggerShake(intensity: hammerTaps == 2 ? 6.0 : 3.0)
-        
-        withAnimation(.default) { hammerWiggle = 3.5 }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            withAnimation(.default) { hammerWiggle = -3.5 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(.default) { hammerWiggle = 0 }
-        }
-        
-        if hammerTaps >= 2 {
-            #if canImport(UIKit)
-            HapticsService.shared.playNotification(.success)
-            #endif
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                gameState = .won
-            }
-        }
-    }
-    
-    private func handleFail(reason: ShelfFailReason) {
-        guard gameState != .won, gameState != .failed else { return }
-        gameState = .failed
-        failReason = reason
-        
-        #if canImport(UIKit)
-        HapticsService.shared.playNotification(.error)
-        #endif
-        triggerShake(intensity: 12.0)
-        
-        withAnimation(.easeOut(duration: 0.1)) { warningFlash = 0.5 }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(.easeIn(duration: 0.3)) { warningFlash = 0.0 }
-        }
-        
-        triggerShatter(at: CGPoint(x: 480, y: 260))
-        
-        if reason == .missedQTE {
-            // Anjlok balik
-            withAnimation(.easeIn(duration: 0.2)) {
-                shelfAngle = 14.0
-            }
-        }
-    }
-    
-    private func triggerShatter(at point: CGPoint) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            potOpacity = 0.0
-            #if canImport(UIKit)
-            HapticsService.shared.playImpact(style: .heavy)
-            #endif
-            
-            shatteredPieces.removeAll()
-            for _ in 0..<16 {
-                let p = PotDebris(
-                    position: CGPoint(
-                        x: point.x + CGFloat.random(in: -15...15),
-                        y: point.y + CGFloat.random(in: -15...15)
-                    ),
-                    rotation: Double.random(in: 0...360),
-                    scale: CGFloat.random(in: 0.7...1.3)
-                )
-                shatteredPieces.append(p)
-            }
-            
-            withAnimation(.easeOut(duration: 0.45)) {
-                for i in shatteredPieces.indices {
-                    shatteredPieces[i].position.x += CGFloat.random(in: -70...70)
-                    shatteredPieces[i].position.y += CGFloat.random(in: -35...35)
-                    shatteredPieces[i].rotation += Double.random(in: -180...180)
-                }
-            }
-        }
-    }
-    
-    private func resetGame() {
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-            gameState = .lifting
-            shelfAngle = 14.0
-            isWedgePlaced = false
-            hammerTaps = 0
-            dbdProgress = 0.0
-            potSlideOffset = 8.0
-            potOpacity = 1.0
-            shatteredPieces.removeAll()
-            warningFlash = 0.0
-        }
-    }
-    
-    private func triggerShake(intensity: CGFloat) {
-        withAnimation(.default) { screenShake = intensity }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            withAnimation(.default) { screenShake = -intensity }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(.default) { screenShake = 0 }
-        }
+            return scene
+        }())
+        .ignoresSafeArea()
     }
 }
 
-// MARK: - Minimal UI Components
-
-public struct CinematicHeader: View {
-    public let gameState: ShelfGameState
-    public let isBalanced: Bool
-    
-    public var body: some View {
-        Text(statusText)
-            .font(.system(size: 16, weight: .heavy))
-            .italic()
-            .foregroundColor(statusColor)
-            .shadow(color: .black.opacity(0.8), radius: 2, x: 1, y: 2)
-            .animation(.easeInOut, value: gameState)
-    }
-    
-    private var statusText: String {
-        switch gameState {
-        case .lifting: return isBalanced ? "SEIMBANG! TAP LAYAR UNTUK MENGGANJAL!" : "MIRINGKAN HP UNTUK SEIMBANGKAN RAK!"
-        case .hammering: return "BATA MASUK! KETUK PALU!"
-        case .won: return "RAK KOKOH!"
-        case .failed: return "TERGULING!"
-        }
-    }
-    
-    private var statusColor: Color {
-        switch gameState {
-        case .lifting: return isBalanced ? Color(red: 0.4, green: 0.95, blue: 0.5) : Color(red: 1.0, green: 0.85, blue: 0.6)
-        case .won: return Color(red: 0.4, green: 0.95, blue: 0.5)
-        case .failed: return .red
-        default: return Color(red: 1.0, green: 0.85, blue: 0.6)
-        }
-    }
-}
-
-public struct DBDTrackView: View {
-    public let progress: Double
-    public let targetStart: Double
-    public let targetEnd: Double
-    public let width: CGFloat = 240
-    public let height: CGFloat = 18
-    
-    public var body: some View {
-        ZStack(alignment: .leading) {
-            // Track Base
-            Capsule()
-                .fill(Color.black.opacity(0.85))
-                .frame(width: width, height: height)
-                .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
-            
-            // Green Zone
-            let zoneW = width * (targetEnd - targetStart)
-            let zoneX = width * targetStart
-            Capsule()
-                .fill(Color.green.opacity(0.8))
-                .frame(width: zoneW, height: height)
-                .offset(x: zoneX)
-            
-            // Cursor
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Color.orange)
-                .frame(width: 14, height: height + 10)
-                .shadow(color: .black, radius: 2)
-                .overlay(RoundedRectangle(cornerRadius: 3).stroke(Color.white, lineWidth: 1.5))
-                .offset(x: width * progress - 7)
-        }
-    }
-}
-
-// MARK: - Outdoor Cottage Garden Background (Luar Rumah & Napak Tanah)
-
-public struct OutdoorCottageGardenBackground: View {
-    public let groundY: CGFloat
-    public let breeze: Double
-    
-    public var body: some View {
-        ZStack {
-            // 1. Langit Pekarangan Luar Rumah (Outdoor Morning Sky)
-            LinearGradient(
-                colors: [
-                    Color(red: 0.40, green: 0.65, blue: 0.85),
-                    Color(red: 0.68, green: 0.82, blue: 0.92),
-                    Color(red: 0.90, green: 0.82, blue: 0.70)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            
-            // 2. Siluet Dinding Luar Pondok Bu Mara di Kiri (Exterior Wall & Eaves)
-            GeometryReader { proxy in
-                let w = proxy.size.width
-                let h = proxy.size.height
-                
-                // Dinding luar kayu/batu pondok di tepi kiri
-                Path { p in
-                    p.move(to: CGPoint(x: 0, y: 0))
-                    p.addLine(to: CGPoint(x: w * 0.28, y: 0))
-                    p.addLine(to: CGPoint(x: w * 0.24, y: groundY))
-                    p.addLine(to: CGPoint(x: 0, y: groundY))
-                    p.closeSubpath()
-                }
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.32, green: 0.22, blue: 0.16), Color(red: 0.24, green: 0.16, blue: 0.11)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                
-                // Papan Lisplang Atap Luar
-                Path { p in
-                    p.move(to: CGPoint(x: 0, y: 35))
-                    p.addLine(to: CGPoint(x: w * 0.30, y: 25))
-                    p.addLine(to: CGPoint(x: w * 0.29, y: 48))
-                    p.addLine(to: CGPoint(x: 0, y: 55))
-                    p.closeSubpath()
-                }
-                .fill(Color(red: 0.20, green: 0.12, blue: 0.08))
-                
-                // Tanaman Merambat di Dinding Luar (Ivy / Climber)
-                HStack(spacing: 18) {
-                    OutdoorHangingPlantView(color: Color(red: 0.28, green: 0.58, blue: 0.25))
-                        .rotationEffect(.degrees(breeze), anchor: .top)
-                    OutdoorHangingPlantView(color: Color(red: 0.35, green: 0.65, blue: 0.30))
-                        .rotationEffect(.degrees(-breeze * 0.7), anchor: .top)
-                    Spacer()
-                }
-                .padding(.leading, 30)
-                .padding(.top, 45)
-                
-                // Pagar Kayu Pekarangan di Belakang Kanan
-                Path { p in
-                    let fenceStart = w * 0.42
-                    let fenceEnd = w
-                    p.move(to: CGPoint(x: fenceStart, y: groundY - 30))
-                    p.addLine(to: CGPoint(x: fenceEnd, y: groundY - 30))
-                    p.move(to: CGPoint(x: fenceStart, y: groundY - 15))
-                    p.addLine(to: CGPoint(x: fenceEnd, y: groundY - 15))
-                }
-                .stroke(Color(red: 0.45, green: 0.32, blue: 0.20).opacity(0.75), lineWidth: 3)
-                
-                // 3. TANAH PEKARANGAN PADAT & RUMPUT (Napak Tanah Line)
-                Path { p in
-                    p.move(to: CGPoint(x: 0, y: groundY))
-                    p.addLine(to: CGPoint(x: w, y: groundY))
-                    p.addLine(to: CGPoint(x: w, y: h))
-                    p.addLine(to: CGPoint(x: 0, y: h))
-                    p.closeSubpath()
-                }
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.22, green: 0.16, blue: 0.11), Color(red: 0.14, green: 0.09, blue: 0.06)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                
-                // Lapisan Rumput Hijau Pekarangan Tepat di Garis Tanah
-                Path { p in
-                    p.move(to: CGPoint(x: 0, y: groundY))
-                    p.addLine(to: CGPoint(x: w, y: groundY))
-                }
-                .stroke(Color(red: 0.32, green: 0.52, blue: 0.22), lineWidth: 5)
-                
-                // Rumput-rumput Liar & Batu Kerikil
-                Path { p in
-                    for i in 0..<18 {
-                        let x = CGFloat(i) * (w / 18) + 8
-                        p.move(to: CGPoint(x: x, y: groundY))
-                        p.addLine(to: CGPoint(x: x - 4, y: groundY - 8))
-                        p.move(to: CGPoint(x: x + 2, y: groundY))
-                        p.addLine(to: CGPoint(x: x + 6, y: groundY - 11))
-                    }
-                }
-                .stroke(Color(red: 0.40, green: 0.65, blue: 0.26).opacity(0.8), lineWidth: 1.8)
-            }
-        }
-    }
-}
-
-public struct OutdoorHangingPlantView: View {
-    public let color: Color
-    
-    public var body: some View {
-        VStack(spacing: 2) {
-            Rectangle().fill(Color(red: 0.3, green: 0.2, blue: 0.1)).frame(width: 2, height: 14)
-            Capsule().fill(color).frame(width: 14, height: 38)
-        }
-    }
-}
-
-public struct SunlightRayOverlay: View {
-    public var body: some View {
-        Canvas { context, size in
-            guard size.width > 10 && size.height > 10 else { return }
-            var beam = Path()
-            beam.move(to: CGPoint(x: -40, y: -40))
-            beam.addLine(to: CGPoint(x: size.width * 0.45, y: -40))
-            beam.addLine(to: CGPoint(x: size.width * 0.85, y: size.height))
-            beam.addLine(to: CGPoint(x: size.width * 0.20, y: size.height))
-            beam.closeSubpath()
-            context.fill(
-                beam,
-                with: .linearGradient(
-                    Gradient(colors: [Color.yellow.opacity(0.18), Color.clear]),
-                    startPoint: CGPoint(x: 0, y: 0),
-                    endPoint: CGPoint(x: size.width * 0.6, y: size.height)
-                )
-            )
-        }
-    }
-}
-
-// MARK: - Single Piece Shelf Furniture (Napak Tanah)
-
-public struct SinglePieceShelfFurniture: View {
-    public let shelfWidth: CGFloat
-    public let legWidth: CGFloat
-    public let legHeight: CGFloat
-    public let plankHeight: CGFloat
-    public let potsHeight: CGFloat
-    public let isWedgePlaced: Bool
-    public let potSlideOffset: CGFloat
-    public let potOpacity: Double
-    public let plantRustle: Double
-    public var onTapPot: (() -> Void)?
-    
-    public var body: some View {
-        VStack(spacing: 0) {
-            // 1. Tiga Pot Bu Mara di Atas Papan
-            HStack(spacing: 36) {
-                TerracottaHerbalPot(plantRustle: plantRustle, onTap: onTapPot)
-                GlazedCeramicJar(onTap: onTapPot)
-                FolkEarthenwareBowl(onTap: onTapPot)
-            }
-            .frame(width: shelfWidth, height: potsHeight, alignment: .bottom)
-            .offset(x: potSlideOffset)
-            .opacity(potOpacity)
-            
-            // 2. Papan Meja Kayu Tebal
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(red: 0.58, green: 0.38, blue: 0.22), Color(red: 0.40, green: 0.24, blue: 0.14)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(width: shelfWidth + 20, height: plankHeight)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 3)
-                            .stroke(Color(red: 0.72, green: 0.52, blue: 0.32).opacity(0.4), lineWidth: 1)
-                    )
-                
-                // Serat Kayu Meja
-                Path { p in
-                    p.move(to: CGPoint(x: 10, y: 7))
-                    p.addQuadCurve(to: CGPoint(x: shelfWidth + 10, y: 7), control: CGPoint(x: shelfWidth * 0.5, y: 5))
-                }
-                .stroke(Color.black.opacity(0.35), lineWidth: 1.5)
-                
-                // Plat Besi Sudut Meja
-                HStack {
-                    CornerIronBracket()
-                    Spacer()
-                    CornerIronBracket()
-                }
-                .frame(width: shelfWidth + 12)
-                .padding(.horizontal, 4)
-            }
-            .frame(width: shelfWidth, height: plankHeight)
-            
-            // 3. Kaki-kaki dan Rangka Penyangga (Napak Tanah)
-            ZStack(alignment: .topLeading) {
-                // Palang Penyangga Horizontal
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(red: 0.46, green: 0.30, blue: 0.17), Color(red: 0.32, green: 0.20, blue: 0.11)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(width: shelfWidth - 40, height: 12)
-                    .position(x: shelfWidth / 2, y: legHeight * 0.48)
-                
-                // Skur Penguat Sudut (Diagonal Braces)
-                Path { p in
-                    p.move(to: CGPoint(x: legWidth, y: 32))
-                    p.addLine(to: CGPoint(x: legWidth + 30, y: 0))
-                    p.move(to: CGPoint(x: shelfWidth - legWidth, y: 32))
-                    p.addLine(to: CGPoint(x: shelfWidth - legWidth - 30, y: 0))
-                }
-                .stroke(Color(red: 0.42, green: 0.26, blue: 0.15), lineWidth: 8)
-                
-                // Kaki Kiri
-                TimberLeg(width: legWidth, height: legHeight)
-                    .position(x: legWidth / 2, y: legHeight / 2)
-                
-                // Kaki Kanan
-                TimberLeg(width: legWidth, height: legHeight)
-                    .position(x: shelfWidth - legWidth / 2, y: legHeight / 2)
-            }
-            .frame(width: shelfWidth, height: legHeight)
-        }
-        .frame(width: shelfWidth, height: potsHeight + plankHeight + legHeight)
-    }
-}
-
-public struct TimberLeg: View {
-    public let width: CGFloat
-    public let height: CGFloat
-    
-    public var body: some View {
-        ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.44, green: 0.28, blue: 0.16), Color(red: 0.28, green: 0.16, blue: 0.09)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .frame(width: width, height: height)
-            
-            Circle()
-                .fill(Color(white: 0.2))
-                .frame(width: 5, height: 5)
-                .offset(y: 8)
-        }
-    }
-}
-
-public struct CornerIronBracket: View {
-    public var body: some View {
-        RoundedRectangle(cornerRadius: 2)
-            .fill(Color(white: 0.25))
-            .frame(width: 20, height: 8)
-            .overlay(
-                HStack(spacing: 8) {
-                    Circle().fill(Color.black).frame(width: 2.5, height: 2.5)
-                    Circle().fill(Color.black).frame(width: 2.5, height: 2.5)
-                }
-            )
-    }
-}
-
-// MARK: - Artisan Pots & Shapes
-
-public struct TerracottaHerbalPot: View {
-    public let plantRustle: Double
-    public var onTap: (() -> Void)?
-    
-    public var body: some View {
-        Button(action: { onTap?() }) {
-            ZStack(alignment: .bottom) {
-                ZStack {
-                    HerbLeaf(color: Color(red: 0.32, green: 0.62, blue: 0.26))
-                        .frame(width: 14, height: 22)
-                        .rotationEffect(.degrees(-30 + plantRustle))
-                        .offset(x: -12, y: -38)
-                    
-                    HerbLeaf(color: Color(red: 0.40, green: 0.72, blue: 0.32))
-                        .frame(width: 14, height: 22)
-                        .rotationEffect(.degrees(25 + plantRustle))
-                        .offset(x: 12, y: -40)
-                    
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 9, height: 9)
-                        .overlay(Circle().fill(Color.yellow).frame(width: 3.5, height: 3.5))
-                        .offset(x: 1, y: -43)
-                }
-                
-                TerracottaShape()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(red: 0.76, green: 0.42, blue: 0.22), Color(red: 0.52, green: 0.25, blue: 0.12)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 58, height: 50)
-                    .overlay(
-                        Path { p in
-                            p.move(to: CGPoint(x: 8, y: 22))
-                            p.addLine(to: CGPoint(x: 50, y: 22))
-                        }
-                        .stroke(Color(red: 0.92, green: 0.72, blue: 0.52).opacity(0.6), lineWidth: 1.5)
-                    )
-                
-                Ellipse()
-                    .fill(Color(red: 0.35, green: 0.16, blue: 0.09))
-                    .frame(width: 38, height: 8)
-                    .offset(y: -48)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-public struct GlazedCeramicJar: View {
-    public var onTap: (() -> Void)?
-    
-    public var body: some View {
-        Button(action: { onTap?() }) {
-            ZStack(alignment: .bottom) {
-                GlazedPotShape()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(red: 0.25, green: 0.68, blue: 0.62), Color(red: 0.12, green: 0.44, blue: 0.38)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 48, height: 44)
-                    .overlay(
-                        Path { p in
-                            p.move(to: CGPoint(x: 12, y: 12))
-                            p.addQuadCurve(to: CGPoint(x: 16, y: 34), control: CGPoint(x: 8, y: 22))
-                        }
-                        .stroke(Color.white.opacity(0.5), lineWidth: 2)
-                    )
-                
-                Rectangle()
-                    .fill(Color(red: 0.82, green: 0.68, blue: 0.45))
-                    .frame(width: 28, height: 3.5)
-                    .offset(y: -38)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-public struct FolkEarthenwareBowl: View {
-    public var onTap: (() -> Void)?
-    
-    public var body: some View {
-        Button(action: { onTap?() }) {
-            ZStack(alignment: .bottom) {
-                ClayBowlMiniShape()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(red: 0.84, green: 0.60, blue: 0.32), Color(red: 0.60, green: 0.38, blue: 0.18)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 44, height: 26)
-                
-                Image(systemName: "circle.dotted")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(Color.black.opacity(0.3))
-                    .offset(y: -8)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-public struct HerbLeaf: View {
-    public let color: Color
-    public var body: some View {
-        Ellipse().fill(color)
-    }
-}
-
-public struct TerracottaShape: Shape {
-    public func path(in rect: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: rect.minX + 12, y: rect.maxY))
-        p.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.midY), control: CGPoint(x: rect.minX - 5, y: rect.maxY * 0.8))
-        p.addQuadCurve(to: CGPoint(x: rect.minX + 10, y: rect.minY), control: CGPoint(x: rect.minX + 2, y: rect.midY * 0.4))
-        p.addLine(to: CGPoint(x: rect.maxX - 10, y: rect.minY))
-        p.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.midY), control: CGPoint(x: rect.maxX - 2, y: rect.midY * 0.4))
-        p.addQuadCurve(to: CGPoint(x: rect.maxX - 12, y: rect.maxY), control: CGPoint(x: rect.maxX + 5, y: rect.maxY * 0.8))
-        p.closeSubpath()
-        return p
-    }
-}
-
-public struct GlazedPotShape: Shape {
-    public func path(in rect: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: rect.minX + 8, y: rect.maxY))
-        p.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.midY), control: CGPoint(x: rect.minX - 4, y: rect.maxY * 0.75))
-        p.addQuadCurve(to: CGPoint(x: rect.minX + 8, y: rect.minY), control: CGPoint(x: rect.minX + 2, y: rect.midY * 0.4))
-        p.addLine(to: CGPoint(x: rect.maxX - 8, y: rect.minY))
-        p.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.midY), control: CGPoint(x: rect.maxX - 2, y: rect.midY * 0.4))
-        p.addQuadCurve(to: CGPoint(x: rect.maxX - 8, y: rect.maxY), control: CGPoint(x: rect.maxX + 4, y: rect.maxY * 0.75))
-        p.closeSubpath()
-        return p
-    }
-}
-
-public struct ClayBowlMiniShape: Shape {
-    public func path(in rect: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: rect.minX + 6, y: rect.maxY))
-        p.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.minY), control: CGPoint(x: rect.minX - 3, y: rect.midY))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        p.addQuadCurve(to: CGPoint(x: rect.maxX - 6, y: rect.maxY), control: CGPoint(x: rect.maxX + 3, y: rect.midY))
-        p.closeSubpath()
-        return p
-    }
-}
-
-public struct PotShardShape: Shape {
-    public func path(in rect: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + 3))
-        p.addLine(to: CGPoint(x: rect.maxX - 3, y: rect.maxY))
-        p.addLine(to: CGPoint(x: rect.minX + 2, y: rect.maxY - 2))
-        p.closeSubpath()
-        return p
-    }
-}
-
-// MARK: - Modals & Overlays
-
-public struct InteractivePengganjalView: View {
-    public let isPlaced: Bool
-    public let hammerTaps: Int
-    public var onTapToHammer: (() -> Void)?
-    
-    public var body: some View {
-        Button(action: {
-            if isPlaced && hammerTaps < 2 {
-                onTapToHammer?()
-            }
-        }) {
-            VStack(spacing: 4) {
-                // Batu Bata Merah Utama
-                ZStack {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(red: 0.82, green: 0.32, blue: 0.20), Color(red: 0.56, green: 0.18, blue: 0.10)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 56, height: 24)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 3)
-                                .stroke(Color.black.opacity(0.35), lineWidth: 1)
-                        )
-                    
-                    HStack(spacing: 4) {
-                        Circle().fill(Color.black.opacity(0.2)).frame(width: 6, height: 6)
-                        Text("BATA GANJAL")
-                            .font(.system(size: 6.5, weight: .black, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.9))
-                        Circle().fill(Color.black.opacity(0.2)).frame(width: 6, height: 6)
-                    }
-                }
-                
-                // Pasak Kayu di Bawah Bata
-                ZStack {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(red: 0.65, green: 0.44, blue: 0.22), Color(red: 0.42, green: 0.26, blue: 0.12)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .frame(width: 50, height: 12)
-                    
-                    Text("PASAK KAYU")
-                        .font(.system(size: 6, weight: .black, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.8))
-                }
-            }
-            .scaleEffect(isPlaced && hammerTaps == 2 ? 1.0 : (isPlaced ? 1.05 : 1.0))
-            .shadow(color: .black.opacity(0.4), radius: 3, y: 3)
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(isPlaced ? (hammerTaps >= 2 ? Color.green : Color.yellow) : Color.orange, lineWidth: 1.5)
-                    .padding(-4)
-            )
-            .opacity(isPlaced ? 1.0 : 0.0) // Sembunyikan jika belum di tempat (otomatis masuk saat QTE berhasil)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-public struct MudSinkholePit: View {
-    public let isWedgePlaced: Bool
-    
-    public var body: some View {
-        ZStack {
-            Ellipse()
-                .fill(Color(red: 0.11, green: 0.08, blue: 0.05))
-                .frame(width: 95, height: 32)
-            
-            Ellipse()
-                .fill(Color(red: 0.16, green: 0.12, blue: 0.08).opacity(0.85))
-                .frame(width: 68, height: 18)
-                .offset(x: -2, y: 2)
-            
-            if !isWedgePlaced {
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.green, style: StrokeStyle(lineWidth: 2, dash: [5, 3]))
-                    .background(Color.green.opacity(0.12))
-                    .frame(width: 58, height: 36)
-                    .offset(y: -4)
-                
-                Text("PASANG GANJAL")
-                    .font(.system(size: 7, weight: .black, design: .monospaced))
-                    .foregroundColor(.green)
-                    .offset(y: -28)
-            }
-        }
-    }
-}
-
-public struct LeftFootStonePaver: View {
-    public var body: some View {
-        RoundedRectangle(cornerRadius: 3)
-            .fill(
-                LinearGradient(
-                    colors: [Color(white: 0.42), Color(white: 0.28)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .frame(width: 38, height: 12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 3)
-                    .stroke(Color.black.opacity(0.4), lineWidth: 1)
-            )
-    }
-}
-
-public struct VictoryPopupModal: View {
-    public let onContinue: () -> Void
-    
-    public var body: some View {
-        ZStack {
-            Color.black.opacity(0.65).ignoresSafeArea()
-            
-            VStack(spacing: 14) {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 42))
-                    .foregroundColor(.green)
-                
-                Text("RAK BERDIRI KOKOH!")
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-                
-                Text("Terima kasih Arthur! Berkat ganjalan batu bata dan pasak kayu darimu, rak tembikar Bu Mara di pekarangan berdiri kokoh napak tanah!")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundColor(.white.opacity(0.9))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 16)
-                
-                Button(action: onContinue) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark")
-                        Text("LANJUTKAN")
-                    }
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 10)
-                    .background(Color.green)
-                    .cornerRadius(14)
-                }
-                .padding(.top, 4)
-            }
-            .padding(24)
-            .background(Color(red: 0.14, green: 0.18, blue: 0.13))
-            .cornerRadius(20)
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.green.opacity(0.6), lineWidth: 1.5))
-            .frame(maxWidth: 440)
-            .transition(.scale.combined(with: .opacity))
-        }
-    }
-}
-
-public struct FailurePopupModal: View {
-    public let reason: ShelfFailReason
-    public let onRetry: () -> Void
-    
-    public var body: some View {
-        ZStack {
-            Color.black.opacity(0.7).ignoresSafeArea()
-            
-            VStack(spacing: 14) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 38))
-                    .foregroundColor(.orange)
-                
-                Text(reason == .liftedTooHigh ? "DIANGKAT TERLALU TINGGI!" : "POT BU MARA JATUH PECAH!")
-                    .font(.system(size: 17, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-                
-                Text(reason == .liftedTooHigh
-                     ? "Rak terangkat melampaui batas sehingga pot meluncur jatuh ke kiri."
-                     : (reason == .missedQTE ? "Batu bata gagal diselipkan dan rak kembali anjlok keras!" : "Rak terlepas sebelum penopang terpasang, menyebabkan benturan keras!"))
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundColor(.white.opacity(0.85))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 16)
-                
-                Button(action: onRetry) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.counterclockwise")
-                        Text("COBA LAGI")
-                    }
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 26)
-                    .padding(.vertical, 10)
-                    .background(Color(red: 1.0, green: 0.85, blue: 0.45))
-                    .cornerRadius(14)
-                }
-                .padding(.top, 4)
-            }
-            .padding(24)
-            .background(Color(red: 0.18, green: 0.13, blue: 0.10))
-            .cornerRadius(20)
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.orange.opacity(0.5), lineWidth: 1.5))
-            .frame(maxWidth: 420)
-            .transition(.scale.combined(with: .opacity))
-        }
-    }
-}
-
-// MARK: - Compatibility Typealiases
-
+// Compatibility Aliases
 public typealias ShelfBalanceMinigame = BuMaraShelfMinigameView
 public typealias ShelfBalanceMinigameView = BuMaraShelfMinigameView
 
-// MARK: - Previews
-
-#if canImport(SwiftUI) && DEBUG
-#Preview("Bu Mara Shelf Minigame", traits: .landscapeLeft) {
+#if DEBUG
+#Preview("Bu Mara Shelf Minigame (SpriteKit & SpeechBubble)") {
     BuMaraShelfMinigameView()
 }
+#endif
 #endif

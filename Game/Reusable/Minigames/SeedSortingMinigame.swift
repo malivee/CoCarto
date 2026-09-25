@@ -28,7 +28,7 @@ public struct SeedSortingConfig: Sendable {
         basketRadius: CGFloat = 135,
         shakeThresholdTotal: CGFloat = 120.0, // Durasi diperpanjang agar sortir terasa nyata & berirama
         headingText: String = "PISAHKAN GANDUM",
-        instructionText: String = "GOYANGKAN PERANGKAT BERIRAMA UNTUK MENYORTIR BIJI"
+        instructionText: String = "Goyangkan perangkat berirama"
     ) {
         self.goodSeedCount = goodSeedCount
         self.badSeedCount = badSeedCount
