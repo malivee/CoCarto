@@ -27,18 +27,7 @@ final class MapCellNode: SKSpriteNode {
 
         addMicroBiomeDebugGrid(microBiomeGrid, gridID: gridID, piece: piece, cellSize: mapper.cellSize)
 
-        let symbol = SKLabelNode(fontNamed: "Menlo-Bold")
-        symbol.text = "\(piece.role.debugName)-\(gridID.rawValue)"
-        symbol.fontSize = mapper.cellSize * 0.16
-        symbol.fontColor = .white
-        symbol.verticalAlignmentMode = .center
-        symbol.horizontalAlignmentMode = .center
-        symbol.zPosition = 2
-        addChild(symbol)
-
         addMismatchEdgeHighlights(mismatchedEdges, cellSize: mapper.cellSize)
-        addEdgeDebugLabels(edges: edges, cellSize: mapper.cellSize)
-        addBiomeEdgeDebugLabels(edges: biomeEdges, cellSize: mapper.cellSize)
     }
 
     private func addMicroBiomeDebugGrid(_ microBiomeGrid: MicroBiomeGrid, gridID: GridID, piece: WorldPiece, cellSize: CGFloat) {
