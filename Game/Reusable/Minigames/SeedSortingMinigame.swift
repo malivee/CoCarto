@@ -1,10 +1,10 @@
-// Penjelasan file: SeedSortingMinigame.swift
-// Komponen Minigame Fisik "Tampah" (Winnowing Basket) menggunakan Sensor CoreMotion.
-// Mekanik:
-// 1. Pemain memiringkan dan menggoyangkan HP untuk memisahkan biji gandum.
-// 2. Goyangan menghasilkan "Sorting Progress".
-// 3. Semakin tinggi progres, biji hitam (busuk) akan terlempar ke pinggir, dan biji bagus mengumpul di tengah.
-// 4. Komponen mandiri (Self-contained physics), tidak merusak gravitasi Scene utama.
+// File Description: SeedSortingMinigame.swift
+// Winnowing Basket Physical Minigame Component using CoreMotion Sensor.
+// Mechanics:
+// 1. The player tilts and shakes the phone to separate the wheat seeds.
+// 2. Shaking generates "Sorting Progress".
+// 3. The higher the progress, the black (bad) seeds are pushed to the edges, and the good seeds gather in the center.
+// 4. Self-contained physics component, does not disrupt the main Scene's gravity.
 
 import SpriteKit
 import CoreMotion
@@ -18,7 +18,7 @@ public struct SeedSortingConfig: Sendable {
     public var goodSeedCount: Int
     public var badSeedCount: Int
     public var basketRadius: CGFloat
-    public var shakeThresholdTotal: CGFloat // Total akumulasi goyangan untuk menang
+    public var shakeThresholdTotal: CGFloat // Total accumulated shake to win
     public var headingText: String
     public var instructionText: String
     
@@ -26,9 +26,9 @@ public struct SeedSortingConfig: Sendable {
         goodSeedCount: Int = 50,
         badSeedCount: Int = 20,
         basketRadius: CGFloat = 135,
-        shakeThresholdTotal: CGFloat = 120.0, // Durasi diperpanjang agar sortir terasa nyata & berirama
-        headingText: String = "PISAHKAN GANDUM",
-        instructionText: String = "Goyangkan perangkat berirama"
+        shakeThresholdTotal: CGFloat = 120.0, // Extended duration so sorting feels realistic & rhythmic
+        headingText: String = "SORT THE WHEAT",
+        instructionText: String = "Shake the device rhythmically"
     ) {
         self.goodSeedCount = goodSeedCount
         self.badSeedCount = badSeedCount
@@ -75,7 +75,7 @@ public final class SeedSortingMinigameNode: SKNode {
     private let headingLabel = SKLabelNode(fontNamed: "AvenirNext-Heavy")
     private let instructionLabel = SKLabelNode(fontNamed: "AvenirNext-Medium")
     
-    // Arrays untuk referensi sorting
+    // Arrays for sorting references
     private var goodSeeds: [SKNode] = []
     private var badSeeds: [SKNode] = []
     
@@ -99,7 +99,7 @@ public final class SeedSortingMinigameNode: SKNode {
         let path = CGMutablePath()
         let w: CGFloat = 4.5
         let h: CGFloat = 10.0
-        // Bentuk biji gandum (kapsul meruncing)
+        // Wheat seed shape (tapered capsule)
         path.move(to: CGPoint(x: 0, y: h/2))
         path.addQuadCurve(to: CGPoint(x: w/2, y: 0), control: CGPoint(x: w/2 + 1, y: h/4))
         path.addQuadCurve(to: CGPoint(x: 0, y: -h/2), control: CGPoint(x: w/2 + 1, y: -h/4))
@@ -111,24 +111,24 @@ public final class SeedSortingMinigameNode: SKNode {
     private func buildVisuals() {
         addChild(container)
         
-        // 1. Redup Layar (Lumbung yang hangat)
+        // 1. Screen Dimming (Warm Barn vibe)
         backdrop.color = SKColor(red: 0.08, green: 0.06, blue: 0.05, alpha: 0.88)
         backdrop.size = CGSize(width: 5000, height: 5000)
         backdrop.zPosition = -10
         container.addChild(backdrop)
         
-        // 2. Tampah Anyaman (Winnowing Basket)
+        // 2. Woven Basket (Winnowing Basket)
         basketNode.zPosition = 1
         container.addChild(basketNode)
         
-        // Dasar Tampah (Shadow & Base Kayu/Anyaman)
+        // Basket Base (Shadow & Wood/Weave Base)
         let baseBasket = SKShapeNode(circleOfRadius: config.basketRadius)
         baseBasket.fillColor = SKColor(red: 0.26, green: 0.19, blue: 0.11, alpha: 1.0)
         baseBasket.strokeColor = SKColor(red: 0.14, green: 0.09, blue: 0.05, alpha: 1.0)
         baseBasket.lineWidth = 14.0
         basketNode.addChild(baseBasket)
         
-        // Tekstur Anyaman Bambu (Lingkaran serat konsentris)
+        // Bamboo Weave Texture (Concentric fiber rings)
         let ringCount = 8
         for i in 1...ringCount {
             let r = (config.basketRadius / CGFloat(ringCount)) * CGFloat(i)
@@ -142,7 +142,7 @@ public final class SeedSortingMinigameNode: SKNode {
             basketNode.addChild(ring)
         }
         
-        // Panduan Visual Zona Sortir (Target tengah & pinggir)
+        // Visual Guide for Sorting Zones (Center & edge targets)
         centerGoldGuide.path = CGPath(ellipseIn: CGRect(
             x: -config.basketRadius * 0.38,
             y: -config.basketRadius * 0.38,
@@ -167,9 +167,9 @@ public final class SeedSortingMinigameNode: SKNode {
         outerRimGuide.zPosition = 0.5
         basketNode.addChild(outerRimGuide)
         
-        // 3. Cincin Progres (Luar Tampah)
+        // 3. Progress Ring (Outside the basket)
         progressRing.lineWidth = 6.0
-        progressRing.strokeColor = SKColor(red: 0.95, green: 0.75, blue: 0.32, alpha: 1.0) // Emas Gandum
+        progressRing.strokeColor = SKColor(red: 0.95, green: 0.75, blue: 0.32, alpha: 1.0) // Wheat Gold
         progressRing.lineCap = .round
         progressRing.fillColor = .clear
         progressRing.zPosition = 5
@@ -182,7 +182,7 @@ public final class SeedSortingMinigameNode: SKNode {
         trackRing.zPosition = 4.9
         container.addChild(trackRing)
         
-        // 4. Label & Teks
+        // 4. Labels & Text
         headingLabel.text = config.headingText
         headingLabel.fontSize = 23
         headingLabel.fontColor = SKColor(red: 0.95, green: 0.88, blue: 0.72, alpha: 1.0)
@@ -197,9 +197,10 @@ public final class SeedSortingMinigameNode: SKNode {
         instructionLabel.zPosition = 6
         container.addChild(instructionLabel)
         
-        // Label instruksi ekstra untuk Simulator
+        // Extra instruction label for Simulator
         #if targetEnvironment(simulator)
         let simLabel = SKLabelNode(fontNamed: "AvenirNext-Italic")
+        simLabel.text = "(Drag on Simulator to shake)"
         simLabel.fontColor = SKColor(red: 0.65, green: 0.55, blue: 0.45, alpha: 0.8)
         simLabel.position = CGPoint(x: 0, y: -config.basketRadius - 40)
         simLabel.zPosition = 6
@@ -224,7 +225,7 @@ public final class SeedSortingMinigameNode: SKNode {
     private func spawnSeeds() {
         let seedPath = createSeedPath()
         
-        // Spawn Good Seeds (Gandum Emas Bersih)
+        // Spawn Good Seeds (Clean Golden Wheat)
         let goldShades: [SKColor] = [
             SKColor(red: 0.90, green: 0.72, blue: 0.38, alpha: 1.0),
             SKColor(red: 0.84, green: 0.65, blue: 0.30, alpha: 1.0),
@@ -239,7 +240,7 @@ public final class SeedSortingMinigameNode: SKNode {
             basketNode.addChild(seed)
         }
         
-        // Spawn Bad Seeds (Biji Hitam / Busuk / Sekam Rusak)
+        // Spawn Bad Seeds (Black / Rotten / Damaged Chaff)
         for _ in 0..<config.badSeedCount {
             let darkColor = SKColor(red: 0.17, green: 0.13, blue: 0.14, alpha: 1.0)
             let seed = createSeedNode(path: seedPath, isBad: true, fillColor: darkColor)
@@ -254,26 +255,26 @@ public final class SeedSortingMinigameNode: SKNode {
         seed.strokeColor = isBad ? SKColor(red: 0.35, green: 0.18, blue: 0.18, alpha: 1.0) : SKColor(red: 0.65, green: 0.48, blue: 0.20, alpha: 1.0)
         seed.lineWidth = isBad ? 0.8 : 0.5
         
-        // Posisi acak awal di dalam tampah
-        let randomAngle = CGFloat.random(in: 0...(2 * .pi))
+        // Random initial position inside the basket
+        let randomAngle = CGFloat.random(in: 0...(2.0 * .pi))
         let randomRadius = CGFloat.random(in: 0...(config.basketRadius - 20))
         seed.position = CGPoint(x: cos(randomAngle) * randomRadius, y: sin(randomAngle) * randomRadius)
-        seed.zRotation = CGFloat.random(in: 0...(2 * .pi))
+        seed.zRotation = CGFloat.random(in: 0...(2.0 * .pi))
         seed.zPosition = isBad ? 2.1 : 2.0
         
-        // Konfigurasi Fisika Biji
+        // Seed Physics Configuration
         seed.physicsBody = SKPhysicsBody(polygonFrom: path)
         seed.physicsBody?.isDynamic = true
         seed.physicsBody?.allowsRotation = true
         seed.physicsBody?.friction = 0.55
         seed.physicsBody?.restitution = 0.15
-        seed.physicsBody?.linearDamping = 0.9 // Redaman gesekan anyaman
+        seed.physicsBody?.linearDamping = 0.9 // Friction damping from the weave
         seed.physicsBody?.angularDamping = 0.9
         
-        // Gravitasi scene global tidak dipakai; didorong manual via sensor
+        // Global scene gravity is ignored; pushed manually via sensors
         seed.physicsBody?.affectedByGravity = false
         
-        // Biji busuk lebih ringan (sekam hampa) sehingga cepat terlempar ke pinggir
+        // Bad seeds are lighter (empty chaff) so they get pushed to the edges faster
         seed.physicsBody?.mass = isBad ? 0.012 : 0.030
         
         return seed
@@ -296,13 +297,13 @@ public final class SeedSortingMinigameNode: SKNode {
         HapticsService.shared.playSelection()
         #endif
         
-        // Mulai sensor kemiringan
+        // Start tilt sensor
         if motionManager.isAccelerometerAvailable {
             motionManager.accelerometerUpdateInterval = 1.0 / 60.0
             motionManager.startAccelerometerUpdates()
         }
         
-        // Update Loop Manual
+        // Manual Update Loop
         let loop = SKAction.customAction(withDuration: 1000.0) { [weak self] _, _ in
             self?.updatePhysics()
         }
@@ -315,7 +316,7 @@ public final class SeedSortingMinigameNode: SKNode {
         var tiltVector = CGVector.zero
         var shakeIntensity: CGFloat = 0.0
         
-        // 1. Ambil Data Accelerometer (Device Nyata)
+        // 1. Fetch Accelerometer Data (Real Device)
         if let accel = motionManager.accelerometerData?.acceleration {
             let rawDx = CGFloat(accel.x)
             let rawDy = CGFloat(accel.y)
@@ -329,14 +330,14 @@ public final class SeedSortingMinigameNode: SKNode {
             }
             lastAcceleration = accel
         } else {
-            // Fallback Simulator (Drag / Swirl kursor)
+            // Simulator Fallback (Drag / Swirl cursor)
             tiltVector = simulatedTilt
             shakeIntensity = simulatedShakeIntensity
-            simulatedShakeIntensity = max(0, simulatedShakeIntensity * 0.90) // Redaman halus
+            simulatedShakeIntensity = max(0, simulatedShakeIntensity * 0.90) // Smooth damping
         }
         
-        // 2. Akumulasi Progress Goyangan (Sorting Progress)
-        // Diatur agar membutuhkan goyangan berirama 8-12 detik
+        // 2. Accumulate Shake Progress (Sorting Progress)
+        // Designed to require rhythmic shaking for 8-12 seconds
         if shakeIntensity > 0.06 {
             let progressIncrement = min(shakeIntensity, 0.85) * 0.60
             accumulatedShake += progressIncrement
@@ -345,9 +346,9 @@ public final class SeedSortingMinigameNode: SKNode {
             updateDynamicInstruction()
             onProgress?(currentProgress)
             
-            AudioService.shared.playSFX("TampahTray", throttleInterval: 0.6)
+            // AudioService.shared.playSFX("TampahTray", throttleInterval: 0.6)
             
-            // Efek haptic tipis berirama saat goyangan efektif
+            // Subtle rhythmic haptic effect on effective shakes
             if Int(accumulatedShake * 10) % 6 == 0 {
                 #if canImport(UIKit)
                 HapticsService.shared.playImpact(style: .light)
@@ -355,10 +356,10 @@ public final class SeedSortingMinigameNode: SKNode {
             }
         }
         
-        // 3. Aplikasikan Gaya Fisik Pemisahan (Separation Physics)
+        // 3. Apply Separation Physics Forces
         applySortingForces(tiltForce: tiltVector, shakeIntensity: shakeIntensity)
         
-        // 4. Cek Selesai
+        // 4. Check for Completion
         if currentProgress >= 1.0 {
             completeMinigame()
         }
@@ -366,34 +367,34 @@ public final class SeedSortingMinigameNode: SKNode {
     
     private func updateDynamicInstruction() {
         if currentProgress < 0.30 {
-            instructionLabel.text = "Goyangkan secara berirama untuk memisahkan biji..."
+            instructionLabel.text = "Shake rhythmically to separate the seeds..."
             instructionLabel.fontColor = SKColor(red: 0.78, green: 0.68, blue: 0.56, alpha: 0.9)
         } else if currentProgress < 0.65 {
-            instructionLabel.text = "Biji hitam mulai terdorong ke pinggiran tampah..."
+            instructionLabel.text = "Dark seeds are pushed to the edges..."
             instructionLabel.fontColor = SKColor(red: 0.88, green: 0.76, blue: 0.50, alpha: 0.95)
         } else if currentProgress < 0.98 {
-            instructionLabel.text = "Hampir bersih! Gandum emas terkumpul di tengah!"
+            instructionLabel.text = "Almost clean! Golden wheat gathers in the center!"
             instructionLabel.fontColor = SKColor(red: 0.95, green: 0.85, blue: 0.40, alpha: 1.0)
         }
     }
     
     private func applySortingForces(tiltForce: CGVector, shakeIntensity: CGFloat) {
-        // Gaya kemiringan tangan pemain (diredam sedikit agar tidak merusak keteraturan sortir)
+        // Player's hand tilt force (slightly dampened so it doesn't disrupt the sorting regularity)
         let tiltModulation = max(0.25, 1.0 - (currentProgress * 0.65))
         let effectiveTilt = CGVector(dx: tiltForce.dx * tiltModulation, dy: tiltForce.dy * tiltModulation)
         
-        // Gaya sortir meningkat kuat seiring bertambahnya progres dan aktivitas goyangan
+        // Sorting force gets stronger as progress and shake activity increase
         let activeShake = max(shakeIntensity, 0.12)
         let sortMultiplier = (currentProgress * 45.0 + 12.0) * min(activeShake, 1.5)
         
-        // Pusaran tangensial berirama khas menampi tampah tradisional
+        // Tangential rhythmic swirl typical of traditional winnowing baskets
         let swirlMagnitude = (0.6 + currentProgress * 0.8) * min(activeShake, 1.4)
         
         let allSeeds = goodSeeds + badSeeds
         for seed in allSeeds {
             guard let body = seed.physicsBody else { continue }
             
-            // Terapkan gravitasi miring
+            // Apply tilted gravity
             body.applyForce(effectiveTilt)
             
             let pos = seed.position
@@ -401,24 +402,24 @@ public final class SeedSortingMinigameNode: SKNode {
             let angle = atan2(pos.y, pos.x)
             let isBad = badSeeds.contains(seed)
             
-            // Arah radial dari pusat tampah
+            // Radial direction from basket center
             let dirX = dist > 1.0 ? (pos.x / dist) : cos(angle)
             let dirY = dist > 1.0 ? (pos.y / dist) : sin(angle)
             
             if isBad {
                 // ==========================================
-                // BIJI HITAM (BUSUK): Didorong kuat ke PINGGIR
+                // BAD SEEDS (BLACK): Pushed hard to the EDGE
                 // ==========================================
                 let targetRimRadius = config.basketRadius - 18
                 if dist < targetRimRadius {
-                    // Dorong ke luar menuju pinggiran
+                    // Push outwards to the edges
                     let pushOutForce = CGVector(
                         dx: dirX * sortMultiplier * 1.35,
                         dy: dirY * sortMultiplier * 1.35
                     )
                     body.applyForce(pushOutForce)
                 } else {
-                    // Sudah di tepi: jaga di pinggiran dinding
+                    // Already at edge: keep it against the rim
                     let rimKeepForce = CGVector(
                         dx: dirX * sortMultiplier * 0.4,
                         dy: dirY * sortMultiplier * 0.4
@@ -426,25 +427,25 @@ public final class SeedSortingMinigameNode: SKNode {
                     body.applyForce(rimKeepForce)
                 }
                 
-                // Pusaran tepi
+                // Edge swirl
                 let tangentX = -dirY
                 let tangentY = dirX
                 body.applyForce(CGVector(dx: tangentX * swirlMagnitude * 7.0, dy: tangentY * swirlMagnitude * 7.0))
                 
             } else {
                 // ==========================================
-                // BIJI GANDUM (BAGUS): Ditarik ke TENGAH
+                // WHEAT SEEDS (GOOD): Pulled to the CENTER
                 // ==========================================
                 let targetCenterRadius = config.basketRadius * 0.35
                 if dist > targetCenterRadius {
-                    // Tarik ke dalam menuju pusat
+                    // Pull inwards to the center
                     let pullInForce = CGVector(
                         dx: -dirX * sortMultiplier * 1.15,
                         dy: -dirY * sortMultiplier * 1.15
                     )
                     body.applyForce(pullInForce)
                 } else {
-                    // Sudah di tengah: jaga tumpukan gandum terpusat
+                    // Already in center: keep the wheat pile centered
                     let centeringForce = CGVector(
                         dx: -dirX * sortMultiplier * 0.35,
                         dy: -dirY * sortMultiplier * 0.35
@@ -452,7 +453,7 @@ public final class SeedSortingMinigameNode: SKNode {
                     body.applyForce(centeringForce)
                 }
                 
-                // Pusaran halus di tengah
+                // Subtle swirl in the center
                 if dist > 6.0 {
                     let tangentX = -dirY
                     let tangentY = dirX
@@ -469,7 +470,7 @@ public final class SeedSortingMinigameNode: SKNode {
         }
         let r = config.basketRadius + 15
         let startAngle: CGFloat = .pi / 2
-        let endAngle = startAngle - (currentProgress * 2 * .pi)
+        let endAngle = startAngle - (currentProgress * 2.0 * .pi)
         let path = CGMutablePath()
         path.addArc(center: .zero, radius: r, startAngle: startAngle, endAngle: endAngle, clockwise: true)
         progressRing.path = path
@@ -485,19 +486,19 @@ public final class SeedSortingMinigameNode: SKNode {
         HapticsService.shared.playNotification(.success)
         #endif
         
-        // 1. Tampilkan status bahwa biji telah berhasil terpisah
-        headingLabel.text = "TERPISAH SEMPURNA!"
+        // 1. Show status that the seeds have been successfully separated
+        headingLabel.text = "PERFECTLY SORTED!"
         headingLabel.fontColor = SKColor(red: 0.45, green: 0.95, blue: 0.55, alpha: 1.0)
-        instructionLabel.text = "Gandum bersih di tengah • Biji hitam di pinggiran"
+        instructionLabel.text = "Clean wheat in the center • Dark seeds at the edge"
         instructionLabel.fontColor = SKColor(red: 0.95, green: 0.85, blue: 0.50, alpha: 1.0)
         
-        // Hentikan gerak liar biji agar pemain bisa melihat hasil pemisahannya dengan jelas
+        // Stop wild movements so the player can clearly see the separation result
         for seed in goodSeeds + badSeeds {
             seed.physicsBody?.linearDamping = 4.0
             seed.physicsBody?.angularDamping = 4.0
         }
         
-        // Pendar Emas di Pusat (Menyoroti Gandum Bersih)
+        // Gold Glow at the Center (Highlighting Clean Wheat)
         let centerGlow = SKShapeNode(circleOfRadius: config.basketRadius * 0.42)
         centerGlow.fillColor = SKColor(red: 0.95, green: 0.85, blue: 0.45, alpha: 0.35)
         centerGlow.strokeColor = SKColor(red: 1.0, green: 0.9, blue: 0.6, alpha: 0.6)
@@ -510,7 +511,7 @@ public final class SeedSortingMinigameNode: SKNode {
             .scale(to: 1.0, duration: 0.4).applyTimingMode(.easeIn)
         ]))
         
-        // Pendar Merah/Oranye Halus di Tepi Luar (Biji Hitam yang terisolasi)
+        // Subtle Red/Orange Glow at the Outer Rim (Isolated bad seeds)
         let rimHighlight = SKShapeNode(circleOfRadius: config.basketRadius - 10)
         rimHighlight.strokeColor = SKColor(red: 0.9, green: 0.3, blue: 0.3, alpha: 0.6)
         rimHighlight.lineWidth = 3.0
@@ -524,14 +525,14 @@ public final class SeedSortingMinigameNode: SKNode {
             .removeFromParent()
         ]))
         
-        // 2. Berikan jeda 1.0 detik agar pemain menikmati pemandangan biji yang sudah terpisah sempurna,
-        // lalu Keneth membersihkan biji hitam ke luar tampah
+        // 2. Pause for 1.0 sec to let the player admire the separated seeds,
+        // then animate throwing the bad seeds out of the basket.
         run(.sequence([
             .wait(forDuration: 1.0),
             .run { [weak self] in
                 guard let self = self else { return }
                 
-                // Animasi Keneth membuang biji hitam dari pinggiran tampah
+                // Animate discarding the bad seeds from the edges
                 for badSeed in self.badSeeds {
                     badSeed.physicsBody = nil
                     let angle = atan2(badSeed.position.y, badSeed.position.x)
@@ -547,7 +548,7 @@ public final class SeedSortingMinigameNode: SKNode {
                     badSeed.run(.sequence([throwOut, .removeFromParent()]))
                 }
                 
-                // Gandum bersih berkilau puas
+                // Clean wheat pulses with satisfaction
                 for goodSeed in self.goodSeeds {
                     goodSeed.run(.sequence([
                         .scale(to: 1.25, duration: 0.2),
@@ -625,12 +626,12 @@ import SwiftUI
 
 #Preview("Seed Sorting Winnow Minigame") {
     SpriteView(scene: {
-        // Penting: Host Scene harus mengaktifkan physics!
+        // Essential: Host Scene must have physics enabled!
         let scene = SKScene(size: CGSize(width: 393, height: 852))
         scene.scaleMode = .resizeFill
         scene.backgroundColor = SKColor(red: 0.05, green: 0.04, blue: 0.03, alpha: 1.0)
         
-        // Gravitasi global dinonaktifkan karena node kita mengatur gravitasinya sendiri (CoreMotion)
+        // Global gravity is disabled because our node manages its own gravity (CoreMotion)
         scene.physicsWorld.gravity = .zero
         
         func spawn() {
