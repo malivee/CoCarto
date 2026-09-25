@@ -49,6 +49,7 @@ final class GameScene: SKScene {
     let landmarkInteractionResolver = LandmarkInteractionResolver()
     let transitionController = MapWorldTransitionController()
     let quest1Controller = VillageQuest1Controller()
+    let quest3Controller = VillageQuest3Controller()
     let saveService = try? SaveGameService()
     let puzzleFeedbackLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     let worldQuestLabel = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
@@ -65,6 +66,7 @@ final class GameScene: SKScene {
     var pendingLoadedPlayerSpatialState: PlayerSpatialState?
     var lastSaveStatus = "none"
     var questDialogueLines: [VillageQuestDialogueLine] = []
+    var onQuestDialogueFinished: (() -> Void)?
     weak var activeQuestDialogue: SpeechBubbleNode?
 
     override func didMove(to view: SKView) {
@@ -182,6 +184,7 @@ final class GameScene: SKScene {
             debugRoot: worldDebugRoot,
             showsDebugLabels: showsDebugOverlay
         )
+        syncVillageNPCs()
     }
 
     override func update(_ currentTime: TimeInterval) {
@@ -193,16 +196,24 @@ final class GameScene: SKScene {
             return
         }
 
+        let dt = CGFloat(deltaTime > 0 ? min(deltaTime, 0.1) : 1.0 / 60.0)
+
         switch gameMode {
         case .exploring:
             inputController.playerPosition = playerNode.position
             playerController.update(playerNode: playerNode, movementVector: inputController.movementVector)
+            let velocity = playerNode.physicsBody?.velocity ?? .zero
+            playerNode.applyMovement(dx: velocity.dx, dy: velocity.dy, dt: dt)
         case .mapDragging:
             updateMapAutoPan(deltaTime: deltaTime)
             playerController.stop(playerNode: playerNode)
+            playerNode.applyMovement(dx: 0, dy: 0, dt: dt)
         case .enteringMap, .mapIdle, .mapPieceSelected, .committingMapChange, .exitingMap:
             playerController.stop(playerNode: playerNode)
+            playerNode.applyMovement(dx: 0, dy: 0, dt: dt)
         }
+
+        updateVillageNPCs(deltaTime: deltaTime)
     }
 
     override func didSimulatePhysics() {
@@ -210,6 +221,7 @@ final class GameScene: SKScene {
             return
         }
 
+        playerNode.zPosition = 50 + (1000 - playerNode.position.y) * 0.05
         playerController.updateState(from: playerNode.position)
         cameraController.update(targetPosition: playerNode.position)
         layoutEnterMapButton()

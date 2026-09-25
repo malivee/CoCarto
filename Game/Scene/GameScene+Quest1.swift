@@ -14,11 +14,24 @@ extension GameScene {
 
         let placedBuildings = placedBuildingIDs()
         let quest2Progress = VillageQuest2Progress.load()
+        if !quest2Progress.completed && !quest2WorldObjectivesCompleted(placedBuildings: placedBuildings) {
+            return [
+                MapQuestItem(
+                    category: "Quest 2",
+                    title: VillageQuestCatalog.Quest2.mapObjective,
+                    isCompleted: false
+                )
+            ]
+        }
+
+        // Quest 3: Syarat Pasang Lumbung di Peta
+        let quest3Progress = VillageQuest3Progress.load()
+        let hasBarn = worldState.buildingObjects.contains { $0.kind == .barn }
         return [
             MapQuestItem(
-                category: "Quest 2",
-                title: VillageQuestCatalog.Quest2.mapObjective,
-                isCompleted: quest2Progress.completed || quest2WorldObjectivesCompleted(placedBuildings: placedBuildings)
+                category: "Quest 3",
+                title: VillageQuest3Catalog.mapObjective, // "Place Barn"
+                isCompleted: quest3Progress.completed || hasBarn
             )
         ]
     }
@@ -55,21 +68,49 @@ extension GameScene {
     }
 
     func updateWorldQuestLabel() {
-        guard !quest1Controller.isCompleted else {
-            worldQuestTracker.update(with: [])
-            worldQuestTracker.isHidden = true
+        if !quest1Controller.isCompleted {
+            worldQuestTracker.update(with: [
+                MapQuestItem(
+                    category: "Quest 1",
+                    title: "Get water from the well for Grandpa.",
+                    isCompleted: quest1Controller.hasCollectedWater
+                )
+            ])
+            worldQuestTracker.isHidden = gameMode != .exploring
             worldQuestLabel.isHidden = true
             return
         }
 
-        worldQuestTracker.update(with: [
-            MapQuestItem(
-                category: "Quest 1",
-                title: "Get water from the well for Grandpa.",
-                isCompleted: quest1Controller.hasCollectedWater
-            )
-        ])
-        worldQuestTracker.isHidden = gameMode != .exploring
+        let quest2Progress = VillageQuest2Progress.load()
+        if !quest2Progress.completed {
+            worldQuestTracker.update(with: [
+                MapQuestItem(
+                    category: "Quest 2",
+                    title: VillageQuestCatalog.Quest2.mapObjective,
+                    isCompleted: quest2Progress.shelfFixed
+                )
+            ])
+            worldQuestTracker.isHidden = gameMode != .exploring
+            worldQuestLabel.isHidden = true
+            return
+        }
+
+        let quest3Progress = VillageQuest3Progress.load()
+        if !quest3Progress.completed {
+            worldQuestTracker.update(with: [
+                MapQuestItem(
+                    category: "Quest 3",
+                    title: VillageQuest3Catalog.worldObjective, // "Deliver the basket to Keneth at the barn."
+                    isCompleted: quest3Progress.sortedSeeds
+                )
+            ])
+            worldQuestTracker.isHidden = gameMode != .exploring
+            worldQuestLabel.isHidden = true
+            return
+        }
+
+        worldQuestTracker.update(with: [])
+        worldQuestTracker.isHidden = true
         worldQuestLabel.isHidden = true
     }
 
@@ -82,42 +123,57 @@ extension GameScene {
 
         let objectPosition = objectNode.convert(CGPoint.zero, to: self)
         let distance = hypot(playerNode.position.x - objectPosition.x, playerNode.position.y - objectPosition.y)
-        guard distance <= 220 else {
+        guard distance <= 240 else {
             showProgressionFeedback("MOVE CLOSER")
             return
         }
 
-        let result: VillageQuest1InteractionResult
         switch object.kind {
         case .arthurHouse:
-            result = quest1Controller.interactWithGrandpa(in: worldState)
+            let result = quest1Controller.interactWithGrandpa(in: worldState)
+            handleQuest1Result(result)
         case .well:
-            result = quest1Controller.interactWithWell(in: worldState)
+            let result = quest1Controller.interactWithWell(in: worldState)
+            handleQuest1Result(result)
+        case .barn:
+            handleQuest3Interaction(object: object)
         default:
             return
-        }
-
-        switch result {
-        case .unavailable(let lines), .reminder(let lines):
-            showQuestDialogue(lines)
-        case .started(let lines):
-            showQuestDialogue(lines)
-            showProgressionFeedback("QUEST 1 STARTED")
-        case .waterCollected(let lines):
-            showQuestDialogue(lines)
-            showProgressionFeedback("WATER COLLECTED")
-        case .completed(let lines):
-            showQuestDialogue(lines)
-            showProgressionFeedback("QUEST COMPLETE")
-        case .alreadyCompleted:
-            showQuestDialogue([.init(speaker: "Grandpa", text: "Thank you again, Arthur.")])
         }
         updateWorldQuestLabel()
     }
 
-    func showQuestDialogue(_ lines: [VillageQuestDialogueLine]) {
+    private func handleQuest1Result(_ result: VillageQuest1InteractionResult) {
+        switch result {
+        case .unavailable(let lines), .reminder(let lines):
+            showQuestDialogue(lines)
+            npcCharacter(named: "Grandpa")?.wave()
+        case .started(let lines):
+            showQuestDialogue(lines)
+            showProgressionFeedback("QUEST 1 STARTED")
+            npcCharacter(named: "Grandpa")?.wave()
+            syncVillageNPCs()
+        case .waterCollected(let lines):
+            showQuestDialogue(lines)
+            showProgressionFeedback("WATER COLLECTED")
+            playerNode?.celebrate()
+            syncVillageNPCs()
+        case .completed(let lines):
+            showQuestDialogue(lines)
+            showProgressionFeedback("QUEST COMPLETE")
+            playerNode?.celebrate()
+            npcCharacter(named: "Grandpa")?.celebrate()
+            syncVillageNPCs()
+        case .alreadyCompleted:
+            showQuestDialogue([.init(speaker: "Grandpa", text: "Thank you again, Arthur.")])
+            npcCharacter(named: "Grandpa")?.wave()
+        }
+    }
+
+    func showQuestDialogue(_ lines: [VillageQuestDialogueLine], onFinished: (() -> Void)? = nil) {
         activeQuestDialogue?.removeFromParent()
         questDialogueLines = lines
+        onQuestDialogueFinished = onFinished
         presentNextQuestDialogueLine()
     }
 
@@ -130,6 +186,9 @@ extension GameScene {
     func presentNextQuestDialogueLine() {
         guard !questDialogueLines.isEmpty else {
             activeQuestDialogue = nil
+            let callback = onQuestDialogueFinished
+            onQuestDialogueFinished = nil
+            callback?()
             return
         }
 

@@ -208,6 +208,7 @@ extension GameScene {
         mapRoot.isHidden = true
         mapDebugRoot.isHidden = true
         gameMode = .exploring
+        syncVillageNPCs()
         updateWorldQuestLabel()
         flushPendingPresentationEvents()
     }
@@ -536,10 +537,14 @@ extension GameScene {
     }
 
     func buildingObjectID(in stack: [SKNode]) -> UUID? {
-        for node in stack where node.name == BuildingObjectRenderer.nodeName {
-            if let value = node.userData?[BuildingObjectRenderer.objectIDKey] as? String,
-               let id = UUID(uuidString: value) {
-                return id
+        for node in stack {
+            var current: SKNode? = node
+            while let n = current {
+                if let value = n.userData?[BuildingObjectRenderer.objectIDKey] as? String,
+                   let id = UUID(uuidString: value) {
+                    return id
+                }
+                current = n.parent
             }
         }
         return nil
