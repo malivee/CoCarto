@@ -67,6 +67,7 @@ extension GameScene {
         selectedObjectKind = nil
         objectPreview = nil
         worldState = .buildingPuzzleBiomePrototype
+        quest1Controller.reset()
         puzzleManager.reset()
         worldEventManager.reset()
         playerController.updateWorldState(worldState)
@@ -222,18 +223,19 @@ extension GameScene {
         enterMapButton.isHidden = false
         enterMapButton.alpha = 1
         cameraController.returnToPlayerFollow()
+        updateWorldQuestLabel()
     }
 
     func defaultPlayerSpatialState() -> PlayerSpatialState? {
-        guard let village = worldState.piece(role: .village),
-              let cell = village.occupiedCells().sortedForSaveFallback.first else {
+        guard let spawnPiece = worldState.piece(role: .village) ?? worldState.piece(role: .z2),
+              let cell = spawnPiece.occupiedCells().sortedForSaveFallback.first else {
             return nil
         }
 
         let worldPosition = mapper.worldPosition(for: cell)
-        let transform = PieceWorldTransform(piece: village, mapper: mapper)
+        let transform = PieceWorldTransform(piece: spawnPiece, mapper: mapper)
         return PlayerSpatialState(
-            pieceID: village.id,
+            pieceID: spawnPiece.id,
             localPositionInPiece: transform.worldToLocal(worldPosition)
         )
     }

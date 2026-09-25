@@ -5,7 +5,7 @@ final class PlayerNode: SKShapeNode {
 
     // Each 256-point tile contains a 6x6 micro grid. The player's diameter is
     // one eighth of a single micro-grid cell: 256 / 6 / 8 = 5.33 points.
-    init(radius: CGFloat = 256 / 6 / 16) {
+    init(radius: CGFloat = 256 / 6 / 8) {
         self.radius = radius
         super.init()
 

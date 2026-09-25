@@ -172,7 +172,8 @@ extension WorldState {
             type: .i,
             role: .z1,
             position: GridPosition(x: -5, y: 0),
-            rotation: .degrees0
+            rotation: .degrees0,
+            isMovable: false
         ),
         BuildingPuzzleBiomeFixture.makePiece(
             pieceID: .z2,
@@ -293,7 +294,8 @@ private extension BuildingPuzzleBiomeFixture {
         type: TetrominoType,
         role: PieceRole,
         position: GridPosition,
-        rotation: GridRotation
+        rotation: GridRotation,
+        isMovable: Bool = true
     ) -> WorldPiece {
         guard let uuid = pieceUUIDs[pieceID], let cellIDs = cellIDsByPiece[pieceID] else {
             preconditionFailure("Missing fixture data for piece \(pieceID.rawValue).")
@@ -313,7 +315,7 @@ private extension BuildingPuzzleBiomeFixture {
             role: role,
             gridPosition: position,
             rotation: rotation,
-            isMovable: true,
+            isMovable: isMovable,
             cellDefinitions: definitions
         )
     }

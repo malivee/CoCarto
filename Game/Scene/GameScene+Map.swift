@@ -86,26 +86,14 @@ extension GameScene {
             footprintRectangle: currentFootprintRectangle(),
             selectedObjectKind: selectedObjectKind,
             objectPreview: objectPreview,
+            unlockedObjectKinds: quest1UnlockedObjectKinds(),
             questItems: mapQuestItems()
         )
     }
 
-    func mapQuestItems() -> [MapQuestItem] {
-        [
-            MapQuestItem(
-                category: "Story",
-                title: "Connect the land",
-                isCompleted: puzzleManager.status(for: .snowRoutePrototype) == .completed
-            ),
-            MapQuestItem(
-                category: "Quest",
-                title: "Reach the outer exit",
-                isCompleted: worldEventManager.progressState.prototypeStatus == .reachedExit
-            )
-        ]
-    }
-
     func prepareMapForTransition() {
+        worldQuestLabel.isHidden = true
+        worldQuestTracker.isHidden = true
         let focusPoint = mapRenderer.focusPoint(for: playerController.state, worldState: worldState, preview: nil)
         mapViewport.reset(contentBounds: mapRenderer.contentBounds(for: worldState), sceneSize: size, focusPoint: focusPoint)
         rebuildMapView()
@@ -220,6 +208,7 @@ extension GameScene {
         mapRoot.isHidden = true
         mapDebugRoot.isHidden = true
         gameMode = .exploring
+        updateWorldQuestLabel()
         flushPendingPresentationEvents()
     }
 

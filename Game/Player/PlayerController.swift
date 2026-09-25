@@ -88,7 +88,7 @@ final class PlayerController {
     }
 
     private func spawnPosition() -> CGPoint {
-        let spawnPiece = worldState.piece(role: .village) ?? worldState.piece(role: .z1) ?? worldState.pieces.first
+        let spawnPiece = worldState.piece(role: .village) ?? worldState.piece(role: .z2) ?? worldState.pieces.first
         guard let spawnCell = spawnPiece?.occupiedCells().sortedForDeterministicDisplay.first else {
             return .zero
         }
