@@ -58,9 +58,9 @@ final class MainMenuScene: SKScene {
         // AudioService.shared.playSFX("PaperMap") // Pastikan class AudioService tersedia di project Anda
         isUserInteractionEnabled = false
         
-        // Transisi ke GameScene
-        let scene = SKScene(size: size) // Ganti SKScene(size: size) dengan GameScene(size: size) milik Anda
-        scene.backgroundColor = palette.background
+        // Start the actual game. The previous placeholder created an empty
+        // SKScene, which looked like a frozen screen after tapping Play.
+        let scene = GameScene(size: size)
         scene.scaleMode = .resizeFill
         view?.presentScene(scene, transition: .fade(withDuration: 0.45))
     }
