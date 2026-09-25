@@ -290,7 +290,7 @@ private extension BuildingPuzzleBiomeFixture {
         case .f:
             return villageSoilWithRockSaltDiagonalTopLeftToBottomRight().swappingBiomes(.rocksalt, .villageSoil)
         case .g:
-            return villageSoilWithLeftRockSaltTriangle()
+            return villageSoilWithLeftRockSaltTriangle().rotated(by: .degrees180)
         case .h:
             return .uniform(.villageSoil)
         case .i:
