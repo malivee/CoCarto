@@ -1,4 +1,4 @@
-enum Direction: CaseIterable, Codable, Sendable {
+enum Direction: CaseIterable, Codable, Hashable, Sendable {
     case north
     case east
     case south

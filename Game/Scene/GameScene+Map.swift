@@ -300,7 +300,7 @@ extension GameScene {
         gameMode = .mapDragging(pieceID)
         if let preview = mapController.preview,
            let piece = worldState.piece(id: preview.pieceID) {
-            mapRenderer.updatePreviewNode(piece: piece, preview: preview, in: mapRoot)
+            mapRenderer.updatePreviewNode(piece: piece, preview: preview, in: mapRoot, worldState: worldState)
         }
     }
 
@@ -392,6 +392,7 @@ extension GameScene {
             piece: piece,
             preview: preview,
             in: mapRoot,
+            worldState: worldState,
             animated: true,
             clockwise: clockwise
         )
@@ -421,7 +422,7 @@ extension GameScene {
             return
         }
 
-        mapRenderer.updatePreviewNode(piece: piece, preview: preview, in: mapRoot)
+        mapRenderer.updatePreviewNode(piece: piece, preview: preview, in: mapRoot, worldState: worldState)
     }
 
     func finishPieceDrag(pieceID: UUID) {
@@ -438,7 +439,7 @@ extension GameScene {
                   let piece = self.worldState.piece(id: currentPreview.pieceID) else {
                 return
             }
-            self.mapRenderer.updatePreviewNode(piece: piece, preview: currentPreview, in: self.mapRoot)
+            self.mapRenderer.updatePreviewNode(piece: piece, preview: currentPreview, in: self.mapRoot, worldState: self.worldState)
             self.rebuildMapView()
         }
     }

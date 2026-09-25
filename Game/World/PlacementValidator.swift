@@ -47,6 +47,39 @@ struct PlacementValidator: Sendable {
         )
     }
 
+    func mismatchedEdgeDirections(
+        pieceID: UUID,
+        at position: GridPosition,
+        rotation: GridRotation,
+        in worldState: WorldState
+    ) -> [GridPosition: [Direction]] {
+        guard let piece = worldState.piece(id: pieceID) else { return [:] }
+        let proposedResolvedCells = piece.resolvedCells(at: position, rotation: rotation)
+        let otherCellsByPosition = Dictionary(
+            uniqueKeysWithValues: worldState.pieces
+                .filter { $0.id != pieceID }
+                .flatMap { $0.resolvedCells() }
+                .map { ($0.globalPosition, $0) }
+        )
+
+        var mismatches: [GridPosition: [Direction]] = [:]
+        for proposedCell in proposedResolvedCells {
+            for direction in Direction.allCases {
+                let neighborPosition = proposedCell.globalPosition + direction.gridOffset
+                guard let neighbor = otherCellsByPosition[neighborPosition],
+                      !microBiomeSidesMatch(proposedCell, toward: direction, neighbor) else {
+                    continue
+                }
+
+                let localDirection = Direction.allCases.first { $0.rotated(by: rotation) == direction } ?? direction
+                if mismatches[proposedCell.sourceLocalPosition, default: []].contains(localDirection) == false {
+                    mismatches[proposedCell.sourceLocalPosition, default: []].append(localDirection)
+                }
+            }
+        }
+        return mismatches
+    }
+
     private func microBiomeSidesMatch(
         _ first: ResolvedWorldCell,
         toward direction: Direction,

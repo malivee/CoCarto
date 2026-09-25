@@ -18,7 +18,7 @@ final class GameScene: SKScene {
     let saveButton = MapButtonNode(title: "SAVE", name: MapNodeName.saveButton.rawValue)
     let loadButton = MapButtonNode(title: "LOAD", name: MapNodeName.loadButton.rawValue)
 
-    var worldState = WorldState.buildingPuzzleBiomePrototype(allowing: [.z2, .l1])
+    var worldState = WorldState.buildingPuzzleBiomePrototype(allowing: [.z1, .z2, .l1])
     let mapper = WorldGridMapper(cellSize: 256)
     lazy var worldRenderer = WorldRenderer(mapper: mapper)
     lazy var playerController = PlayerController(mapper: mapper, worldState: worldState)

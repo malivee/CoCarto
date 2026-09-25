@@ -38,7 +38,8 @@ enum BuildingObjectRenderer {
             y: (CGFloat(object.origin.y) + CGFloat(dimensions.height) / 2) * microSize - cellSize / 2
         )
         let outline = SKShapeNode(rectOf: size, cornerRadius: 3)
-        let usesAsset = object.kind == .arthurHouse
+        let assetName = assetName(for: object.kind)
+        let usesAsset = assetName != nil
         outline.fillColor = result == nil && !usesAsset
             ? SKColor(red: 0.48, green: 0.29, blue: 0.16, alpha: 0.88)
             : .clear
@@ -47,11 +48,15 @@ enum BuildingObjectRenderer {
         outline.lineWidth = result == nil ? 1.5 : 3
         root.addChild(outline)
 
-        if usesAsset {
+        if let assetName {
             let assetSize = quarterTurn
                 ? CGSize(width: size.height, height: size.width)
                 : size
-            let sprite = SKSpriteNode(imageNamed: "rumahArthur")
+            if isWorld {
+                root.addChild(makeAssetShadow(size: size, isWorld: true, kind: object.kind))
+            }
+
+            let sprite = SKSpriteNode(imageNamed: assetName)
             sprite.name = "BuildingAsset"
             sprite.size = assetSize
             sprite.zRotation = object.rotation.radians
@@ -80,5 +85,38 @@ enum BuildingObjectRenderer {
         root.addChild(title)
         root.zPosition = result == nil ? 0 : 50
         return root
+    }
+
+    private static func assetName(for kind: BuildingObjectKind) -> String? {
+        switch kind {
+        case .arthurHouse:
+            return "rumahArthur"
+        case .well:
+            return "sumur"
+        case .buMaraHouse:
+            return "rumahBuMara"
+        case .barn, .animalPen, .annethHouse, .rockSalt:
+            return nil
+        }
+    }
+
+    private static func makeAssetShadow(size: CGSize, isWorld: Bool, kind: BuildingObjectKind) -> SKShapeNode {
+        let widthMultiplier: CGFloat = kind == .well ? 1.08 : 1.24
+        let heightMultiplier: CGFloat = kind == .well
+            ? (isWorld ? 0.36 : 0.42)
+            : (isWorld ? 0.46 : 0.52)
+        let shadowWidth = size.width * widthMultiplier
+        let shadowHeight = size.height * heightMultiplier
+        let shadowRect = CGRect(
+            x: -shadowWidth / 2,
+            y: -size.height / 2 - shadowHeight * 0.08,
+            width: shadowWidth,
+            height: shadowHeight
+        )
+        let shadow = SKShapeNode(ellipseIn: shadowRect)
+        shadow.fillColor = SKColor.black.withAlphaComponent(0.34)
+        shadow.strokeColor = .clear
+        shadow.zPosition = 0.25
+        return shadow
     }
 }

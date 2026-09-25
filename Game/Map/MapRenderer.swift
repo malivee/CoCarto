@@ -69,10 +69,24 @@ final class MapRenderer {
             }
             let state = interactionState(
                 for: piece,
+                in: worldState,
                 preview: preview,
                 playerConnectedPieceIDs: playerConnectedPieceIDs
             )
-            contentRoot.addChild(MapPieceNode(piece: renderedPiece, mapper: mapper, interactionState: state))
+            let mismatchedEdges = preview?.pieceID == piece.id
+                ? Array(PlacementValidator().mismatchedEdgeDirections(
+                    pieceID: piece.id,
+                    at: renderedPiece.gridPosition,
+                    rotation: renderedPiece.rotation,
+                    in: worldState
+                ))
+                : []
+            contentRoot.addChild(MapPieceNode(
+                piece: renderedPiece,
+                mapper: mapper,
+                interactionState: state,
+                mismatchedEdgesByLocalCell: mismatchedEdges
+            ))
         }
 
         BuildingObjectRenderer.render(worldState.buildingObjects, in: contentRoot, cellSize: mapCellSize, isWorld: false)
@@ -160,18 +174,28 @@ final class MapRenderer {
         piece: WorldPiece,
         preview: PiecePlacementPreview,
         in mapRoot: SKNode,
+        worldState: WorldState? = nil,
         animated: Bool = false,
         clockwise: Bool? = nil
     ) {
         guard let node = pieceNode(pieceID: piece.id, in: mapRoot) else {
             return
         }
+        let mismatchedEdges = worldState.map {
+            Array(PlacementValidator().mismatchedEdgeDirections(
+                pieceID: preview.pieceID,
+                at: preview.proposedPosition,
+                rotation: preview.proposedRotation,
+                in: $0
+            ))
+        } ?? []
         node.applyPreview(
             piece: piece,
             preview: preview,
             mapper: mapper,
             animated: animated,
-            clockwise: clockwise
+            clockwise: clockwise,
+            mismatchedEdgesByLocalCell: mismatchedEdges
         )
     }
 
@@ -254,6 +278,7 @@ final class MapRenderer {
 
     private func interactionState(
         for piece: WorldPiece,
+        in worldState: WorldState,
         preview: PiecePlacementPreview?,
         playerConnectedPieceIDs: Set<UUID>
     ) -> MapPieceInteractionState {
@@ -265,7 +290,7 @@ final class MapRenderer {
             return .playerConnected
         }
 
-        if !piece.isMovable {
+        if !piece.isMovable || worldState.hasBuildingObject(onPieceID: piece.id) {
             return .fixed
         }
 

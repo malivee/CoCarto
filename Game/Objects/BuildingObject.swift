@@ -73,22 +73,26 @@ enum BuildingPlacementResult: Equatable {
 
 struct BuildingPlacementValidator {
     func villagePositions(in world: WorldState) -> Set<GridPosition> {
+        world.pieces.reduce(into: Set<GridPosition>()) { positions, piece in
+            positions.formUnion(villagePositions(for: piece))
+        }
+    }
+
+    func villagePositions(for piece: WorldPiece) -> Set<GridPosition> {
         var positions = Set<GridPosition>()
         let dimension = MicroBiomeGrid.dimension
-        for piece in world.pieces {
-            for cell in piece.cellDefinitions {
-                for microCell in cell.microBiomeGrid.cells() where microCell.biome == .villageSoil {
-                    // Rotate actual rendered square centers, including the downward microgrid Y.
-                    let center = GridPosition(
-                        x: cell.localPosition.x * dimension * 2 + microCell.localPosition.x * 2 + 1 - dimension,
-                        y: cell.localPosition.y * dimension * 2 + dimension - microCell.localPosition.y * 2 - 1
-                    )
-                    let rotated = piece.rotation.rotated(center)
-                    positions.insert(GridPosition(
-                        x: piece.gridPosition.x * dimension + (rotated.x + dimension - 1) / 2,
-                        y: piece.gridPosition.y * dimension + (rotated.y + dimension - 1) / 2
-                    ))
-                }
+        for cell in piece.cellDefinitions {
+            for microCell in cell.microBiomeGrid.cells() where microCell.biome == .villageSoil {
+                // Rotate actual rendered square centers, including the downward microgrid Y.
+                let center = GridPosition(
+                    x: cell.localPosition.x * dimension * 2 + microCell.localPosition.x * 2 + 1 - dimension,
+                    y: cell.localPosition.y * dimension * 2 + dimension - microCell.localPosition.y * 2 - 1
+                )
+                let rotated = piece.rotation.rotated(center)
+                positions.insert(GridPosition(
+                    x: piece.gridPosition.x * dimension + (rotated.x + dimension - 1) / 2,
+                    y: piece.gridPosition.y * dimension + (rotated.y + dimension - 1) / 2
+                ))
             }
         }
         return positions

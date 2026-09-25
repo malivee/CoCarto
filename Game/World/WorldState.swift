@@ -73,7 +73,8 @@ struct WorldState: Codable, Equatable, Sendable {
     ) -> Bool {
         let validator = PlacementValidator()
         guard validator.canPlace(pieceID: id, at: position, rotation: rotation, in: self),
-              let index = pieces.firstIndex(where: { $0.id == id }) else {
+              let index = pieces.firstIndex(where: { $0.id == id }),
+              !hasBuildingObject(onPieceID: id) else {
             return false
         }
 
@@ -90,6 +91,14 @@ struct WorldState: Codable, Equatable, Sendable {
         previewWorld.pieces[index].gridPosition = position
         previewWorld.pieces[index].rotation = rotation
         return previewWorld
+    }
+
+    func hasBuildingObject(onPieceID pieceID: UUID) -> Bool {
+        guard let piece = piece(id: pieceID) else { return false }
+        let villagePositions = BuildingPlacementValidator().villagePositions(for: piece)
+        return buildingObjects.contains { object in
+            !object.occupiedPositions.isDisjoint(with: villagePositions)
+        }
     }
 
     @discardableResult

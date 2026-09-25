@@ -58,11 +58,7 @@ extension GameScene {
     }
 
     func questUnlockedPieceRoles() -> Set<PieceRole> {
-        var unlocked: Set<PieceRole> = [.z2, .l1]
-        if quest1Controller.hasCollectedWater || quest2Controller.isActive || quest2Controller.isCompleted || quest1Controller.isCompleted {
-            unlocked.insert(.z1)
-        }
-        return unlocked
+        [.z1, .z2, .l1]
     }
 
     @discardableResult

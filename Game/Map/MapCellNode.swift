@@ -9,7 +9,8 @@ final class MapCellNode: SKSpriteNode {
         microBiomeGrid: MicroBiomeGrid,
         piece: WorldPiece,
         mapper: MapGridMapper,
-        interactionState: MapPieceInteractionState
+        interactionState: MapPieceInteractionState,
+        mismatchedEdges: [Direction] = []
     ) {
         let size = CGSize(width: mapper.cellSize, height: mapper.cellSize)
         super.init(texture: nil, color: piece.role.mapColor(for: interactionState), size: size)
@@ -35,6 +36,7 @@ final class MapCellNode: SKSpriteNode {
         symbol.zPosition = 2
         addChild(symbol)
 
+        addMismatchEdgeHighlights(mismatchedEdges, cellSize: mapper.cellSize)
         addEdgeDebugLabels(edges: edges, cellSize: mapper.cellSize)
         addBiomeEdgeDebugLabels(edges: biomeEdges, cellSize: mapper.cellSize)
     }
@@ -122,6 +124,38 @@ final class MapCellNode: SKSpriteNode {
         lines.lineWidth = 1
         lines.zPosition = 0.6
         addChild(lines)
+    }
+
+    private func addMismatchEdgeHighlights(_ directions: [Direction], cellSize: CGFloat) {
+        guard !directions.isEmpty else { return }
+        let half = cellSize / 2
+        let thickness = max(8, cellSize * 0.1)
+        let inset = thickness / 2
+        for direction in directions {
+            let size: CGSize
+            let position: CGPoint
+            switch direction {
+            case .north:
+                size = CGSize(width: cellSize, height: thickness)
+                position = CGPoint(x: 0, y: half - inset)
+            case .east:
+                size = CGSize(width: thickness, height: cellSize)
+                position = CGPoint(x: half - inset, y: 0)
+            case .south:
+                size = CGSize(width: cellSize, height: thickness)
+                position = CGPoint(x: 0, y: -half + inset)
+            case .west:
+                size = CGSize(width: thickness, height: cellSize)
+                position = CGPoint(x: -half + inset, y: 0)
+            }
+            let highlight = SKShapeNode(rectOf: size, cornerRadius: thickness * 0.28)
+            highlight.fillColor = SKColor.systemRed.withAlphaComponent(0.82)
+            highlight.strokeColor = SKColor.white.withAlphaComponent(0.72)
+            highlight.lineWidth = 1.5
+            highlight.position = position
+            highlight.zPosition = 8
+            addChild(highlight)
+        }
     }
 
     private func addEdgeDebugLabels(edges: CellEdges, cellSize: CGFloat) {

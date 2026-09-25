@@ -6,7 +6,8 @@ final class MapPieceNode: SKNode {
     init(
         piece: WorldPiece,
         mapper: MapGridMapper,
-        interactionState: MapPieceInteractionState
+        interactionState: MapPieceInteractionState,
+        mismatchedEdgesByLocalCell: [(GridPosition, [Direction])] = []
     ) {
         self.pieceID = piece.id
         super.init()
@@ -15,10 +16,20 @@ final class MapPieceNode: SKNode {
         userData = [MapUserDataKey.pieceID.rawValue: piece.id.uuidString]
         position = mapper.mapPosition(for: piece.gridPosition)
         zRotation = piece.rotation.radians
-        rebuildCells(piece: piece, mapper: mapper, interactionState: interactionState)
+        rebuildCells(
+            piece: piece,
+            mapper: mapper,
+            interactionState: interactionState,
+            mismatchedEdgesByLocalCell: mismatchedEdgesByLocalCell
+        )
     }
 
-    func rebuildCells(piece: WorldPiece, mapper: MapGridMapper, interactionState: MapPieceInteractionState) {
+    func rebuildCells(
+        piece: WorldPiece,
+        mapper: MapGridMapper,
+        interactionState: MapPieceInteractionState,
+        mismatchedEdgesByLocalCell: [(GridPosition, [Direction])] = []
+    ) {
         removeAllChildren()
         for cell in piece.cellDefinitions {
             addChild(MapCellNode(
@@ -29,7 +40,8 @@ final class MapPieceNode: SKNode {
                 microBiomeGrid: cell.microBiomeGrid,
                 piece: piece,
                 mapper: mapper,
-                interactionState: interactionState
+                interactionState: interactionState,
+                mismatchedEdges: mismatchedEdgesByLocalCell.first { $0.0 == cell.localPosition }?.1 ?? []
             ))
         }
 
@@ -43,7 +55,8 @@ final class MapPieceNode: SKNode {
         preview: PiecePlacementPreview,
         mapper: MapGridMapper,
         animated: Bool = false,
-        clockwise: Bool? = nil
+        clockwise: Bool? = nil,
+        mismatchedEdgesByLocalCell: [(GridPosition, [Direction])] = []
     ) {
         var previewPiece = piece
         previewPiece.gridPosition = preview.proposedPosition
@@ -55,7 +68,8 @@ final class MapPieceNode: SKNode {
             rebuildCells(
                 piece: previewPiece,
                 mapper: mapper,
-                interactionState: .selected(isValid: preview.isValid)
+                interactionState: .selected(isValid: preview.isValid),
+                mismatchedEdgesByLocalCell: mismatchedEdgesByLocalCell
             )
             removeAction(forKey: "rotateFeedback")
             zRotation = startingAngle
@@ -72,7 +86,8 @@ final class MapPieceNode: SKNode {
             rebuildCells(
                 piece: previewPiece,
                 mapper: mapper,
-                interactionState: .selected(isValid: preview.isValid)
+                interactionState: .selected(isValid: preview.isValid),
+                mismatchedEdgesByLocalCell: mismatchedEdgesByLocalCell
             )
             zRotation = preview.proposedRotation.radians
         }
