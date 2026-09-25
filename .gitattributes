@@ -1,0 +1,5 @@
+# Auto merge resolution for Xcode project files
+*.pbxproj merge=union
+
+# Signing & Bundle ID filter to prevent merge conflicts between teammates
+CoCarto.xcodeproj/project.pbxproj filter=signing

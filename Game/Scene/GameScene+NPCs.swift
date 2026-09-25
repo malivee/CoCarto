@@ -128,7 +128,7 @@ extension GameScene {
         return nil
     }
 
-    private func buildingWorldPosition(for objectID: UUID) -> CGPoint? {
+    func buildingWorldPosition(for objectID: UUID) -> CGPoint? {
         guard let buildingRoot = worldRoot.childNode(withName: BuildingObjectRenderer.rootName) else {
             return nil
         }
@@ -169,7 +169,7 @@ extension GameScene {
             npc.clearStatusBadge()
         } else if quest3Controller.isWaitingForMinigame {
             npc.setStatusBadge(icon: "🌾", text: "Benih", color: .systemGreen)
-        } else if quest3Controller.canStart(in: worldState) {
+        } else if quest3Controller.canStart(in: worldState) || quest3Controller.isBarnPlaced(in: worldState) {
             npc.setStatusBadge(icon: "🧺", text: "Keranjang", color: .systemYellow)
         } else {
             npc.clearStatusBadge()

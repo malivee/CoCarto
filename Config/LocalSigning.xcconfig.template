@@ -1,0 +1,10 @@
+// Penjelasan file: LocalSigning.xcconfig.template
+// Salin atau ganti nama file ini menjadi "LocalSigning.xcconfig" di folder Config/
+// File "LocalSigning.xcconfig" sudah di-ignore oleh git, sehingga perubahan tim
+// kamu tidak akan pernah bentrok atau merusak git merge antar-teman.
+//
+// Isi dengan Team ID Apple Developer milik kamu sendiri (bisa dilihat di Xcode -> Settings -> Accounts):
+// DEVELOPMENT_TEAM = XXXXXXXXXX
+//
+// Jika perlu bundle ID berbeda untuk akun developer gratis kamu:
+// PRODUCT_BUNDLE_IDENTIFIER = com.yourname.CoCarto

@@ -1,0 +1,13 @@
+// Penjelasan file: Signing.xcconfig
+// Konfigurasi Apple Developer Signing & Provisioning bersama untuk tim CoCarto.
+// Setiap developer dapat membuat file "LocalSigning.xcconfig" di folder Config ini
+// untuk menimpa DEVELOPMENT_TEAM / BUNDLE_IDENTIFIER secara lokal tanpa menyentuh git.
+
+// Default team ID (Silalahi Klery Johansen)
+DEVELOPMENT_TEAM = DTTY9ZX5T4
+
+// Default bundle identifier
+PRODUCT_BUNDLE_IDENTIFIER = com.academy.goty.ArthurAdventures
+
+// Muat konfigurasi lokal pengembang jika ada (file ini di-ignore oleh git)
+#include? "LocalSigning.xcconfig"

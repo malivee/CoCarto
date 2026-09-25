@@ -182,6 +182,12 @@ extension GameScene {
         selectedObjectKind = nil
         objectPreview = nil
         worldState = saveData.worldState
+        if quest3Controller.isCompleted {
+            let piece3UUID = BuildingPuzzleBiomeFixture.pieceUUIDs[.l1]!
+            if !worldState.pieces.contains(where: { $0.id == piece3UUID }) {
+                worldState.addPiece(BuildingPuzzleBiomeFixture.makePiece3())
+            }
+        }
         puzzleManager.restore(runtimeStates: saveData.progressState.puzzles)
         worldEventManager.restore(progressState: saveData.progressState)
         playerController.updateWorldState(worldState)

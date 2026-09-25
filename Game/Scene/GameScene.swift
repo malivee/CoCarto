@@ -68,7 +68,7 @@ final class GameScene: SKScene {
     var lastSaveStatus = "none"
     var questDialogueLines: [VillageQuestDialogueLine] = []
     weak var activeQuestDialogue: SpeechBubbleNode?
-    weak var activeQuestMinigame: ShelfBalanceMinigameNode?
+    weak var activeQuestMinigame: SKNode?
     var onQuestDialogueFinished: (() -> Void)?
 
     override func didMove(to view: SKView) {
@@ -127,6 +127,12 @@ final class GameScene: SKScene {
         camera = cameraNode
 
         restoreSavedGameIfAvailable()
+        if quest3Controller.isCompleted {
+            let piece3UUID = BuildingPuzzleBiomeFixture.pieceUUIDs[.l1]!
+            if !worldState.pieces.contains(where: { $0.id == piece3UUID }) {
+                worldState.addPiece(BuildingPuzzleBiomeFixture.makePiece3())
+            }
+        }
         rebuildWorldFromState()
         spawnPlayer()
         puzzleManager.evaluate(worldState: worldState)
@@ -235,6 +241,14 @@ final class GameScene: SKScene {
             return
         }
 
+        if let modal = cameraNode.childNode(withName: "Piece3RewardModal") {
+            modal.run(.sequence([
+                .fadeOut(withDuration: 0.18),
+                .removeFromParent()
+            ]))
+            return
+        }
+
         let location = touch.location(in: self)
         let stack = nodeStack(at: location)
         if stack.contains(where: { $0.name == MapNodeName.resetButton.rawValue }) {
@@ -254,6 +268,9 @@ final class GameScene: SKScene {
         case .exploring:
             if activeQuestDialogue != nil {
                 advanceQuestDialogue()
+                return
+            }
+            if activeQuestMinigame != nil {
                 return
             }
             if nodeStack(at: location).contains(where: { $0.name == MapNodeName.enterButton.rawValue }) {

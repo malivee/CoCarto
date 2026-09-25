@@ -17,6 +17,7 @@
 		AA3EBCE9306672FC00BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA3EC8313066876C00BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AAD4F6B730661F4600F88A5D /* CoCarto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoCarto.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EE15B50F3066B2FA0000F592 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -125,6 +126,11 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		EE15B5153066B2FA0000F592 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -193,6 +199,10 @@
 				{
 					ProductGroup = AA3EC8373066876C00BCF5E3 /* Products */;
 					ProjectRef = AA3EC8313066876C00BCF5E3 /* CoCarto.xcodeproj */;
+				},
+				{
+					ProductGroup = EE15B5153066B2FA0000F592 /* Products */;
+					ProjectRef = EE15B50F3066B2FA0000F592 /* CoCarto.xcodeproj */;
 				},
 				{
 					ProductGroup = AA3EBCEF306672FC00BCF5E3 /* Products */;

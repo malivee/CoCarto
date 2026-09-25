@@ -40,6 +40,13 @@ struct WorldState: Codable, Equatable, Sendable {
         return buildingObjects.remove(at: index)
     }
 
+    @discardableResult
+    mutating func addPiece(_ piece: WorldPiece) -> Bool {
+        guard !pieces.contains(where: { $0.id == piece.id }) else { return false }
+        pieces.append(piece)
+        return true
+    }
+
     var occupancy: GridOccupancy {
         GridOccupancy(worldState: self)
     }

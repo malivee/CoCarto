@@ -3,23 +3,26 @@ import Foundation
 // MARK: - Quest 3 Models & Progress
 
 struct VillageQuest3Progress: Codable, Sendable {
-    static let saveKey = "village.carto.quest3.v2"
+    static let saveKey = "village.carto.quest3.v3"
 
     var deliveredBasket: Bool = false
     var washedHands: Bool = false
     var sortedSeeds: Bool = false
     var completed: Bool = false
+    var piece3Awarded: Bool = false
 
     init(
         deliveredBasket: Bool = false,
         washedHands: Bool = false,
         sortedSeeds: Bool = false,
-        completed: Bool = false
+        completed: Bool = false,
+        piece3Awarded: Bool = false
     ) {
         self.deliveredBasket = deliveredBasket
         self.washedHands = washedHands
         self.sortedSeeds = sortedSeeds
         self.completed = completed
+        self.piece3Awarded = piece3Awarded
     }
 
     static func load(defaults: UserDefaults = .standard) -> Self {

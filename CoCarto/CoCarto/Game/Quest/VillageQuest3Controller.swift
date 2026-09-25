@@ -94,6 +94,16 @@ final class VillageQuest3Controller {
         progress.save()
     }
 
+    var isPiece3Awarded: Bool {
+        synchronizeFromStorage()
+        return progress.piece3Awarded
+    }
+
+    func markPiece3Awarded() {
+        progress.piece3Awarded = true
+        progress.save()
+    }
+
     func reset() {
         progress = VillageQuest3Progress()
         progress.save()

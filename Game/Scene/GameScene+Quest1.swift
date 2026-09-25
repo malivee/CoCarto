@@ -82,11 +82,48 @@ extension GameScene {
     func interactWithQuestObject(id: UUID, in stack: [SKNode]) {
         guard activeQuestMinigame == nil,
               let object = worldState.buildingObject(id: id),
-              let playerNode,
-              let objectNode = stack.first(where: { $0.name == BuildingObjectRenderer.nodeName }) else { return }
-        let objectPosition = objectNode.convert(CGPoint.zero, to: self)
-        let distance = hypot(playerNode.position.x - objectPosition.x, playerNode.position.y - objectPosition.y)
-        guard distance <= 220 else {
+              let playerNode else { return }
+
+        // Find candidate interaction targets: tapped node, corresponding NPC, or the building itself
+        var targetPositions: [CGPoint] = []
+
+        // 1. Check tapped node hierarchy in stack
+        for node in stack {
+            var current: SKNode? = node
+            while let n = current {
+                if let val = n.userData?[BuildingObjectRenderer.objectIDKey] as? String,
+                   val == id.uuidString {
+                    targetPositions.append(n.convert(CGPoint.zero, to: self))
+                    break
+                }
+                current = n.parent
+            }
+            if !targetPositions.isEmpty { break }
+        }
+
+        // 2. Check if an NPC is placed for this building
+        for child in npcRootNode.children {
+            if let val = child.userData?[BuildingObjectRenderer.objectIDKey] as? String,
+               val == id.uuidString {
+                targetPositions.append(child.convert(CGPoint.zero, to: self))
+            }
+        }
+
+        // 3. Check the building's own position
+        if let buildingPos = buildingWorldPosition(for: id) {
+            targetPositions.append(worldRoot.convert(buildingPos, to: self))
+        }
+
+        let distance: CGFloat
+        if targetPositions.isEmpty {
+            distance = 0
+        } else {
+            distance = targetPositions.map {
+                hypot(playerNode.position.x - $0.x, playerNode.position.y - $0.y)
+            }.min() ?? 0
+        }
+
+        guard distance <= 260 else {
             showProgressionFeedback("MOVE CLOSER")
             return
         }

@@ -226,6 +226,21 @@ private extension MicroBiomeGrid {
     }
 }
 
+extension BuildingPuzzleBiomeFixture {
+    static func makePiece3(
+        position: GridPosition = GridPosition(x: 5, y: 1),
+        rotation: GridRotation = .degrees0
+    ) -> WorldPiece {
+        makePiece(
+            pieceID: .l1,
+            type: .l,
+            role: .l1,
+            position: position,
+            rotation: rotation
+        )
+    }
+}
+
 extension WorldState {
     static let buildingPuzzleBiomePrototype = WorldState(pieces: [
         BuildingPuzzleBiomeFixture.makePiece(
@@ -241,13 +256,6 @@ extension WorldState {
             type: .i,
             role: .z2,
             position: GridPosition(x: 2, y: -4),
-            rotation: .degrees0
-        ),
-        BuildingPuzzleBiomeFixture.makePiece(
-            pieceID: .l1,
-            type: .l,
-            role: .l1,
-            position: GridPosition(x: 5, y: 1),
             rotation: .degrees0
         )
     ], landmarks: [])

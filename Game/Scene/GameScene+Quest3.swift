@@ -6,19 +6,6 @@ import UIKit
 extension GameScene {
 
     func handleQuest3Interaction(object: BuildingObject) {
-        guard let playerNode,
-              let objectNode = children.first(where: { $0.name == BuildingObjectRenderer.nodeName }) ??
-                worldRoot.children.first(where: { $0.name == BuildingObjectRenderer.nodeName }) else {
-            return
-        }
-
-        let objectPosition = objectNode.convert(CGPoint.zero, to: self)
-        let distance = hypot(playerNode.position.x - objectPosition.x, playerNode.position.y - objectPosition.y)
-        guard distance <= 240 else {
-            showProgressionFeedback("MOVE CLOSER TO BARN")
-            return
-        }
-
         let result = quest3Controller.interactWithKenneth(in: worldState)
         switch result {
         case .unavailable(let lines):
@@ -42,6 +29,7 @@ extension GameScene {
                 self?.showProgressionFeedback("QUEST 3 COMPLETE")
                 self?.playerNode?.celebrate()
                 self?.npcCharacter(named: "Kenneth")?.celebrate()
+                self?.awardQuest3PieceReward()
                 self?.syncVillageNPCs()
                 self?.updateWorldQuestLabel()
             }
@@ -54,19 +42,176 @@ extension GameScene {
         updateWorldQuestLabel()
     }
 
+    // MARK: - Quest 3 Piece Reward
+
+    func awardQuest3PieceReward() {
+        let piece3UUID = BuildingPuzzleBiomeFixture.pieceUUIDs[.l1]!
+        let isNewPiece = !worldState.pieces.contains(where: { $0.id == piece3UUID })
+
+        if isNewPiece {
+            let piece3 = BuildingPuzzleBiomeFixture.makePiece3()
+            worldState.addPiece(piece3)
+
+            // Update controllers dan world rendering
+            playerController.updateWorldState(worldState)
+            worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+            quest3Controller.markPiece3Awarded()
+            saveGameIfStable()
+        }
+
+        // Tampilkan modal perayaan hadiah kepingan peta ke-3
+        showPiece3RewardCard()
+    }
+
+    func showPiece3RewardCard() {
+        cameraNode.childNode(withName: "Piece3RewardModal")?.removeFromParent()
+
+        let modal = SKNode()
+        modal.name = "Piece3RewardModal"
+        modal.zPosition = 20_000
+
+        // 1. Semi-transparent backdrop
+        let backdrop = SKShapeNode(rectOf: CGSize(width: size.width * 2, height: size.height * 2))
+        backdrop.fillColor = SKColor(white: 0, alpha: 0.45)
+        backdrop.strokeColor = .clear
+        modal.addChild(backdrop)
+
+        // 2. Card Container
+        let cardWidth: CGFloat = min(320, size.width - 40)
+        let cardHeight: CGFloat = 190
+        let card = SKShapeNode(rectOf: CGSize(width: cardWidth, height: cardHeight), cornerRadius: 20)
+        card.fillColor = SKColor(red: 0.12, green: 0.16, blue: 0.14, alpha: 0.96)
+        card.strokeColor = SKColor(red: 0.96, green: 0.84, blue: 0.42, alpha: 1.0)
+        card.lineWidth = 2.2
+        modal.addChild(card)
+
+        // 3. Mini Header Tag
+        let tag = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        tag.text = "★ HADIAH QUEST 3 ★"
+        tag.fontSize = 10.5
+        tag.fontColor = SKColor(red: 0.98, green: 0.86, blue: 0.42, alpha: 1)
+        tag.position = CGPoint(x: 0, y: 62)
+        card.addChild(tag)
+
+        // 4. Main Title
+        let title = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        title.text = "Kepingan Peta ke-3 Terbuka!"
+        title.fontSize = 15.5
+        title.fontColor = .white
+        title.position = CGPoint(x: 0, y: 40)
+        card.addChild(title)
+
+        // 5. Piece Visual Icon (Stylized Carto Mini Tile)
+        let tileNode = SKNode()
+        tileNode.position = CGPoint(x: 0, y: 0)
+        card.addChild(tileNode)
+
+        let tileBg = SKShapeNode(rectOf: CGSize(width: 44, height: 44), cornerRadius: 8)
+        tileBg.fillColor = SKColor(red: 0.22, green: 0.42, blue: 0.25, alpha: 1.0)
+        tileBg.strokeColor = SKColor(red: 0.96, green: 0.84, blue: 0.42, alpha: 0.85)
+        tileBg.lineWidth = 1.5
+        tileNode.addChild(tileBg)
+
+        let tileIcon = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        tileIcon.text = "🧩"
+        tileIcon.fontSize = 22
+        tileIcon.verticalAlignmentMode = .center
+        tileNode.addChild(tileIcon)
+
+        // Animasi floating lembut pada icon tile
+        tileNode.run(.repeatForever(.sequence([
+            .scale(to: 1.10, duration: 0.6),
+            .scale(to: 0.95, duration: 0.6)
+        ])))
+
+        // 6. Subtitle & Description
+        let desc1 = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        desc1.text = "Potongan Jalur Hutan (Piece 3)"
+        desc1.fontSize = 12
+        desc1.fontColor = SKColor(red: 0.88, green: 0.92, blue: 0.84, alpha: 0.95)
+        desc1.position = CGPoint(x: 0, y: -34)
+        card.addChild(desc1)
+
+        let desc2 = SKLabelNode(fontNamed: "AvenirNext-Medium")
+        desc2.text = "Buka peta untuk menyambung rute ke kandang Roland!"
+        desc2.fontSize = 9.5
+        desc2.fontColor = SKColor(white: 0.75, alpha: 0.9)
+        desc2.position = CGPoint(x: 0, y: -50)
+        card.addChild(desc2)
+
+        // 7. Tap to continue hint
+        let hint = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        hint.text = "Ketuk untuk melanjutkan"
+        hint.fontSize = 9
+        hint.fontColor = SKColor(red: 0.96, green: 0.84, blue: 0.42, alpha: 0.8)
+        hint.position = CGPoint(x: 0, y: -72)
+        card.addChild(hint)
+        hint.run(.repeatForever(.sequence([
+            .fadeAlpha(to: 0.35, duration: 0.7),
+            .fadeAlpha(to: 1.0, duration: 0.7)
+        ])))
+
+        // 8. Sparkles
+        let sparkles = ["✨", "⭐", "🎉", "✨", "⭐"]
+        for (i, spark) in sparkles.enumerated() {
+            let label = SKLabelNode(text: spark)
+            label.fontSize = 13
+            label.position = CGPoint(x: CGFloat(i - 2) * 44, y: 15)
+            card.addChild(label)
+            let dx = (CGFloat(i) - 2.0) * 22
+            let dy = CGFloat(25 + i * 8)
+            label.run(.sequence([
+                .group([
+                    .moveBy(x: dx, y: dy, duration: 0.8),
+                    .scale(to: 1.3, duration: 0.4),
+                    .fadeOut(withDuration: 0.8)
+                ]),
+                .removeFromParent()
+            ]))
+        }
+
+        cameraNode.addChild(modal)
+
+        // Pop in animation
+        card.setScale(0.7)
+        card.alpha = 0
+        card.run(.group([
+            .fadeIn(withDuration: 0.22),
+            .sequence([
+                .scale(to: 1.06, duration: 0.18),
+                .scale(to: 1.0, duration: 0.12)
+            ])
+        ]))
+
+        // Auto dismiss after 4.5 seconds if not tapped
+        modal.run(.sequence([
+            .wait(forDuration: 4.5),
+            .run { [weak modal] in
+                modal?.run(.sequence([
+                    .fadeOut(withDuration: 0.3),
+                    .removeFromParent()
+                ]))
+            }
+        ]), withKey: "autoDismiss")
+    }
+
     // MARK: - Seed Sorting Minigame Integration
 
     func startQuest3SeedSortingMinigame() {
+        guard activeQuestMinigame == nil else { return }
+
         // Hentikan pergerakan pemain selama minigame berlangsung
         if let playerNode {
             playerController.stop(playerNode: playerNode)
         }
+        inputController.endTouch()
 
         let minigame = SeedSortingMinigameNode()
         minigame.name = "Quest3SeedSortingMinigame"
         minigame.position = .zero
         minigame.zPosition = 15_000
         cameraNode.addChild(minigame)
+        activeQuestMinigame = minigame
 
         var dialogStage = 0
         let midDialogue = VillageQuest3Catalog.midMinigameDialogue
@@ -90,36 +235,26 @@ extension GameScene {
             }
         }
 
-        minigame.onComplete = { [weak self, weak minigame] in
+        minigame.onComplete = { [weak self] in
             guard let self = self else { return }
+            self.activeQuestMinigame = nil
 
-            // Beri jeda halus setelah keneth membersihkan biji hitam, lalu tutup minigame
-            self.run(.sequence([
-                .wait(forDuration: 1.2),
-                .run {
-                    minigame?.run(.sequence([
-                        .fadeOut(withDuration: 0.35),
-                        .removeFromParent()
-                    ]))
-
-                    // Tandai minigame selesai dan tampilkan dialog penutup
-                    self.quest3Controller.markSeedsSorted()
-                    self.showQuestDialogue(VillageQuest3Catalog.postMinigameDialogue) { [weak self] in
-                        self?.showProgressionFeedback("QUEST 3 COMPLETE")
-                        self?.playerNode?.celebrate()
-                        self?.npcCharacter(named: "Kenneth")?.celebrate()
-                        self?.syncVillageNPCs()
-                        self?.updateWorldQuestLabel()
-                    }
-                }
-            ]))
+            // Tandai minigame selesai dan tampilkan dialog penutup
+            self.quest3Controller.markSeedsSorted()
+            self.showQuestDialogue(VillageQuest3Catalog.postMinigameDialogue) { [weak self] in
+                self?.showProgressionFeedback("QUEST 3 COMPLETE")
+                self?.playerNode?.celebrate()
+                self?.npcCharacter(named: "Kenneth")?.celebrate()
+                self?.awardQuest3PieceReward()
+                self?.syncVillageNPCs()
+                self?.updateWorldQuestLabel()
+            }
         }
 
-        minigame.onDismiss = { [weak minigame] in
-            minigame?.run(.sequence([
-                .fadeOut(withDuration: 0.25),
-                .removeFromParent()
-            ]))
+        minigame.onDismiss = { [weak self, weak minigame] in
+            if self?.activeQuestMinigame === minigame {
+                self?.activeQuestMinigame = nil
+            }
         }
 
         minigame.start()
