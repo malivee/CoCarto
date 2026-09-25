@@ -76,12 +76,24 @@ struct WorldState: Codable, Equatable, Sendable {
         let validator = PlacementValidator()
         guard validator.canPlace(pieceID: id, at: position, rotation: rotation, in: self),
               let index = pieces.firstIndex(where: { $0.id == id }),
-              !hasBuildingObject(onPieceID: id) else {
+              canMovePieceWithBuildings(pieceID: id) else {
             return false
         }
 
+        let originalPiece = pieces[index]
+        let movedObjects = transformedBuildingObjects(
+            with: originalPiece,
+            to: position,
+            rotation: rotation
+        )
         pieces[index].gridPosition = position
         pieces[index].rotation = rotation
+        for movedObject in movedObjects {
+            guard let objectIndex = buildingObjects.firstIndex(where: { $0.id == movedObject.id }) else {
+                continue
+            }
+            buildingObjects[objectIndex] = movedObject
+        }
         return true
     }
 
@@ -100,9 +112,45 @@ struct WorldState: Codable, Equatable, Sendable {
             return self
         }
         var previewWorld = self
+        let originalPiece = pieces[index]
+        let movedObjects = transformedBuildingObjects(
+            with: originalPiece,
+            to: position,
+            rotation: rotation
+        )
         previewWorld.pieces[index].gridPosition = position
         previewWorld.pieces[index].rotation = rotation
+        for movedObject in movedObjects {
+            guard let objectIndex = previewWorld.buildingObjects.firstIndex(where: { $0.id == movedObject.id }) else {
+                continue
+            }
+            previewWorld.buildingObjects[objectIndex] = movedObject
+        }
         return previewWorld
+    }
+
+    func canMovePieceWithBuildings(pieceID: UUID) -> Bool {
+        guard let piece = piece(id: pieceID) else { return false }
+        let validator = BuildingPlacementValidator()
+        let villagePositions = validator.villagePositions(for: piece)
+        let rockSaltPositions = validator.biomePositions(.rocksalt, for: piece)
+
+        return buildingObjects.allSatisfy { object in
+            let supportedPositions = object.kind == .rockSalt ? rockSaltPositions : villagePositions
+            let touchesPiece = !object.occupiedPositions.isDisjoint(with: supportedPositions)
+            return !touchesPiece || object.occupiedPositions.isSubset(of: supportedPositions)
+        }
+    }
+
+    func buildingObjectsSupported(byPieceID pieceID: UUID) -> [BuildingObject] {
+        guard let piece = piece(id: pieceID) else { return [] }
+        let validator = BuildingPlacementValidator()
+        let villagePositions = validator.villagePositions(for: piece)
+        let rockSaltPositions = validator.biomePositions(.rocksalt, for: piece)
+        return buildingObjects.filter { object in
+            let supportedPositions = object.kind == .rockSalt ? rockSaltPositions : villagePositions
+            return object.occupiedPositions.isSubset(of: supportedPositions)
+        }
     }
 
     func hasBuildingObject(onPieceID pieceID: UUID) -> Bool {
@@ -114,6 +162,60 @@ struct WorldState: Codable, Equatable, Sendable {
             let supportedPositions = object.kind == .rockSalt ? rockSaltPositions : villagePositions
             return !object.occupiedPositions.isDisjoint(with: supportedPositions)
         }
+    }
+
+    private func transformedBuildingObjects(
+        with piece: WorldPiece,
+        to position: GridPosition,
+        rotation: GridRotation
+    ) -> [BuildingObject] {
+        let validator = BuildingPlacementValidator()
+        let villagePositions = validator.villagePositions(for: piece)
+        let rockSaltPositions = validator.biomePositions(.rocksalt, for: piece)
+        let dimension = MicroBiomeGrid.dimension
+        let oldAnchor = GridPosition(
+            x: piece.gridPosition.x * dimension,
+            y: piece.gridPosition.y * dimension
+        )
+        let newAnchor = GridPosition(x: position.x * dimension, y: position.y * dimension)
+        let rotationDelta = Self.rotationDelta(from: piece.rotation, to: rotation)
+
+        return buildingObjects.compactMap { object in
+            let supportedPositions = object.kind == .rockSalt ? rockSaltPositions : villagePositions
+            guard object.occupiedPositions.isSubset(of: supportedPositions) else { return nil }
+
+            let transformedPositions = object.occupiedPositions.map { globalPosition -> GridPosition in
+                let oldRotatedCenter = GridPosition(
+                    x: 2 * (globalPosition.x - oldAnchor.x) - (dimension - 1),
+                    y: 2 * (globalPosition.y - oldAnchor.y) - (dimension - 1)
+                )
+                let localCenter = piece.rotation.inverse.rotated(oldRotatedCenter)
+                let newRotatedCenter = rotation.rotated(localCenter)
+                return GridPosition(
+                    x: newAnchor.x + (newRotatedCenter.x + dimension - 1) / 2,
+                    y: newAnchor.y + (newRotatedCenter.y + dimension - 1) / 2
+                )
+            }
+            guard let minX = transformedPositions.map(\.x).min(),
+                  let minY = transformedPositions.map(\.y).min() else {
+                return nil
+            }
+            return BuildingObject(
+                id: object.id,
+                kind: object.kind,
+                origin: GridPosition(x: minX, y: minY),
+                rotation: Self.combined(object.rotation, with: rotationDelta)
+            )
+        }
+    }
+
+    private static func rotationDelta(from original: GridRotation, to proposed: GridRotation) -> GridRotation {
+        let value = (proposed.rawValue - original.rawValue + 360) % 360
+        return GridRotation(rawValue: value) ?? .degrees0
+    }
+
+    private static func combined(_ rotation: GridRotation, with delta: GridRotation) -> GridRotation {
+        GridRotation(rawValue: (rotation.rawValue + delta.rawValue) % 360) ?? rotation
     }
 
     @discardableResult
