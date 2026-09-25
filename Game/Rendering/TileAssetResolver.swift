@@ -49,9 +49,18 @@ struct TileAssetResolver {
         let resolvedAssetName = usesDetailAsset
             ? detailAssetByTileAsset[override.assetName] ?? override.assetName
             : override.assetName
-        let texture = SKTexture(imageNamed: resolvedAssetName)
+        let sourceTexture = SKTexture(imageNamed: resolvedAssetName)
+        // Crop the baked-in frame rather than enlarging it: overlapping framed
+        // images still leaves the upper sprite's black edge visible.
+        let texture = usesDetailAsset
+            ? SKTexture(rect: CGRect(x: 0.01, y: 0.01, width: 0.98, height: 0.98), in: sourceTexture)
+            : sourceTexture
         texture.filteringMode = .linear
-        let sprite = SKSpriteNode(texture: texture, color: .clear, size: CGSize(width: size, height: size))
+        let sprite = SKSpriteNode(
+            texture: texture,
+            color: .clear,
+            size: CGSize(width: size, height: size)
+        )
         sprite.zRotation = override.rotation
         if override.isMirroredHorizontally {
             sprite.xScale = -1

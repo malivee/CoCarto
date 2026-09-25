@@ -30,13 +30,6 @@ final class CellNode: SKNode {
 
         addMicroBiomeDebugGrid(microBiomeGrid, gridID: gridID, piece: piece, cellSize: mapper.cellSize)
 
-        let border = SKShapeNode(rectOf: CGSize(width: mapper.cellSize, height: mapper.cellSize))
-        border.strokeColor = piece.isMovable ? .darkGray : .white
-        border.lineWidth = piece.isMovable ? 3 : 6
-        border.fillColor = .clear
-        border.zPosition = 1
-        addChild(border)
-
         guard showsDebugLabels else {
             return
         }
@@ -55,9 +48,8 @@ final class CellNode: SKNode {
 
     private func addMicroBiomeDebugGrid(_ microBiomeGrid: MicroBiomeGrid, gridID: GridID, piece: WorldPiece, cellSize: CGFloat) {
         if let override = TileAssetResolver.override(for: piece, gridID: gridID) {
-            addChild(TileAssetResolver.shadowNode(size: cellSize))
             let tile = TileAssetResolver.overrideNode(for: override, size: cellSize, usesDetailAsset: true)
-            tile.alpha = 0.92
+            tile.alpha = 1
             tile.zPosition = 0.5
             addChild(tile)
             return
