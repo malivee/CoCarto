@@ -29,15 +29,18 @@ struct VillageQuest1Progress: Codable {
 }
 
 struct VillageQuest2Progress: Codable {
-    static let saveKey = "village.carto.quest2.v1"
+    static let saveKey = "village.carto.quest2.v2"
 
-    var spokeToGrandpa = false
-    var hasBasket = false
-    var metKeneth = false
-    var washedHands = false
-    var sortedSeeds = false
-    var doorWedged = false
+    var spokeToMara = false
+    var shelfFixed = false
+    var movedClayPots = false
+    var acceptedKennethBasketErrand = false
+    var returnedWaterToGrandpa = false
     var completed = false
+
+    var hasBasket: Bool {
+        acceptedKennethBasketErrand
+    }
 
     static func load(defaults: UserDefaults = .standard) -> Self {
         guard let data = defaults.data(forKey: saveKey),
@@ -325,5 +328,65 @@ enum VillageQuestCatalog {
         static let annethHouse = "anneth-house"
         static let berynHouse = "beryn-house"
         static let emptyWarehouse = "empty-warehouse"
+        static let rockSalt = "rock-salt"
+    }
+
+    enum Quest2 {
+        static let mapObjective = "Help Mrs. Mara move her claypots"
+        static let worldObjectives = [
+            "Place Arthur Home",
+            "Place well",
+            "Place Mrs. Mara Home"
+        ]
+
+        static let dialogue = [
+            VillageQuestDialogueLine(
+                speaker: "Mrs. Mara",
+                text: "Arthur! Just in time. Can you help me move these clay pots? The shelf is about to give out."
+            ),
+            VillageQuestDialogueLine(
+                speaker: "Arthur",
+                text: "The ground is sinking under this leg, Bu Mara. Moving the pots won't fix it. Let me wedge this broken brick under it."
+            ),
+            VillageQuestDialogueLine(
+                speaker: "Mrs. Mara",
+                text: "Oh, thank you! I can always count on you, Arthur. Now, since you're already here... help me lift these other two pots anyway."
+            ),
+            VillageQuestDialogueLine(
+                speaker: "Mrs. Mara",
+                text: "Also, Arthur, can you do me another favor?"
+            ),
+            VillageQuestDialogueLine(
+                speaker: "Arthur",
+                text: "Sure. What is it?"
+            ),
+            VillageQuestDialogueLine(
+                speaker: "Mrs. Mara",
+                text: "I borrowed a basket from Kenneth. Could you return it to him for me? You're going to the barn like usual, right? Kenneth should be there too, so you can give it to him while you're there."
+            ),
+            VillageQuestDialogueLine(
+                speaker: "Arthur",
+                text: "Sure, but I need to bring this water back to Grandpa first."
+            )
+        ]
+    }
+
+    static func buildingID(for kind: BuildingObjectKind) -> String {
+        switch kind {
+        case .arthurHouse:
+            return BuildingID.arthurHouse
+        case .well:
+            return BuildingID.villageWell
+        case .buMaraHouse:
+            return BuildingID.buMaraHouse
+        case .barn:
+            return BuildingID.villageBarn
+        case .animalPen:
+            return BuildingID.rolandPen
+        case .annethHouse:
+            return BuildingID.annethHouse
+        case .rockSalt:
+            return BuildingID.rockSalt
+        }
     }
 }
