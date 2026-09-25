@@ -122,11 +122,11 @@ extension MicroGridPosition {
         case .degrees0:
             return self
         case .degrees90:
-            return MicroGridPosition(x: maxIndex - y, y: x)
+            return MicroGridPosition(x: y, y: maxIndex - x)
         case .degrees180:
             return MicroGridPosition(x: maxIndex - x, y: maxIndex - y)
         case .degrees270:
-            return MicroGridPosition(x: y, y: maxIndex - x)
+            return MicroGridPosition(x: maxIndex - y, y: x)
         }
     }
 }
@@ -143,10 +143,11 @@ struct MicroBiomeSplit: Codable, Hashable, Sendable {
     let primaryCorner: Corner
 
     func rotated(by rotation: GridRotation) -> MicroBiomeSplit {
-        MicroBiomeSplit(
+        let quarterTurns = rotation.rawValue / 90
+        return MicroBiomeSplit(
             primaryBiome: primaryBiome,
             secondaryBiome: secondaryBiome,
-            primaryCorner: Corner(rawValue: (primaryCorner.rawValue + rotation.rawValue / 90) % 4)!
+            primaryCorner: Corner(rawValue: (primaryCorner.rawValue - quarterTurns + 4) % 4)!
         )
     }
 }

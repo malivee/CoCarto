@@ -70,6 +70,8 @@ extension GameScene {
         quest1Controller.reset()
         quest2Controller.reset()
         quest3Controller.reset()
+        quest4Controller.reset()
+        quest5Controller.reset()
         quest6Controller.reset()
         puzzleManager.reset()
         worldEventManager.reset()
