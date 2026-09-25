@@ -137,7 +137,9 @@ enum BuildingObjectRenderer {
             return "sumur"
         case .buMaraHouse:
             return "rumahBuMara"
-        case .barn, .animalPen, .annethHouse, .rockSalt:
+        case .annethHouse:
+            return "rumahAnneth"
+        case .barn, .animalPen, .rockSalt:
             return nil
         }
     }
