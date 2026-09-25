@@ -58,6 +58,8 @@ final class MainMenuScene: SKScene {
         // AudioService.shared.playSFX("PaperMap") // Pastikan class AudioService tersedia di project Anda
         isUserInteractionEnabled = false
         
+        // Start the actual game. The previous placeholder created an empty
+        // SKScene, which looked like a frozen screen after tapping Play.
         let scene = GameScene(size: size)
         scene.scaleMode = .resizeFill
         view?.presentScene(scene, transition: .fade(withDuration: 0.45))
@@ -224,8 +226,11 @@ final class MainMenuScene: SKScene {
         ]
         
         for (index, tileInfo) in tiles.enumerated() {
+            // Gunakan fallback solid block jika gambar tile tidak ditemukan di Assets
             let tile = SKSpriteNode(color: palette.parchment, size: CGSize(width: tileSize, height: tileSize))
-            tile.texture = SKTexture(imageNamed: tileInfo.0)
+            if let texture = SKTexture(imageNamed: tileInfo.0).cgImage() != nil ? SKTexture(imageNamed: tileInfo.0) : nil {
+                tile.texture = texture
+            }
             
             tile.position = tileInfo.1
             tile.zRotation = tileInfo.2
@@ -241,15 +246,13 @@ final class MainMenuScene: SKScene {
         }
 
         let house = SKSpriteNode(color: palette.gold.withAlphaComponent(0.8), size: CGSize(width: tileSize * 0.68, height: tileSize * 0.48))
-        house.texture = SKTexture(imageNamed: "rumahArthur")
-        house.colorBlendFactor = 0
+        if let tex = SKTexture(imageNamed: "rumahArthur").cgImage() != nil ? SKTexture(imageNamed: "rumahArthur") : nil { house.texture = tex; house.colorBlendFactor = 0 }
         house.position = CGPoint(x: -tileSize * 0.12, y: tileSize * 0.40)
         house.zPosition = 8
         vignette.addChild(house)
 
         let well = SKSpriteNode(color: palette.ink.withAlphaComponent(0.6), size: CGSize(width: tileSize * 0.28, height: tileSize * 0.28))
-        well.texture = SKTexture(imageNamed: "sumur")
-        well.colorBlendFactor = 0
+        if let tex = SKTexture(imageNamed: "sumur").cgImage() != nil ? SKTexture(imageNamed: "sumur") : nil { well.texture = tex; well.colorBlendFactor = 0 }
         well.position = CGPoint(x: tileSize * 0.48, y: tileSize * 0.10)
         well.zPosition = 9
         vignette.addChild(well)

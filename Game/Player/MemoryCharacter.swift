@@ -86,7 +86,9 @@ public final class MemoryCharacter: SKNode {
         let sprite = SKSpriteNode(imageNamed: assetName)
         sprite.name = "CharacterAsset"
         sprite.size = size
-        sprite.position = CGPoint(x: 0, y: size.height / 2)
+        // Character art contains a little transparent padding below the feet.
+        // Lower it so the visible feet meet the ground shadow.
+        sprite.position = CGPoint(x: 0, y: size.height / 2 - 6)
         characterBodyNode.addChild(sprite)
         nameTagNode?.position.y = size.height + 7
     }

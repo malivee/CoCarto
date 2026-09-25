@@ -26,7 +26,7 @@ enum BuildingObjectRenderer {
         let size: CGSize
         if isWorld {
             let worldUnit = cellSize / CGFloat(WorldVisualSubcell.dimension)
-            let worldVisualScale: CGFloat = 1.18
+            let worldVisualScale: CGFloat = 1.35
             size = CGSize(
                 width: CGFloat(quarterTurn ? worldSize.height : worldSize.width) * worldUnit * worldVisualScale,
                 height: CGFloat(quarterTurn ? worldSize.width : worldSize.height) * worldUnit * worldVisualScale
