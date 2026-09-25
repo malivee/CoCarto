@@ -97,7 +97,7 @@ enum BuildingObjectRenderer {
         return root
     }
 
-    private static func assetName(for kind: BuildingObjectKind) -> String? {
+    static func assetName(for kind: BuildingObjectKind) -> String? {
         switch kind {
         case .arthurHouse:
             return "rumahArthur"

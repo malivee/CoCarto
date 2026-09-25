@@ -551,44 +551,64 @@ final class MapHUDNode: SKNode {
         let kind = inventoryKinds[index]
         let definition = BuildingObjectCatalog.definition(for: kind)
 
-        let hitArea = SKShapeNode(rectOf: CGSize(width: panelSize.width - 12, height: itemHeight - 2))
+        let hitArea = SKShapeNode(
+            rectOf: CGSize(width: panelSize.width - 12, height: itemHeight - 6),
+            cornerRadius: 10
+        )
         hitArea.name = MapNodeName.inventoryItem.rawValue
-        hitArea.fillColor = SKColor.white.withAlphaComponent(0.001)
-        hitArea.strokeColor = .clear
+        hitArea.fillColor = SKColor.white.withAlphaComponent(0.08)
+        hitArea.strokeColor = SKColor.white.withAlphaComponent(0.12)
+        hitArea.lineWidth = 1
         root.addChild(hitArea)
 
-        let icon = SKShapeNode(circleOfRadius: 13)
-        icon.position.x = -44
-        icon.fillColor = index == 0 ? .systemYellow : SKColor.white.withAlphaComponent(0.18)
-        icon.strokeColor = .clear
-        root.addChild(icon)
+        let thumbnailPlate = SKShapeNode(rectOf: CGSize(width: 46, height: 46), cornerRadius: 9)
+        thumbnailPlate.position.x = -50
+        thumbnailPlate.fillColor = SKColor(red: 0.95, green: 0.89, blue: 0.74, alpha: 0.94)
+        thumbnailPlate.strokeColor = SKColor(red: 0.94, green: 0.68, blue: 0.19, alpha: 0.72)
+        thumbnailPlate.lineWidth = 1.5
+        root.addChild(thumbnailPlate)
+
+        if let assetName = BuildingObjectRenderer.assetName(for: kind) {
+            let texture = SKTexture(imageNamed: assetName)
+            let textureSize = texture.size()
+            let maximumSize = CGSize(width: 40, height: 38)
+            let scale = min(
+                maximumSize.width / max(textureSize.width, 1),
+                maximumSize.height / max(textureSize.height, 1)
+            )
+            let thumbnail = SKSpriteNode(texture: texture)
+            thumbnail.name = MapNodeName.inventoryItem.rawValue
+            thumbnail.size = CGSize(
+                width: textureSize.width * scale,
+                height: textureSize.height * scale
+            )
+            thumbnail.zPosition = 2
+            thumbnailPlate.addChild(thumbnail)
+        }
 
         let label = SKLabelNode(fontNamed: "AvenirNext-Medium")
         label.text = title
-        label.fontSize = 14
-        label.fontColor = index == 0 ? .systemGreen : SKColor.white.withAlphaComponent(0.58)
+        label.fontSize = title.count > 13 ? 11.5 : 12.5
+        label.fontColor = .white
         label.horizontalAlignmentMode = .left
         label.verticalAlignmentMode = .center
-        label.position.x = -20
+        label.position = CGPoint(x: -20, y: 7)
         root.addChild(label)
 
         let dimensions = SKLabelNode(fontNamed: "AvenirNext-Regular")
         dimensions.text = "\(definition.mapWidth)×\(definition.mapHeight)"
         dimensions.fontSize = 10
-        dimensions.fontColor = .lightGray
+        dimensions.fontColor = SKColor.white.withAlphaComponent(0.58)
         dimensions.horizontalAlignmentMode = .left
-        dimensions.position = CGPoint(x: -20, y: -20)
+        dimensions.position = CGPoint(x: -20, y: -15)
         root.addChild(dimensions)
 
-        if index > 0 {
-            let soon = SKLabelNode(fontNamed: "AvenirNext-Regular")
-            soon.text = "soon"
-            soon.fontSize = 9
-            soon.fontColor = SKColor.white.withAlphaComponent(0.28)
-            soon.horizontalAlignmentMode = .right
-            soon.position = CGPoint(x: 55, y: -15)
-            root.addChild(soon)
-        }
+        let dragHint = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        dragHint.text = "⋮⋮"
+        dragHint.fontSize = 12
+        dragHint.fontColor = SKColor.white.withAlphaComponent(0.34)
+        dragHint.position = CGPoint(x: 63, y: -4)
+        root.addChild(dragHint)
 
         return root
     }

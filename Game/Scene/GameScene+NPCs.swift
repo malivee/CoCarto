@@ -106,7 +106,11 @@ extension GameScene {
             }
 
             npc.setScale(0.7)
-            npc.position = CGPoint(x: buildingPos.x + offset.x, y: buildingPos.y + offset.y)
+            npc.position = groundedNPCPosition(
+                for: object,
+                buildingPosition: buildingPos,
+                preferredOffset: offset
+            )
             npc.userData = [
                 BuildingObjectRenderer.objectIDKey: object.id.uuidString,
                 "npcTitle": npc.title
@@ -168,6 +172,26 @@ extension GameScene {
             }
         }
         return nil
+    }
+
+    private func groundedNPCPosition(
+        for object: BuildingObject,
+        buildingPosition: CGPoint,
+        preferredOffset: CGPoint
+    ) -> CGPoint {
+        let dimensions = object.mapDimensions
+        let microSize = mapper.cellSize / CGFloat(MicroBiomeGrid.dimension)
+        let halfWidth = CGFloat(dimensions.width) * microSize / 2
+        let halfHeight = CGFloat(dimensions.height) * microSize / 2
+        let groundInset = microSize * 0.5
+        let safeOffset = CGPoint(
+            x: min(max(preferredOffset.x, -halfWidth + groundInset), halfWidth - groundInset),
+            y: min(max(preferredOffset.y, -halfHeight + groundInset), halfHeight - groundInset)
+        )
+        return CGPoint(
+            x: buildingPosition.x + safeOffset.x,
+            y: buildingPosition.y + safeOffset.y
+        )
     }
 
     private func updateGrandpaBadge(_ npc: MemoryCharacter) {
