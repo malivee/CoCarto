@@ -1,3 +1,9 @@
+// File Description: ItemSortingMinigame.swift
+// Tuber Sorting & Washing Minigame Component
+// Consistency & Mechanics:
+// - Drag and drop tubers from the basket to the water basin to scrub them, then place them on the clean cloth.
+// - Features multi-stage washing for dirtier tubers.
+
 import SpriteKit
 #if canImport(UIKit)
 import UIKit
@@ -11,7 +17,7 @@ public struct ItemSortingConfig: Sendable {
     public var autoDismissDelay: TimeInterval
     
     public init(
-        requiredItems: Int = 6, // Jumlah umbi dinaikkan menjadi 6 buah
+        requiredItems: Int = 6, // Number of tubers increased to 6
         allowTouchAnywhere: Bool = true,
         autoDismissDelay: TimeInterval = 2.0
     ) {
@@ -41,7 +47,7 @@ public final class ItemSortingMinigameNode: SKNode {
     private var originalTuberPosition: CGPoint = .zero
     private var isTuberCurrentlyInBasin: Bool = false
     
-    // Multi-Stage Washing State (Kentang Paling Hitam: Cuci 3x)
+    // Multi-Stage Washing State (Darkest Tuber: Wash 3x)
     private var isCurrentTuberBlack: Bool = false
     private var requiredWashesForCurrentTuber: Int = 1
     private var currentWashStage: Int = 0
@@ -52,7 +58,7 @@ public final class ItemSortingMinigameNode: SKNode {
     private let container = SKNode()
     private let workspaceNode = SKNode()
     
-    // Parent Nodes untuk tiap zona (Atas ke Bawah)
+    // Parent Nodes for each zone (Top to Bottom)
     private let basketNode = SKNode()
     private let basinNode = SKNode()
     private let clothNode = SKNode()
@@ -65,7 +71,7 @@ public final class ItemSortingMinigameNode: SKNode {
     private let activeItemsNode = SKNode()
     private let sortedItemsNode = SKNode()
     
-    // Speech Bubble Dialog System (Membutuhkan kelas SpeechBubbleNode di project mu)
+    // Speech Bubble Dialog System (Requires SpeechBubbleNode class in your project)
     private var activeSpeechBubble: SpeechBubbleNode?
     
     public init(config: ItemSortingConfig = ItemSortingConfig()) {
@@ -86,7 +92,7 @@ public final class ItemSortingMinigameNode: SKNode {
     private func buildVisuals() {
         addChild(container)
         
-        // 1. Latar Meja Kayu (Vertical Layout)
+        // 1. Wooden Table Background (Vertical Layout)
         container.addChild(workspaceNode)
         workspaceNode.zPosition = 1
         
@@ -94,7 +100,7 @@ public final class ItemSortingMinigameNode: SKNode {
         bg.zPosition = -10
         workspaceNode.addChild(bg)
         
-        // Papan Meja Vertikal (Menyesuaikan HP)
+        // Vertical Table Planks (Adjusting to Phone Screen)
         let boardH: CGFloat = 1600
         let plankW: CGFloat = 100
         for i in -4...4 {
@@ -108,7 +114,7 @@ public final class ItemSortingMinigameNode: SKNode {
             plank.lineWidth = 4.0
             plank.position = CGPoint(x: plankX, y: 0)
             
-            // Serat kayu
+            // Wood Grain
             for _ in 0...5 {
                 let grain = SKShapeNode()
                 let path = CGMutablePath()
@@ -124,7 +130,7 @@ public final class ItemSortingMinigameNode: SKNode {
             workspaceNode.addChild(plank)
         }
         
-        // Vignette Shadow di tepi layar
+        // Vignette Shadow on screen edges
         let vignette = SKShapeNode(rectOf: CGSize(width: 800, height: 1200))
         vignette.fillColor = .clear
         vignette.strokeColor = SKColor.black.withAlphaComponent(0.6)
@@ -132,9 +138,9 @@ public final class ItemSortingMinigameNode: SKNode {
         vignette.zPosition = -5
         workspaceNode.addChild(vignette)
         
-        // --- ZONA KERJA POTRET (ATAS -> TENGAH -> BAWAH) ---
+        // --- PORTRAIT WORK ZONE (TOP -> MIDDLE -> BOTTOM) ---
         
-        // 2. ZONA ATAS (Keranjang Umbi) - Diangkat lebih ke atas
+        // 2. TOP ZONE (Tuber Basket) - Lifted higher
         basketNode.position = CGPoint(x: 0, y: 250)
         basketNode.zPosition = 2
         workspaceNode.addChild(basketNode)
@@ -178,7 +184,7 @@ public final class ItemSortingMinigameNode: SKNode {
         dirtyBasketZone.strokeColor = .clear
         basketNode.addChild(dirtyBasketZone)
         
-        // 3. ZONA TENGAH (Baskom Air)
+        // 3. MIDDLE ZONE (Water Basin)
         basinNode.position = CGPoint(x: 0, y: 30)
         basinNode.zPosition = 2
         workspaceNode.addChild(basinNode)
@@ -225,7 +231,7 @@ public final class ItemSortingMinigameNode: SKNode {
         washBasinZone.strokeColor = .clear
         basinNode.addChild(washBasinZone)
         
-        // 4. ZONA BAWAH (Kain Linen Bersih)
+        // 4. BOTTOM ZONE (Clean Linen Cloth)
         clothNode.position = CGPoint(x: 0, y: -200)
         clothNode.zPosition = 2
         workspaceNode.addChild(clothNode)
@@ -248,7 +254,7 @@ public final class ItemSortingMinigameNode: SKNode {
         clothShape.zRotation = 0.04
         clothNode.addChild(clothShape)
         
-        // Jahitan Tepi Kain
+        // Cloth Edge Stitching
         let stitchRect = CGRect(x: -(clothW/2) + 10, y: -(clothH/2) + 10, width: clothW - 20, height: clothH - 20)
         let stitch = SKShapeNode(rect: stitchRect, cornerRadius: 8)
         let dashed = stitch.path?.copy(dashingWithPhase: 0, lengths: [8, 6])
@@ -258,10 +264,10 @@ public final class ItemSortingMinigameNode: SKNode {
         stitch.zRotation = 0.04
         clothNode.addChild(stitch)
         
-        // Lipatan Kain
+        // Cloth Fold
         let fold = SKShapeNode()
         let foldPath = CGMutablePath()
-        foldPath.move(to: CGPoint(x: -45, y: clothH/2 - 5))
+        foldPath.move(to: CGPoint(x: -45, y: -clothH/2 - 5))
         foldPath.addQuadCurve(to: CGPoint(x: 15, y: -clothH/2 + 5), control: CGPoint(x: 5, y: 0))
         fold.path = foldPath
         fold.strokeColor = SKColor(red: 0.85, green: 0.80, blue: 0.75, alpha: 0.6)
@@ -275,7 +281,7 @@ public final class ItemSortingMinigameNode: SKNode {
         cleanClothZone.zRotation = 0.04
         clothNode.addChild(cleanClothZone)
         
-        // 5. Layer Penempatan Umbi
+        // 5. Tuber Placement Layer
         sortedItemsNode.zPosition = 3
         activeItemsNode.zPosition = 4
         workspaceNode.addChild(sortedItemsNode)
@@ -324,7 +330,7 @@ public final class ItemSortingMinigameNode: SKNode {
     
     private func createTuberVisual() -> CGPath {
         let path = CGMutablePath()
-        let w = CGFloat.random(in: 36...44) // Ukuran besar memuaskan
+        let w = CGFloat.random(in: 36...44) // Satisfying large size
         let h = CGFloat.random(in: 48...60)
         
         path.move(to: CGPoint(x: 0, y: h/2))
@@ -339,7 +345,7 @@ public final class ItemSortingMinigameNode: SKNode {
     private func spawnNewTuber() {
         guard sortedCount < config.requiredItems else { return }
         
-        // Beberapa kentang (index 1, 3, dan 4) adalah kentang hitam yang butuh dicuci 3 kali
+        // Some tubers (index 1, 3, and 4) are extremely filthy and need 3 washes
         let blackTuberIndices = [1, 3, 4]
         isCurrentTuberBlack = blackTuberIndices.contains(sortedCount)
         
@@ -351,7 +357,7 @@ public final class ItemSortingMinigameNode: SKNode {
         let tuberNode = SKNode()
         setupTuberContent(tuberNode, isBlack: isCurrentTuberBlack)
         
-        // Spawn di Keranjang (Atas)
+        // Spawn in Basket (Top)
         let spawnPos = CGPoint(x: basketNode.position.x + CGFloat.random(in: -30...30),
                                y: basketNode.position.y + CGFloat.random(in: -20...20))
         tuberNode.position = spawnPos
@@ -366,11 +372,11 @@ public final class ItemSortingMinigameNode: SKNode {
             .scale(to: 1.0, duration: 0.15).applyTimingMode(.easeIn)
         ]))
         
-        // Variasi Dialog Minimalis
+        // Minimalist Dialog Variations
         if isCurrentTuberBlack {
-            showDialog(name: "ANNETH", message: "Yang ini pekat, gosok 3 kali!", isSuccess: false)
+            showDialog(name: "ANNETH", message: "This one is filthy, scrub it 3 times!", isSuccess: false)
         } else if sortedCount == 0 {
-            showDialog(name: "ANNETH", message: "Cuci di baskom lalu taruh di kain!", isSuccess: false)
+            showDialog(name: "ANNETH", message: "Wash it in the basin, then put it on the cloth!", isSuccess: false)
         }
     }
     
@@ -397,7 +403,7 @@ public final class ItemSortingMinigameNode: SKNode {
         tuberNode.addChild(shadow)
         
         if isBlack {
-            // Lapisan 1: Noda pekat dasar
+            // Layer 1: Dark base stain
             let dirtLayer1 = SKNode()
             dirtLayer1.name = "dirtLayer1"
             for _ in 0...8 {
@@ -409,7 +415,7 @@ public final class ItemSortingMinigameNode: SKNode {
             }
             tuberNode.addChild(dirtLayer1)
             
-            // Lapisan 2: Kerak jelaga tebal
+            // Layer 2: Thick soot crust
             let dirtLayer2 = SKNode()
             dirtLayer2.name = "dirtLayer2"
             for _ in 0...10 {
@@ -422,7 +428,7 @@ public final class ItemSortingMinigameNode: SKNode {
             }
             tuberNode.addChild(dirtLayer2)
             
-            // Lapisan 3: Lumpur hitam pekat paling luar
+            // Layer 3: Thickest outer black mud
             let dirtLayer3 = SKNode()
             dirtLayer3.name = "dirtLayer3"
             for _ in 0...12 {
@@ -498,7 +504,7 @@ public final class ItemSortingMinigameNode: SKNode {
         let currentTouchPosInWorkspace = touch.location(in: workspaceNode)
         let locInBasin = touch.location(in: basinNode)
         
-        // Akurasi Hitbox: Jika berada di dalam baskom air, hitung scrubbing
+        // Hitbox Accuracy: If inside the water basin, calculate scrubbing
         let isInsideBasin = washBasinZone.path?.contains(locInBasin) == true
         if isInsideBasin {
             if !isTuberCurrentlyInBasin {
@@ -532,31 +538,31 @@ public final class ItemSortingMinigameNode: SKNode {
             .fadeAlpha(to: 1.0, duration: 0.15)
         ]))
         
-        // Logic Evaluasi
+        // Evaluation Logic
         if cleanClothZone.path?.contains(dropLocInCloth) == true {
             if isActiveTuberWashed {
                 handleSuccessDrop(tuber: tuber, dropLoc: absoluteDropLoc)
             } else {
                 if isCurrentTuberBlack {
                     if currentWashStage == 0 {
-                        resetTuberAndScold(message: "Jangan taruh itu di kain! Masih hitam pekat dan berlumpur tebal!", tuber: tuber)
+                        resetTuberAndScold(message: "Don't put that on the cloth! It's still pitch black and muddy!", tuber: tuber)
                     } else {
-                        resetTuberAndScold(message: "Belum bersih, baru \(currentWashStage)/3!", tuber: tuber)
+                        resetTuberAndScold(message: "Not clean yet, only \(currentWashStage)/3!", tuber: tuber)
                     }
                 } else {
-                    resetTuberAndScold(message: "Cuci dulu di baskom!", tuber: tuber)
+                    resetTuberAndScold(message: "Wash it in the basin first!", tuber: tuber)
                 }
             }
         } else if washBasinZone.path?.contains(dropLocInBasin) == true {
             if isActiveTuberWashed {
-                showDialog(name: "ANNETH", message: "Sudah bersih, taruh di kain!", isSuccess: true)
+                showDialog(name: "ANNETH", message: "It's clean, put it on the cloth!", isSuccess: true)
             } else {
-                showDialog(name: "ANNETH", message: "Gosok memutar sampai bersih!", isSuccess: false)
+                showDialog(name: "ANNETH", message: "Scrub in circles until it's clean!", isSuccess: false)
             }
         } else if dirtyBasketZone.path?.contains(dropLocInBasket) == true {
             tuber.run(.move(to: originalTuberPosition, duration: 0.25).applyTimingMode(.easeOut))
         } else {
-            resetTuberAndScold(message: "Taruh di atas kain!", tuber: tuber)
+            resetTuberAndScold(message: "Put it on the cloth!", tuber: tuber)
         }
         
         activeTuber = nil
@@ -572,7 +578,7 @@ public final class ItemSortingMinigameNode: SKNode {
         
         accumulatedScrubDistance += deltaDist
         
-        // Efek busa air halus saat menggosok
+        // Soft water foam effect while scrubbing
         if Int(accumulatedScrubDistance) % 30 < Int(deltaDist) + 3 {
             spawnScrubFoam(at: tuber.position)
             AudioService.shared.playSFX("WaterSorting", volumeMultiplier: 0.6, throttleInterval: 0.8)
@@ -581,9 +587,9 @@ public final class ItemSortingMinigameNode: SKNode {
             #endif
         }
         
-        // Threshold jarak gosok:
-        // Kentang biasa: 130 pt
-        // Kentang paling hitam: 220 pt PER TAHAP
+        // Scrub distance threshold:
+        // Normal tuber: 130 pt
+        // Blackest tuber: 220 pt PER STAGE
         let stageThreshold: CGFloat = isCurrentTuberBlack ? 220.0 : 130.0
         
         if accumulatedScrubDistance >= stageThreshold {
@@ -611,7 +617,7 @@ public final class ItemSortingMinigameNode: SKNode {
                 if let shape = tuber.childNode(withName: "tuberShape") as? SKShapeNode {
                     shape.fillColor = SKColor(red: 0.22, green: 0.16, blue: 0.12, alpha: 1.0)
                 }
-                showDialog(name: "ANNETH", message: "Terus gosok!", isSuccess: false)
+                showDialog(name: "ANNETH", message: "Keep scrubbing!", isSuccess: false)
                 
             case 2:
                 tuber.childNode(withName: "dirtLayer2")?.run(.sequence([
@@ -621,7 +627,7 @@ public final class ItemSortingMinigameNode: SKNode {
                 if let shape = tuber.childNode(withName: "tuberShape") as? SKShapeNode {
                     shape.fillColor = SKColor(red: 0.40, green: 0.28, blue: 0.18, alpha: 1.0)
                 }
-                showDialog(name: "ANNETH", message: "Hampir bersih, sekali lagi!", isSuccess: false)
+                showDialog(name: "ANNETH", message: "Almost clean, one more time!", isSuccess: false)
                 
             case 3:
                 tuber.childNode(withName: "dirtLayer1")?.run(.sequence([
@@ -641,7 +647,7 @@ public final class ItemSortingMinigameNode: SKNode {
                 #if canImport(UIKit)
                 HapticsService.shared.playNotification(.success)
                 #endif
-                showDialog(name: "ANNETH", message: "Bersih! Taruh di kain.", isSuccess: true)
+                showDialog(name: "ANNETH", message: "Clean! Put it on the cloth.", isSuccess: true)
                 
             default:
                 break
@@ -660,7 +666,7 @@ public final class ItemSortingMinigameNode: SKNode {
             #if canImport(UIKit)
             HapticsService.shared.playNotification(.success)
             #endif
-            showDialog(name: "ANNETH", message: "Bersih! Taruh di kain.", isSuccess: true)
+            showDialog(name: "ANNETH", message: "Clean! Put it on the cloth.", isSuccess: true)
         }
     }
     
@@ -719,7 +725,7 @@ public final class ItemSortingMinigameNode: SKNode {
         tuber.removeFromParent()
         sortedItemsNode.addChild(tuber)
         
-        // Letakkan dengan acak di area kain
+        // Place randomly in the cloth area
         let clothX = clothNode.position.x + CGFloat.random(in: -50...50)
         let clothY = clothNode.position.y + CGFloat.random(in: -40...40)
         tuber.position = CGPoint(x: clothX, y: clothY)
@@ -760,7 +766,7 @@ public final class ItemSortingMinigameNode: SKNode {
         
         showDialog(name: "ANNETH", message: message, isSuccess: false)
         
-        // Shake screen sedikit
+        // Slight screen shake
         container.run(.sequence([
             .moveBy(x: -8, y: 0, duration: 0.04),
             .moveBy(x: 16, y: 0, duration: 0.08),
@@ -772,7 +778,7 @@ public final class ItemSortingMinigameNode: SKNode {
         isCompleted = true
         isRunning = false
         
-        showDialog(name: "ANNETH", message: "Kerja bagus, Arthur!", isSuccess: true)
+        showDialog(name: "ANNETH", message: "Good job, Arthur!", isSuccess: true)
         
         let winGlow = SKShapeNode(rectOf: CGSize(width: 1600, height: 1600))
         winGlow.fillColor = SKColor(red: 0.6, green: 1.0, blue: 0.4, alpha: 0.3)
@@ -815,14 +821,14 @@ public final class ItemSortingMinigameNode: SKNode {
 #if canImport(SwiftUI) && DEBUG
 import SwiftUI
 
-#Preview("Item Sorting Naratif (Portrait)") {
+#Preview("Narrative Item Sorting (Portrait)") {
     SpriteView(scene: {
         let scene = SKScene(size: CGSize(width: 393, height: 852)) // iPhone 14 Pro Portrait size
         scene.scaleMode = .resizeFill
         scene.backgroundColor = SKColor(red: 0.04, green: 0.02, blue: 0.01, alpha: 1.0)
         
         func spawn() {
-            // Memulai game dengan total 6 umbi
+            // Start the game with a total of 6 tubers
             let minigame = ItemSortingMinigameNode(config: ItemSortingConfig(requiredItems: 6))
             minigame.position = CGPoint(x: scene.size.width/2, y: scene.size.height/2)
             minigame.onDismiss = {

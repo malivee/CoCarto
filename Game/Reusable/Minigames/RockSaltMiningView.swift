@@ -42,17 +42,17 @@ public struct RockSaltCarvingView: View {
         self.onDismiss = onDismiss
     }
 
-    // Status Permainan
+    // Game Status
     @State private var mountainHits: Int = 0
-    private let maxHits: Int = 7 // Diubah ke 7 pukulan
-    @State private var isShrunk: Bool = false // Menyusut di hit ke-5
-    @State private var isMountainDestroyed: Bool = false // Hancur lebur di hit ke-7
+    private let maxHits: Int = 7 // 7 hits to completely shatter
+    @State private var isShrunk: Bool = false // Shrinks at 5th hit
+    @State private var isMountainDestroyed: Bool = false // Destroyed at 7th hit
     
-    // Dialog Naratif
-    @State private var dialogMessage: String = "Arthur, ketuk bongkahan garam ini untuk memecahkannya!"
+    // Narrative Dialog
+    @State private var dialogMessage: String = "Arthur, tap this salt deposit to break it apart!"
     @State private var isShowingDialog: Bool = true
     
-    // Efek Visual
+    // Visual Effects
     @State private var rockMarks: [RockImpactMark] = []
     @State private var particles: [SaltDustParticle] = []
     @State private var shatteredPieces: [CrystalDebris] = []
@@ -61,7 +61,7 @@ public struct RockSaltCarvingView: View {
     @State private var screenShake: CGFloat = 0.0
     @State private var saltGlowPulse: CGFloat = 1.0
     
-    // Feedback Haptic Native
+    // Native Haptic Feedback
     #if canImport(UIKit)
     private let lightImpact = UIImpactFeedbackGenerator(style: .light)
     private let heavyImpact = UIImpactFeedbackGenerator(style: .heavy)
@@ -71,7 +71,7 @@ public struct RockSaltCarvingView: View {
     public var body: some View {
         GeometryReader { proxy in
             ZStack {
-                // Background Gelap Gua Tambang
+                // Dark Mine Cave Background
                 RadialGradient(
                     gradient: Gradient(colors: [Color(red: 0.18, green: 0.14, blue: 0.12), Color(red: 0.06, green: 0.04, blue: 0.03)]),
                     center: .center,
@@ -91,9 +91,9 @@ public struct RockSaltCarvingView: View {
                     topQuestPanel
                         .zIndex(2)
                     
-                    // Area Utama Permainan
+                    // Main Game Area
                     ZStack {
-                        // Cahaya Pendar di belakang garam
+                        // Glow behind the salt rock
                         Circle()
                             .fill(Color(red: 0.95, green: 0.98, blue: 1.0).opacity(isMountainDestroyed ? 0.0 : (isShrunk ? 0.15 : 0.25)))
                             .frame(width: 260, height: 260)
@@ -102,20 +102,20 @@ public struct RockSaltCarvingView: View {
                             .offset(y: isShrunk ? 120 : 40)
                             .animation(.spring(response: 0.6, dampingFraction: 0.6), value: isShrunk)
                         
-                        // Gambar Bongkahan Garam Utama
+                        // Main Salt Rock Image
                         if !isMountainDestroyed {
                             Image("rocksalt")
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 320)
-                                // Menyusut menjadi gundukan kecil setelah 5 hits
+                                // Shrink to a smaller mound after 5 hits
                                 .scaleEffect(isShrunk ? 0.45 : 1.0)
                                 .offset(y: isShrunk ? 140 : 40)
                                 .animation(.spring(response: 0.6, dampingFraction: 0.55), value: isShrunk)
                                 .transition(.opacity)
                         }
                         
-                        // Retakan pada bongkahan
+                        // Cracks on the rock
                         if !isMountainDestroyed {
                             Canvas { context, _ in
                                 for mark in rockMarks {
@@ -124,13 +124,13 @@ public struct RockSaltCarvingView: View {
                                         path.move(to: seg.start)
                                         path.addLine(to: seg.end)
                                         
-                                        // Bayangan retakan untuk kedalaman
+                                        // Crack shadow for depth
                                         context.stroke(
                                             path,
                                             with: .color(Color.black.opacity(0.4)),
                                             style: StrokeStyle(lineWidth: seg.width + 2, lineCap: .round)
                                         )
-                                        // Retakan inti putih/kristal
+                                        // White/Crystal core crack
                                         context.stroke(
                                             path,
                                             with: .color(Color.white.opacity(0.95)),
@@ -141,7 +141,7 @@ public struct RockSaltCarvingView: View {
                             }
                         }
                         
-                        // Partikel Debu Garam
+                        // Salt Dust Particles
                         ForEach(particles) { pt in
                             Circle()
                                 .fill(pt.color.opacity(pt.opacity))
@@ -150,7 +150,7 @@ public struct RockSaltCarvingView: View {
                                 .position(pt.position)
                         }
                         
-                        // Pecahan Kristal Garam (Shattered Debris) saat hancur total
+                        // Shattered Crystal Debris when fully destroyed
                         ForEach(shatteredPieces) { piece in
                             CrystalShardShape()
                                 .fill(LinearGradient(colors: [Color.white, Color(red: 0.85, green: 0.95, blue: 1.0)], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -160,7 +160,7 @@ public struct RockSaltCarvingView: View {
                                 .shadow(color: Color.white.opacity(0.5), radius: 4)
                         }
                         
-                        // Beliung Tambang (Pickaxe)
+                        // Pickaxe Tool
                         if !isMountainDestroyed {
                             PickaxeToolView()
                                 .rotationEffect(.degrees(pickaxeRotation), anchor: .bottomLeading)
@@ -169,7 +169,7 @@ public struct RockSaltCarvingView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle()) // Area interaktif penuh
+                    .contentShape(Rectangle()) // Full interactive area
                     .gesture(
                         SpatialTapGesture()
                             .onEnded { value in
@@ -178,7 +178,7 @@ public struct RockSaltCarvingView: View {
                     )
                 }
                 
-                // Dialog Naratif Anneth di Bawah
+                // Narrative Dialog at the bottom
                 if isShowingDialog {
                     VStack {
                         Spacer()
@@ -187,7 +187,7 @@ public struct RockSaltCarvingView: View {
                     .zIndex(5)
                 }
                 
-                // Modal Kemenangan
+                // Victory Modal
                 if isMountainDestroyed {
                     victoryModal
                         .zIndex(20)
@@ -217,7 +217,7 @@ public struct RockSaltCarvingView: View {
                     .foregroundColor(Color(red: 0.98, green: 0.95, blue: 0.90))
                     .shadow(color: Color.black.opacity(0.8), radius: 1, x: 1, y: 1)
                 
-                Text("Kumpulkan pecahan garam")
+                Text("Collect salt shards")
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundColor(Color.white.opacity(0.7))
             }
@@ -225,7 +225,7 @@ public struct RockSaltCarvingView: View {
             Spacer()
             
             HStack(spacing: 12) {
-                // Counter Hits (Maksimal 7)
+                // Hits Counter (Max 7)
                 HStack(spacing: 6) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 12, weight: .bold))
@@ -275,9 +275,9 @@ public struct RockSaltCarvingView: View {
     private var dialogueBubbleView: some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("ANNETH")
+                Text("OLD MINER")
                     .font(.system(size: 13, weight: .black, design: .rounded))
-                    .foregroundColor(Color(red: 0.98, green: 0.85, blue: 0.48))
+                    .foregroundColor(Color(red: 0.80, green: 0.85, blue: 0.90)) // Light grayish blue for miner
                 
                 Text(dialogMessage)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
@@ -292,7 +292,7 @@ public struct RockSaltCarvingView: View {
         .cornerRadius(18)
         .overlay(
             RoundedRectangle(cornerRadius: 18)
-                .stroke(Color(red: 0.85, green: 0.65, blue: 0.32).opacity(0.9), lineWidth: 2)
+                .stroke(Color(red: 0.40, green: 0.50, blue: 0.60).opacity(0.9), lineWidth: 2)
         )
         .shadow(color: Color.black.opacity(0.6), radius: 12, y: 6)
         .padding(.horizontal, 24)
@@ -316,11 +316,11 @@ public struct RockSaltCarvingView: View {
                         .shadow(color: Color.cyan.opacity(0.8), radius: 20)
                 }
                 
-                Text("GARAM TERKUMPUL!")
+                Text("SALT COLLECTED!")
                     .font(.system(size: 26, weight: .black, design: .rounded))
                     .foregroundColor(Color.white)
                 
-                Text("Kristal rock salt murni telah dipecahkan dan siap dibawa untuk persediaan dapur desa.")
+                Text("Pure rock salt crystals have been shattered and are ready for the village's kitchen supply.")
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundColor(Color(red: 0.85, green: 0.90, blue: 0.95))
                     .multilineTextAlignment(.center)
@@ -330,7 +330,7 @@ public struct RockSaltCarvingView: View {
                     onComplete?()
                     onDismiss?()
                 }) {
-                    Text("SELESAI")
+                    Text("COMPLETE")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(Color(red: 0.05, green: 0.1, blue: 0.2))
                         .frame(maxWidth: .infinity)
@@ -395,34 +395,34 @@ public struct RockSaltCarvingView: View {
         
         mountainHits += 1
         
-        // Fase 1: Menyusut di Pukulan ke-5
+        // Phase 1: Shrink at hit 5
         if mountainHits == 5 {
             triggerShrink(at: point)
             return
         }
         
-        // Fase 2: Hancur Total di Pukulan ke-7
+        // Phase 2: Completely shatter at hit 7
         if mountainHits >= maxHits {
             triggerMountainCollapse(at: point)
             return
         }
         
-        // Update Dialog Biasa
+        // Update Narrative Dialog
         withAnimation(.easeInOut(duration: 0.3)) {
             if mountainHits == 2 {
-                dialogMessage = "Bagus! Retakannya mulai menyebar!"
+                dialogMessage = "Good! The cracks are starting to spread!"
                 isShowingDialog = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     withAnimation { isShowingDialog = false }
                 }
             } else if mountainHits == 4 {
-                dialogMessage = "Satu pukulan kuat lagi untuk memecahkannya!"
+                dialogMessage = "Just a few more strong hits to break it!"
                 isShowingDialog = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     withAnimation { isShowingDialog = false }
                 }
             } else if mountainHits == 6 {
-                dialogMessage = "Gundukannya hampir hancur! Pukul sekali lagi!"
+                dialogMessage = "It's almost shattered! Hit it again!"
                 isShowingDialog = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     withAnimation { isShowingDialog = false }
@@ -442,10 +442,10 @@ public struct RockSaltCarvingView: View {
             isShrunk = true
         }
         
-        // Hapus retakan sebelumnya agar gundukan kecil terlihat bersih
+        // Remove previous cracks so the smaller mound looks clean
         withAnimation {
             rockMarks.removeAll()
-            dialogMessage = "Bongkahan terpecah! Sekarang hancurkan gundukannya untuk dibawa!"
+            dialogMessage = "The crust broke! Now shatter the rest of it to take back!"
             isShowingDialog = true
         }
     }
@@ -457,7 +457,7 @@ public struct RockSaltCarvingView: View {
         triggerShake(intensity: 18.0)
         spawnSparks(at: CGPoint(x: 200, y: 450), count: 60)
         
-        // Ledakan pecahan kristal (Shattered Debris)
+        // Shattered crystal debris explosion
         for _ in 0..<20 {
             let piece = CrystalDebris(
                 position: CGPoint(x: point.x + CGFloat.random(in: -30...30), y: point.y + CGFloat.random(in: -20...20)),
@@ -476,7 +476,7 @@ public struct RockSaltCarvingView: View {
         }
         
         withAnimation(.easeInOut(duration: 0.2)) {
-            dialogMessage = "Sempurna! Garam siap dikumpulkan."
+            dialogMessage = "Perfect! The salt is ready to be collected."
             isShowingDialog = true
         }
         
@@ -491,13 +491,13 @@ public struct RockSaltCarvingView: View {
     }
     
     private func addCrackBranches(to segments: inout [CrackSegment], center: CGPoint, intensity: Int) {
-        // Skala retakan dikecilkan jika sudah menyusut
+        // Scale down cracks if the rock is shrunk
         let multiplier: CGFloat = isShrunk ? 0.5 : 1.0
         let branchCount = Int.random(in: 5...8)
         let baseRadius: CGFloat = CGFloat(intensity) * 15.0 * multiplier
         
         for _ in 0..<branchCount {
-            let angle = Double.random(in: 0...(2 * .pi))
+            let angle = Double.random(in: 0...(2.0 * .pi))
             let length = CGFloat.random(in: 20...baseRadius + 25) * multiplier
             
             let mid = CGPoint(
@@ -616,7 +616,7 @@ public struct PickaxeHeadShape: Shape {
     }
 }
 
-// Shape untuk pecahan/debris kristal (tidak lagi cokelat tanah, melainkan bentuk kristal)
+// Shape for crystal debris (crystal shaped instead of dirt shaped)
 public struct CrystalShardShape: Shape {
     public func path(in rect: CGRect) -> Path {
         var p = Path()

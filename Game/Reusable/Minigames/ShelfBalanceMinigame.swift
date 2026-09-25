@@ -1,12 +1,12 @@
-// Penjelasan file: ShelfBalanceMinigame.swift
-// Komponen Minigame "Event 1: Menolong Bu Mara" (Shelf Leg Balance & Precision Brick Wedge QTE).
-// Konsistensi Visual & Arsitektur:
-// - Berbasis SpriteKit Node (SKNode) seragam dengan ItemSortingMinigame & SeedSortingMinigame.
-// - Menampilkan dialog naratif Bu Mara dengan SpeechBubbleNode (gaya krayon artistik).
-// - Meja napak tanah: Kaki kiri di atas batu landasan, kaki kanan ambles di lumpur, dan bata ganjalan
-//   menopang kaki kanan tepat di permukaan tanah.
-// - Mekanik: Saat diangkat rak langsung STAY di posisi terangkat, pemain menahan seimbang dengan Gyro,
-//   lalu melakukan Precision Tap pada slider DBD di zona hijau untuk menyelipkan batu bata ganjalan.
+// File description: ShelfBalanceMinigame.swift
+// Minigame Component "Event 1: Helping Mrs. Mara" (Shelf Leg Balance & Precision Brick Wedge QTE).
+// Visual & Architectural Consistency:
+// - SpriteKit Node (SKNode) based, consistent with ItemSortingMinigame & SeedSortingMinigame.
+// - Displays Mrs. Mara's narrative dialog using SpeechBubbleNode (artistic crayon style).
+// - Grounded shelf: Left leg on a stone paver, right leg sinking into the mud, and a brick wedge
+//   supporting the right leg exactly at ground level.
+// - Mechanics: When lifted, the shelf STAYS lifted. The player balances it using Gyro,
+//   then performs a Precision Tap on the DBD slider in the green zone to slide the brick wedge in.
 
 import SpriteKit
 import CoreMotion
@@ -17,20 +17,20 @@ import UIKit
 // MARK: - Configuration
 
 public struct ShelfBalanceConfig: Sendable {
-    public var balanceTolerance: CGFloat    // Toleransi kemiringan lurus (radian)
-    public var failAngle: CGFloat           // Batas kemiringan sebelum pot jatuh
-    public var dbdSliderSpeed: CGFloat      // Kecepatan slider bata
-    public var dbdTargetStart: CGFloat      // Awal zona hijau (0.0 - 1.0)
-    public var dbdTargetEnd: CGFloat        // Akhir zona hijau (0.0 - 1.0)
+    public var balanceTolerance: CGFloat    // Straight tilt tolerance (radians)
+    public var failAngle: CGFloat           // Tilt limit before pots fall
+    public var dbdSliderSpeed: CGFloat      // Brick slider speed
+    public var dbdTargetStart: CGFloat      // Green zone start (0.0 - 1.0)
+    public var dbdTargetEnd: CGFloat        // Green zone end (0.0 - 1.0)
     public var headingText: String
     
     public init(
-        balanceTolerance: CGFloat = 0.08,   // ~4.5 derajat
-        failAngle: CGFloat = 0.40,          // ~23 derajat
+        balanceTolerance: CGFloat = 0.08,   // ~4.5 degrees
+        failAngle: CGFloat = 0.40,          // ~23 degrees
         dbdSliderSpeed: CGFloat = 1.35,
         dbdTargetStart: CGFloat = 0.60,
         dbdTargetEnd: CGFloat = 0.80,
-        headingText: String = "BANTU BU MARA: GANJAL RAK"
+        headingText: String = "Help Mrs. Mara: WEDGE THE SHELF"
     ) {
         self.balanceTolerance = balanceTolerance
         self.failAngle = failAngle
@@ -54,12 +54,12 @@ public final class ShelfBalanceMinigameNode: SKNode {
     
     // Physics & Lift State
     private let motionManager = CMMotionManager()
-    private var shelfAngle: CGFloat = 0.17 // Awalnya ambles ~9.8 derajat ke dalam lumpur
+    private var shelfAngle: CGFloat = 0.17 // Initially sinking ~9.8 degrees into the mud
     private var simulatedTilt: CGFloat = 0.0
-    private var isShelfLifted: Bool = false // Begitu diangkat langsung STAY di posisi terangkat
+    private var isShelfLifted: Bool = false // Once lifted, stays in the lifted position
     private var isBalanced: Bool = false
     private var isWedgePlaced: Bool = false
-    private var hammerTaps: Int = 0 // 2x ketukan palu untuk mengunci rapat
+    private var hammerTaps: Int = 0 // 2 hammer taps to lock it tight
     
     // DBD Slider State
     private var sliderProgress: CGFloat = 0.0
@@ -73,19 +73,19 @@ public final class ShelfBalanceMinigameNode: SKNode {
     
     private let cottageWallNode = SKNode()
     
-    // Ground & Mud Elements (Napak Tanah)
+    // Ground & Mud Elements (Grounded)
     private let groundNode = SKNode()
     private let groundForegroundNode = SKNode()
     private let sunkenPitNode = SKShapeNode()
     private let stonePaverNode = SKShapeNode()
     
     // Shelf & Furniture Nodes
-    private let shelfPivotNode = SKNode() // Pivot tumpuan di alas kaki kiri
+    private let shelfPivotNode = SKNode() // Pivot point at the base of the left leg
     private let shelfBodyNode = SKNode()
     private let leftLegNode = SKShapeNode()
     private let rightLegNode = SKShapeNode()
     private let shelfPlankNode = SKShapeNode()
-    private let brickWedgeNode = SKShapeNode() // Bata ganjalan di bawah kaki kanan
+    private let brickWedgeNode = SKShapeNode() // Brick wedge under the right leg
     
     // Artisan Clay Pots (3D Shaded)
     private let pot1Node = SKNode()
@@ -108,11 +108,11 @@ public final class ShelfBalanceMinigameNode: SKNode {
     private let hammerPip1 = SKShapeNode()
     private let hammerPip2 = SKShapeNode()
     
-    // Minimalist Top HUD (Ultra-minimal: Hanya badge kecil "GANJAL RAK" dan tombol tutup)
+    // Minimalist Top HUD (Ultra-minimal: Only a small "WEDGE SHELF" badge and close button)
     private let headerBar = SKNode()
     private let headerTitleLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
     
-    // Speech Bubble Dialog (Bu Mara Naratif Ringkas)
+    // Speech Bubble Dialog (Mrs. Mara's short narrative)
     private var activeSpeechBubble: SpeechBubbleNode?
     
     public init(config: ShelfBalanceConfig = ShelfBalanceConfig()) {
@@ -132,35 +132,35 @@ public final class ShelfBalanceMinigameNode: SKNode {
     private func buildVisuals() {
         addChild(container)
         
-        // 1. Suasana Luar Rumah Bu Mara (Outside of the house: Langit, Dinding Pondok Kayu & Batu)
+        // 1. Outside Mrs. Mara's Cottage (Sky, Wooden & Stone Walls)
         buildOutsideCottageBackground()
         
-        // 2. Tanah Pekarangan Luar Rumah Bu Mara (Garis tanah melintang lurus)
+        // 2. Mrs. Mara's Yard Ground (Straight horizontal ground line)
         buildGroundAndPavers()
         
-        // 3. Struktur Rak Kayu Jati Desa & Pot Tembikar (Tegak lurus menancap ke tanah)
+        // 3. Village Teak Wooden Shelf & Clay Pots (Standing straight into the ground)
         buildArtisanShelf()
         
-        // 4. Waterpass Kuningan Ramping
+        // 4. Sleek Brass Spirit Level (Waterpass)
         buildWaterpass()
         
-        // 5. Track Slider DBD QTE
+        // 5. DBD QTE Slider Track
         buildDBDTrack()
         
-        // 6. Header HUD Minimalis (Bersih & Rapi)
+        // 6. Minimalist Header HUD (Clean & Tidy)
         buildMinimalHUD()
         
-        // Set orientasi awal miring ambles ke lumpur
+        // Set initial orientation sinking into the mud
         shelfPivotNode.zRotation = -shelfAngle
     }
     
     private func buildOutsideCottageBackground() {
-        // 1. Langit desa di luar rumah (Open outdoor daylight sky)
+        // 1. Open outdoor daylight sky
         let sky = SKSpriteNode(color: SKColor(red: 0.55, green: 0.74, blue: 0.86, alpha: 1.0), size: CGSize(width: 3000, height: 3000))
         sky.zPosition = -50
         container.addChild(sky)
         
-        // Pendar hangat matahari di pekarangan luar (Sun & Warm Sunlight)
+        // Warm sun glow in the yard
         let sunGlow = SKShapeNode(circleOfRadius: 180)
         sunGlow.position = CGPoint(x: 130, y: 280)
         sunGlow.fillColor = SKColor(red: 1.0, green: 0.95, blue: 0.78, alpha: 0.40)
@@ -177,7 +177,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         sunCore.zPosition = -44
         container.addChild(sunCore)
         
-        // Berkas sinar matahari lembut menembus pekarangan (Sunbeams)
+        // Soft sunbeams penetrating the yard
         for i in 0..<3 {
             let beam = SKShapeNode()
             let bp = CGMutablePath()
@@ -195,12 +195,12 @@ public final class ShelfBalanceMinigameNode: SKNode {
             container.addChild(beam)
         }
         
-        // Awan-awan putih lembut berarak di langit luar (Drifting Clouds)
+        // Soft white drifting clouds in the sky
         createCloud(at: CGPoint(x: -80, y: 310), scale: 0.9)
         createCloud(at: CGPoint(x: 120, y: 230), scale: 0.7)
         createCloud(at: CGPoint(x: -160, y: 210), scale: 0.6)
         
-        // 2. Siluet pegunungan desa di kejauhan (Distant Horizon Hills)
+        // 2. Distant village mountain silhouettes
         let distantHills = SKShapeNode()
         let dhPath = CGMutablePath()
         dhPath.move(to: CGPoint(x: -600, y: -120))
@@ -214,7 +214,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         distantHills.zPosition = -35
         container.addChild(distantHills)
         
-        // Perbukitan hijau pekarangan desa lebih dekat (Midground hills)
+        // Closer green village hills
         let midHills = SKShapeNode()
         let mhPath = CGMutablePath()
         mhPath.move(to: CGPoint(x: -600, y: -120))
@@ -228,7 +228,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         midHills.zPosition = -30
         container.addChild(midHills)
         
-        // Pepohonan desa di kejauhan
+        // Distant village trees
         for tx in [20.0, 75.0, 160.0, 210.0] {
             let tree = createDistantTree(height: CGFloat.random(in: 28...38))
             tree.position = CGPoint(x: tx, y: -25)
@@ -236,10 +236,10 @@ public final class ShelfBalanceMinigameNode: SKNode {
             container.addChild(tree)
         }
         
-        // 3. Pekarangan Luar & Sumur Desa Bu Mara (Outdoor Yard & Village Well Lore)
+        // 3. Outdoor Yard & Village Well Lore ("In Mrs. Mara's yard near the village well")
         buildOutdoorYardProps()
         
-        // 4. Dinding Luar Pondok Bu Mara di Sisi Kiri (Exterior Cottage Corner)
+        // 4. Cottage Exterior Wall on the Left
         buildLeftCottageExterior()
     }
     
@@ -268,7 +268,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         puff3.strokeColor = .clear
         cloud.addChild(puff3)
         
-        // Animasi awan berarak perlahan
+        // Cloud drifting animation
         let floatAction = SKAction.sequence([
             .moveBy(x: 16, y: 0, duration: 4.5),
             .moveBy(x: -16, y: 0, duration: 4.5)
@@ -298,7 +298,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         yardNode.zPosition = -20
         container.addChild(yardNode)
         
-        // Pagar kayu desa di belakang rak (Rustic post-and-rail fence)
+        // Rustic village wooden fence behind the shelf
         let fenceStartX: CGFloat = -40
         let fenceEndX: CGFloat = 260
         let fenceRail1 = SKShapeNode(rectOf: CGSize(width: fenceEndX - fenceStartX, height: 6), cornerRadius: 2)
@@ -324,7 +324,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             yardNode.addChild(post)
         }
         
-        // SUMUR DESA (Village Water Well lore: "Di halaman Bu Mara dekat sumur desa")
+        // VILLAGE WELL (Lore: "In Mrs. Mara's yard near the village well")
         let wellX: CGFloat = 145
         let wellBase = SKShapeNode(rectOf: CGSize(width: 54, height: 38), cornerRadius: 5)
         wellBase.position = CGPoint(x: wellX, y: 19)
@@ -333,7 +333,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         wellBase.lineWidth = 2.0
         yardNode.addChild(wellBase)
         
-        // Batu-batu bundar sumur
+        // Round well stones
         for si in -2...2 {
             let stone = SKShapeNode(rectOf: CGSize(width: 14, height: 8), cornerRadius: 2)
             stone.position = CGPoint(x: wellX + CGFloat(si) * 10, y: 22)
@@ -343,7 +343,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             yardNode.addChild(stone)
         }
         
-        // Tiang kayu sumur
+        // Wooden well posts
         for px in [wellX - 22, wellX + 22] {
             let post = SKShapeNode(rectOf: CGSize(width: 5, height: 50), cornerRadius: 1)
             post.position = CGPoint(x: px, y: 55)
@@ -353,7 +353,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             yardNode.addChild(post)
         }
         
-        // Atap genteng sumur
+        // Well tile roof
         let wellRoofPath = CGMutablePath()
         wellRoofPath.move(to: CGPoint(x: wellX - 32, y: 75))
         wellRoofPath.addLine(to: CGPoint(x: wellX, y: 92))
@@ -365,7 +365,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         wellRoof.lineWidth = 1.5
         yardNode.addChild(wellRoof)
         
-        // Ember kayu sumur
+        // Wooden well bucket
         let bucket = SKShapeNode(rectOf: CGSize(width: 12, height: 14), cornerRadius: 2)
         bucket.position = CGPoint(x: wellX, y: 52)
         bucket.fillColor = SKColor(red: 0.48, green: 0.34, blue: 0.20, alpha: 1.0)
@@ -373,7 +373,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         bucket.lineWidth = 1.0
         yardNode.addChild(bucket)
         
-        // Drum air liat / tong tanah tembikar Bu Mara di dekat sumur
+        // Mrs. Mara's clay water barrel / pottery vat near the well
         let barrel = SKShapeNode(rectOf: CGSize(width: 22, height: 28), cornerRadius: 4)
         barrel.position = CGPoint(x: wellX - 38, y: 14)
         barrel.fillColor = SKColor(red: 0.42, green: 0.28, blue: 0.16, alpha: 1.0)
@@ -381,7 +381,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         barrel.lineWidth = 1.5
         yardNode.addChild(barrel)
         
-        // Pot tembikar jemur di pekarangan luar (Drying pottery in the yard)
+        // Drying clay pots in the outdoor yard
         let dryPot1 = createClayPot(width: 24, height: 28, color: SKColor(red: 0.65, green: 0.40, blue: 0.24, alpha: 0.95))
         dryPot1.position = CGPoint(x: -30, y: 0)
         yardNode.addChild(dryPot1)
@@ -399,7 +399,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         let wallW: CGFloat = 160
         let wallH: CGFloat = 380
         
-        // Dinding plester luar pondok
+        // Cottage exterior plaster wall
         let wallRect = CGRect(x: -wallW/2, y: -wallH/2, width: wallW, height: wallH)
         let wall = SKShapeNode(rect: wallRect)
         wall.fillColor = SKColor(red: 0.88, green: 0.85, blue: 0.79, alpha: 1.0)
@@ -407,7 +407,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         wall.lineWidth = 2.5
         cottageWallNode.addChild(wall)
         
-        // Pondasi batu sungai di bawah dinding luar pondok
+        // River stone foundation below the wall
         let stoneBaseH: CGFloat = 55
         let stoneBase = SKShapeNode(rect: CGRect(x: -wallW/2, y: -wallH/2, width: wallW, height: stoneBaseH))
         stoneBase.fillColor = SKColor(red: 0.48, green: 0.44, blue: 0.40, alpha: 1.0)
@@ -415,7 +415,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         stoneBase.lineWidth = 2.0
         cottageWallNode.addChild(stoneBase)
         
-        // Garis-garis batu pada pondasi
+        // Stone lines on the foundation
         for bx in [-55, -20, 15, 50] {
             let stoneLine = SKShapeNode(rectOf: CGSize(width: 28, height: 14), cornerRadius: 3)
             stoneLine.position = CGPoint(x: CGFloat(bx), y: -wallH/2 + 26)
@@ -425,7 +425,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             cottageWallNode.addChild(stoneLine)
         }
         
-        // Balok kayu vertikal penyangga dinding pondok (Timber Framing luar)
+        // Vertical timber framing of the wall
         for bx in [-wallW/2 + 6, wallW/2 - 6] {
             let beam = SKShapeNode(rectOf: CGSize(width: 14, height: wallH))
             beam.position = CGPoint(x: bx, y: 0)
@@ -435,7 +435,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             cottageWallNode.addChild(beam)
         }
         
-        // Balok kayu horizontal
+        // Horizontal timber beam
         let hBeam = SKShapeNode(rectOf: CGSize(width: wallW, height: 12))
         hBeam.position = CGPoint(x: 0, y: -wallH/2 + stoneBaseH)
         hBeam.fillColor = SKColor(red: 0.36, green: 0.23, blue: 0.13, alpha: 1.0)
@@ -443,7 +443,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         hBeam.lineWidth = 1.5
         cottageWallNode.addChild(hBeam)
         
-        // Jendela kayu luar dengan daun jendela & kotak bunga mekar
+        // Exterior wooden window with shutters & blooming flower box
         let winNode = SKNode()
         winNode.position = CGPoint(x: 10, y: 25)
         cottageWallNode.addChild(winNode)
@@ -460,7 +460,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         winGlass.lineWidth = 1.0
         winNode.addChild(winGlass)
         
-        // Daun jendela kayu luar (Shutters)
+        // Wooden exterior shutters
         let leftShutter = SKShapeNode(rectOf: CGSize(width: 14, height: 56), cornerRadius: 2)
         leftShutter.position = CGPoint(x: -30, y: 0)
         leftShutter.fillColor = SKColor(red: 0.42, green: 0.28, blue: 0.16, alpha: 1.0)
@@ -475,7 +475,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         rightShutter.lineWidth = 1.2
         winNode.addChild(rightShutter)
         
-        // Kotak bunga mekar di luar jendela
+        // Blooming flower box outside the window
         let flowerBox = SKShapeNode(rectOf: CGSize(width: 56, height: 12), cornerRadius: 2)
         flowerBox.position = CGPoint(x: 0, y: -33)
         flowerBox.fillColor = SKColor(red: 0.46, green: 0.30, blue: 0.17, alpha: 1.0)
@@ -491,19 +491,19 @@ public final class ShelfBalanceMinigameNode: SKNode {
             winNode.addChild(flower)
         }
         
-        // Lentera dinding besi antik di luar rumah
+        // Antique iron wall lantern
         let lantern = SKShapeNode(rectOf: CGSize(width: 12, height: 18), cornerRadius: 2)
-        lantern.position = CGPoint(x: wallW/2 - 16, y: 70)
+        lantern.position = CGPoint(x: wallW/2 + 16, y: 70)
         lantern.fillColor = SKColor(red: 0.98, green: 0.88, blue: 0.50, alpha: 0.85)
         lantern.strokeColor = SKColor(red: 0.20, green: 0.15, blue: 0.10, alpha: 1.0)
         lantern.lineWidth = 1.5
         cottageWallNode.addChild(lantern)
         
-        // Atap genteng terakota miring di bagian atas (Sloping Roof Eaves)
+        // Sloping terracotta tile roof eaves
         let eavesPath = CGMutablePath()
         eavesPath.move(to: CGPoint(x: -wallW/2 - 15, y: wallH/2 + 25))
-        eavesPath.addLine(to: CGPoint(x: wallW/2 + 25, y: wallH/2 - 35))
-        eavesPath.addLine(to: CGPoint(x: wallW/2 + 25, y: wallH/2 - 55))
+        eavesPath.addLine(to: CGPoint(x: wallW/2 + 25, y: wallH/2 + 35))
+        eavesPath.addLine(to: CGPoint(x: wallW/2 + 25, y: wallH/2 + 55))
         eavesPath.addLine(to: CGPoint(x: -wallW/2 - 15, y: wallH/2 + 5))
         eavesPath.closeSubpath()
         let roofEaves = SKShapeNode(path: eavesPath)
@@ -512,7 +512,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         roofEaves.lineWidth = 2.0
         cottageWallNode.addChild(roofEaves)
         
-        // Tanaman rambat ivy hijau di sudut pondok
+        // Green ivy creeping at the corner
         for vi in 0...6 {
             let vy = CGFloat(vi) * 34 - 120
             let vx = wallW/2 - 6 + CGFloat.random(in: -6...6)
@@ -533,7 +533,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         let groundW: CGFloat = 2000
         let groundH: CGFloat = 500
         
-        // 1. Lapisan tanah padat pekarangan luar (Earth / Soil strata)
+        // 1. Solid yard ground layer (Earth / Soil strata)
         let groundRect = CGRect(x: -groundW/2, y: -groundH, width: groundW, height: groundH)
         let ground = SKShapeNode(rect: groundRect)
         ground.fillColor = SKColor(red: 0.20, green: 0.14, blue: 0.09, alpha: 1.0)
@@ -541,13 +541,13 @@ public final class ShelfBalanceMinigameNode: SKNode {
         ground.lineWidth = 2.0
         groundNode.addChild(ground)
         
-        // Lapisan tanah bawah lebih gelap (Subsoil)
+        // Darker subsoil layer
         let subsoil = SKShapeNode(rect: CGRect(x: -groundW/2, y: -groundH, width: groundW, height: groundH - 35))
         subsoil.fillColor = SKColor(red: 0.14, green: 0.09, blue: 0.06, alpha: 1.0)
         subsoil.strokeColor = .clear
         groundNode.addChild(subsoil)
         
-        // Kerikil & batu sungai tertanam di dalam tanah
+        // Pebbles & river stones embedded in the soil
         for px in [-220, -150, -40, 30, 160, 240] {
             let pebble = SKShapeNode(ellipseOf: CGSize(width: CGFloat.random(in: 8...14), height: CGFloat.random(in: 5...8)))
             pebble.position = CGPoint(x: CGFloat(px), y: CGFloat.random(in: -80 ... -25))
@@ -556,7 +556,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             groundNode.addChild(pebble)
         }
         
-        // 2. Garis rumput hijau pekarangan melintang lurus (Lush grass turf line)
+        // 2. Straight horizontal lush grass turf line
         let grassLine = SKShapeNode()
         let gPath = CGMutablePath()
         gPath.move(to: CGPoint(x: -groundW/2, y: 0))
@@ -566,10 +566,10 @@ public final class ShelfBalanceMinigameNode: SKNode {
         grassLine.lineWidth = 6.0
         groundNode.addChild(grassLine)
         
-        // Rerumputan & bunga liar di pekarangan luar
+        // Grass & wildflowers in the yard
         for i in -25...25 {
             let rx = CGFloat(i) * 18 + CGFloat.random(in: -4...4)
-            // Lewati area batu dan lubang lumpur agar bersih
+            // Skip stone and mud pit areas to keep them clear
             if (rx > -110 && rx < -60) || (rx > 68 && rx < 112) { continue }
             
             let blade = SKShapeNode()
@@ -592,10 +592,10 @@ public final class ShelfBalanceMinigameNode: SKNode {
             }
         }
         
-        // 3. BATU UBIN TUMPUAN KAKI KIRI (Stone flagstone paver tertanam lurus ke tanah)
+        // 3. LEFT LEG STONE FLAGSTONE PAVER (embedded straight into the ground)
         let paverW: CGFloat = 46
         let paverH: CGFloat = 14
-        let paverRect = CGRect(x: -85 - (paverW/2), y: -paverH + 2, width: paverW, height: paverH)
+        let paverRect = CGRect(x: -85 - (paverW / 2), y: -paverH + 2, width: paverW, height: paverH)
         stonePaverNode.path = CGPath(roundedRect: paverRect, cornerWidth: 3, cornerHeight: 3, transform: nil)
         stonePaverNode.fillColor = SKColor(red: 0.48, green: 0.45, blue: 0.42, alpha: 1.0)
         stonePaverNode.strokeColor = SKColor(red: 0.24, green: 0.22, blue: 0.20, alpha: 1.0)
@@ -608,24 +608,24 @@ public final class ShelfBalanceMinigameNode: SKNode {
         stoneBevel.strokeColor = .clear
         groundNode.addChild(stoneBevel)
         
-        // 4. LUBANG LUMPUR AMBLES KAKI KANAN (Sunken mud pit into the ground)
+        // 4. RIGHT LEG SUNKEN MUD PIT (embedded into the ground)
         let pitW: CGFloat = 62
         let pitH: CGFloat = 26
-        let pitRect = CGRect(x: 90 - (pitW/2), y: -pitH, width: pitW, height: pitH)
+        let pitRect = CGRect(x: 90 - (pitW / 2), y: -pitH, width: pitW, height: pitH)
         sunkenPitNode.path = CGPath(ellipseIn: pitRect, transform: nil)
         sunkenPitNode.fillColor = SKColor(red: 0.12, green: 0.08, blue: 0.05, alpha: 0.98)
         sunkenPitNode.strokeColor = SKColor(red: 0.30, green: 0.18, blue: 0.10, alpha: 0.9)
         sunkenPitNode.lineWidth = 2.0
         groundNode.addChild(sunkenPitNode)
         
-        // Lapisan lumpur basah dalam
+        // Deep wet mud layer
         let wetMud = SKShapeNode(ellipseOf: CGSize(width: pitW - 12, height: pitH - 10))
         wetMud.position = CGPoint(x: 90, y: -pitH/2)
         wetMud.fillColor = SKColor(red: 0.08, green: 0.05, blue: 0.03, alpha: 1.0)
         wetMud.strokeColor = .clear
         groundNode.addChild(wetMud)
         
-        // 5. FOREGROUND GROUND OVERLAY (Menutup dasar kaki agar terlihat menancap lurus ke tanah)
+        // 5. FOREGROUND GROUND OVERLAY (Covers the base of the legs to make them look planted straight)
         buildForegroundGround()
     }
     
@@ -634,7 +634,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         groundForegroundNode.zPosition = 6
         container.addChild(groundForegroundNode)
         
-        // Rerumputan & tanah depan di sekitar tumpuan batu kaki kiri
+        // Foreground grass & soil around the left stone paver
         for gx in [-106, -100, -94, -76, -70, -64] {
             let grass = SKShapeNode()
             let gp = CGMutablePath()
@@ -648,7 +648,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             groundForegroundNode.addChild(grass)
         }
         
-        // Bibir lumpur depan di tepi lubang ambles kaki kanan (Mud lip)
+        // Foreground mud lip around the right sinking pit
         let mudLipPath = CGMutablePath()
         mudLipPath.move(to: CGPoint(x: 62, y: 0))
         mudLipPath.addQuadCurve(to: CGPoint(x: 118, y: 0), control: CGPoint(x: 90, y: -6))
@@ -662,7 +662,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
     }
     
     private func buildArtisanShelf() {
-        // Tumpuan kaki kiri menancap lurus ke tanah di atas batu landasan (Napak Tanah: y = -120)
+        // Left leg pivot planted straight on the stone paver (Grounded: y = -120)
         shelfPivotNode.position = CGPoint(x: -85, y: -120)
         shelfPivotNode.zPosition = 4
         container.addChild(shelfPivotNode)
@@ -671,9 +671,9 @@ public final class ShelfBalanceMinigameNode: SKNode {
         
         let legW: CGFloat = 18
         let legH: CGFloat = 108
-        let span: CGFloat = 175 // Jarak antara kaki kiri dan kaki kanan (dari x: -85 ke x: 90)
+        let span: CGFloat = 175 // Distance between left and right legs (from x: -85 to x: 90)
         
-        // 1. KAKI KIRI (Menancap tegak lurus lurus ke tanah di atas batu ubin)
+        // 1. LEFT LEG (Planted straight into the ground on the stone paver)
         let leftLegRect = CGRect(x: -legW/2, y: 0, width: legW, height: legH)
         leftLegNode.path = CGPath(roundedRect: leftLegRect, cornerWidth: 3, cornerHeight: 3, transform: nil)
         leftLegNode.fillColor = SKColor(red: 0.38, green: 0.24, blue: 0.14, alpha: 1.0)
@@ -681,14 +681,14 @@ public final class ShelfBalanceMinigameNode: SKNode {
         leftLegNode.lineWidth = 2.0
         shelfBodyNode.addChild(leftLegNode)
         
-        // Tekstur urat serat kayu kaki kiri
+        // Left leg wood grain texture
         let leftGrain = SKShapeNode(rectOf: CGSize(width: 3, height: legH - 12), cornerRadius: 1)
         leftGrain.position = CGPoint(x: -2, y: legH/2)
         leftGrain.fillColor = SKColor(red: 0.48, green: 0.32, blue: 0.18, alpha: 0.7)
         leftGrain.strokeColor = .clear
         shelfBodyNode.addChild(leftGrain)
         
-        // 2. KAKI KANAN (Menancap tegak lurus ke lubang lumpur tanah)
+        // 2. RIGHT LEG (Planted straight into the mud pit)
         let rightLegRect = CGRect(x: span - legW/2, y: 0, width: legW, height: legH)
         rightLegNode.path = CGPath(roundedRect: rightLegRect, cornerWidth: 3, cornerHeight: 3, transform: nil)
         rightLegNode.fillColor = SKColor(red: 0.38, green: 0.24, blue: 0.14, alpha: 1.0)
@@ -696,14 +696,14 @@ public final class ShelfBalanceMinigameNode: SKNode {
         rightLegNode.lineWidth = 2.0
         shelfBodyNode.addChild(rightLegNode)
         
-        // Tekstur urat serat kayu kaki kanan
+        // Right leg wood grain texture
         let rightGrain = SKShapeNode(rectOf: CGSize(width: 3, height: legH - 12), cornerRadius: 1)
         rightGrain.position = CGPoint(x: span - 2, y: legH/2)
         rightGrain.fillColor = SKColor(red: 0.48, green: 0.32, blue: 0.18, alpha: 0.7)
         rightGrain.strokeColor = .clear
         shelfBodyNode.addChild(rightGrain)
         
-        // Palang kayu penguat tengah (Timber Crossbar)
+        // Middle wooden reinforcing crossbar (Timber Crossbar)
         let braceRect = CGRect(x: -legW/2, y: legH * 0.35, width: span + legW, height: 12)
         let brace = SKShapeNode(rect: braceRect, cornerRadius: 2)
         brace.fillColor = SKColor(red: 0.34, green: 0.21, blue: 0.12, alpha: 1.0)
@@ -711,7 +711,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         brace.lineWidth = 1.5
         shelfBodyNode.addChild(brace)
         
-        // Pasak kayu pengikat sambungan palang
+        // Wooden dowel pins connecting the crossbar
         for bx in [0.0, span] {
             let bolt = SKShapeNode(circleOfRadius: 2.5)
             bolt.position = CGPoint(x: bx, y: legH * 0.35 + 6.0)
@@ -721,7 +721,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             shelfBodyNode.addChild(bolt)
         }
         
-        // Siku penyangga kayu sudut (Corner wooden braces)
+        // Corner wooden braces
         let leftKneePath = CGMutablePath()
         leftKneePath.move(to: CGPoint(x: 0, y: legH - 18))
         leftKneePath.addLine(to: CGPoint(x: 20, y: legH))
@@ -742,7 +742,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         rightKnee.strokeColor = .clear
         shelfBodyNode.addChild(rightKnee)
         
-        // 3. PAPAN RAK ATAS (Heavy Solid Timber Tabletop Plank)
+        // 3. TOP SHELF PLANK (Heavy Solid Timber Tabletop Plank)
         let plankOverhang: CGFloat = 25
         let plankW = span + (plankOverhang * 2)
         let plankH: CGFloat = 18
@@ -753,30 +753,30 @@ public final class ShelfBalanceMinigameNode: SKNode {
         shelfPlankNode.lineWidth = 2.5
         shelfBodyNode.addChild(shelfPlankNode)
         
-        // Highlight kilau tepi atas papan kayu
+        // Top edge wood highlight
         let plankTopHighlight = SKShapeNode(rectOf: CGSize(width: plankW - 8, height: 2.5), cornerRadius: 1)
         plankTopHighlight.position = CGPoint(x: span/2, y: legH + plankH - 2)
         plankTopHighlight.fillColor = SKColor(red: 0.65, green: 0.45, blue: 0.28, alpha: 0.7)
         plankTopHighlight.strokeColor = .clear
         shelfBodyNode.addChild(plankTopHighlight)
         
-        // 4. POT TEMBIKAR BU MARA (Di atas papan rak kayu)
-        // Pot 1: Guci terracotta di sebelah kiri
+        // 4. MRS. MARA'S CLAY POTS (On top of the plank)
+        // Pot 1: Terracotta jar on the left
         pot1Node.position = CGPoint(x: 20, y: legH + plankH)
         pot1Node.addChild(createClayPot(width: 44, height: 52, color: SKColor(red: 0.76, green: 0.44, blue: 0.26, alpha: 1.0)))
         shelfBodyNode.addChild(pot1Node)
         
-        // Pot 2: Mangkuk glasir hijau celadon di tengah
+        // Pot 2: Green celadon glazed bowl in the middle
         pot2Node.position = CGPoint(x: span * 0.5, y: legH + plankH)
         pot2Node.addChild(createGlazedPot(width: 38, height: 36, color: SKColor(red: 0.26, green: 0.60, blue: 0.48, alpha: 1.0)))
         shelfBodyNode.addChild(pot2Node)
         
-        // Pot 3: Gerabah besar di sebelah kanan
+        // Pot 3: Large earthenware on the right
         pot3Node.position = CGPoint(x: span - 20, y: legH + plankH)
         pot3Node.addChild(createClayPot(width: 52, height: 60, color: SKColor(red: 0.68, green: 0.38, blue: 0.20, alpha: 1.0)))
         shelfBodyNode.addChild(pot3Node)
         
-        // 5. BATU BATA PENGGANJAL & PASAK (Mengganjal kaki kanan tegak lurus ke tanah)
+        // 5. BRICK WEDGE & PIN (Wedging the right leg straight onto the ground)
         let brickW: CGFloat = 42
         let brickH: CGFloat = 20
         brickWedgeNode.position = CGPoint(x: span, y: 0)
@@ -794,12 +794,12 @@ public final class ShelfBalanceMinigameNode: SKNode {
         brickMortar.strokeColor = .clear
         brickWedgeNode.addChild(brickMortar)
         
-        // Pasak kayu pengunci ganjalan di samping bata
+        // Wooden locking pin beside the brick
         let pasak = SKShapeNode()
         let pp = CGMutablePath()
-        pp.move(to: CGPoint(x: -brickW/2 - 8, y: -brickH))
+        pp.move(to: CGPoint(x: -brickW/2 + 8, y: -brickH))
         pp.addLine(to: CGPoint(x: -brickW/2 + 3, y: 0))
-        pp.addLine(to: CGPoint(x: -brickW/2 - 4, y: 0))
+        pp.addLine(to: CGPoint(x: -brickW/2 + 4, y: 0))
         pp.closeSubpath()
         pasak.path = pp
         pasak.fillColor = SKColor(red: 0.58, green: 0.38, blue: 0.20, alpha: 1.0)
@@ -872,28 +872,28 @@ public final class ShelfBalanceMinigameNode: SKNode {
         waterpassNode.zPosition = 6
         container.addChild(waterpassNode)
         
-        // Casing Kuningan Elegan dengan bevel
+        // Elegant Brass Casing with bevel
         let casing = SKShapeNode(rectOf: CGSize(width: 130, height: 22), cornerRadius: 11)
         casing.fillColor = SKColor(red: 0.22, green: 0.17, blue: 0.10, alpha: 0.95)
         casing.strokeColor = SKColor(red: 0.78, green: 0.62, blue: 0.32, alpha: 1.0)
         casing.lineWidth = 1.8
         waterpassNode.addChild(casing)
         
-        // Tabung Kaca Gelap
+        // Dark Glass Tube
         let tube = SKShapeNode(rectOf: CGSize(width: 106, height: 13), cornerRadius: 6.5)
         tube.fillColor = SKColor(red: 0.08, green: 0.10, blue: 0.08, alpha: 0.9)
         tube.strokeColor = SKColor(red: 0.35, green: 0.28, blue: 0.18, alpha: 0.6)
         tube.lineWidth = 1.0
         waterpassNode.addChild(tube)
         
-        // Zona Seimbang Tengah (Center Target)
+        // Center Balance Zone (Target)
         let centerLine = SKShapeNode(rectOf: CGSize(width: 22, height: 13), cornerRadius: 3)
         centerLine.fillColor = SKColor(red: 0.25, green: 0.85, blue: 0.45, alpha: 0.18)
         centerLine.strokeColor = SKColor(red: 0.85, green: 0.75, blue: 0.45, alpha: 0.5)
         centerLine.lineWidth = 1.0
         waterpassNode.addChild(centerLine)
         
-        // Glow pendar hijau saat seimbang
+        // Green glow when balanced
         waterpassGlow.path = CGPath(roundedRect: CGRect(x: -60, y: -10, width: 120, height: 20), cornerWidth: 10, cornerHeight: 10, transform: nil)
         waterpassGlow.fillColor = SKColor(red: 0.25, green: 0.95, blue: 0.45, alpha: 0.25)
         waterpassGlow.strokeColor = .clear
@@ -901,7 +901,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         waterpassGlow.alpha = 0.0
         waterpassNode.addChild(waterpassGlow)
         
-        // Gelembung Cairan Spirit
+        // Spirit Liquid Bubble
         waterpassBubble.path = CGPath(ellipseIn: CGRect(x: -7, y: -5.5, width: 14, height: 11), transform: nil)
         waterpassBubble.fillColor = SKColor(red: 0.95, green: 0.75, blue: 0.35, alpha: 0.95)
         waterpassBubble.strokeColor = SKColor.white
@@ -910,26 +910,26 @@ public final class ShelfBalanceMinigameNode: SKNode {
     }
     
     private func buildDBDTrack() {
-        // Track diletakkan tepat di celah bawah kaki kanan tempat batu bata akan diselipkan
+        // Track placed exactly at the gap under the right leg where the brick will be wedged
         dbdTrackNode.position = CGPoint(x: 0, y: -205)
         dbdTrackNode.zPosition = 8
         container.addChild(dbdTrackNode)
         
-        // Alas kayu berukir
+        // Carved wooden base
         let trackBg = SKShapeNode(rectOf: CGSize(width: dbdTrackWidth + 14, height: 26), cornerRadius: 13)
         trackBg.fillColor = SKColor(red: 0.14, green: 0.10, blue: 0.07, alpha: 0.96)
         trackBg.strokeColor = SKColor(red: 0.52, green: 0.38, blue: 0.22, alpha: 1.0)
         trackBg.lineWidth = 2.0
         dbdTrackNode.addChild(trackBg)
         
-        // Alur dalam slider
+        // Inner slider track
         let trackInner = SKShapeNode(rectOf: CGSize(width: dbdTrackWidth, height: 12), cornerRadius: 6)
         trackInner.fillColor = SKColor(red: 0.08, green: 0.06, blue: 0.04, alpha: 1.0)
         trackInner.strokeColor = SKColor(red: 0.25, green: 0.18, blue: 0.12, alpha: 0.7)
         trackInner.lineWidth = 1.0
         dbdTrackNode.addChild(trackInner)
         
-        // Rivet kuningan di ujung kiri dan kanan
+        // Brass rivets at the left and right ends
         for xOffset in [-(dbdTrackWidth/2 + 2), (dbdTrackWidth/2 + 2)] {
             let rivet = SKShapeNode(circleOfRadius: 2.5)
             rivet.fillColor = SKColor(red: 0.85, green: 0.70, blue: 0.35, alpha: 0.9)
@@ -939,7 +939,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             dbdTrackNode.addChild(rivet)
         }
         
-        // Zona Hijau (Target Area Presisi dengan glow halus)
+        // Green Zone (Precision Target Area with soft glow)
         let zoneW = dbdTrackWidth * (config.dbdTargetEnd - config.dbdTargetStart)
         let zoneX = (-dbdTrackWidth / 2) + (dbdTrackWidth * config.dbdTargetStart) + (zoneW / 2)
         
@@ -950,7 +950,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         dbdTargetZoneNode.position = CGPoint(x: zoneX, y: 0)
         dbdTrackNode.addChild(dbdTargetZoneNode)
         
-        // Kursor Batu Bata Merah (Artisan Terracotta Brick)
+        // Red Brick Cursor (Artisan Terracotta Brick)
         let cursorPath = CGMutablePath()
         cursorPath.addRoundedRect(in: CGRect(x: -12, y: -13, width: 24, height: 26), cornerWidth: 3, cornerHeight: 3)
         dbdCursorNode.path = cursorPath
@@ -965,11 +965,11 @@ public final class ShelfBalanceMinigameNode: SKNode {
         mortar.strokeColor = .clear
         dbdCursorNode.addChild(mortar)
         
-        dbdTrackNode.alpha = 0.0 // Tersembunyi sampai rak diangkat seimbang
+        dbdTrackNode.alpha = 0.0 // Hidden until the shelf is lifted and balanced
     }
     
     private func buildMinimalHUD() {
-        // Ultra-minimalist HUD: Tanpa teks panjang, hanya badge kecil & tombol dismiss
+        // Ultra-minimalist HUD: No long text, just a small badge & dismiss button
         headerBar.position = CGPoint(x: 0, y: 330)
         headerBar.zPosition = 10
         container.addChild(headerBar)
@@ -980,7 +980,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         pillBg.lineWidth = 1.5
         headerBar.addChild(pillBg)
         
-        headerTitleLabel.text = "GANJAL RAK"
+        headerTitleLabel.text = "WEDGE SHELF"
         headerTitleLabel.fontName = "AvenirNext-Bold"
         headerTitleLabel.fontSize = 11
         headerTitleLabel.fontColor = SKColor(red: 0.95, green: 0.88, blue: 0.72, alpha: 1.0)
@@ -988,7 +988,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         headerTitleLabel.position = CGPoint(x: 0, y: 0)
         headerBar.addChild(headerTitleLabel)
         
-        // Tombol Close/Dismiss Artistik (Kayu & Emas)
+        // Artistic Close/Dismiss Button (Wood & Gold)
         let dismissBtn = SKShapeNode(circleOfRadius: 16)
         dismissBtn.fillColor = SKColor(red: 0.16, green: 0.12, blue: 0.08, alpha: 0.9)
         dismissBtn.strokeColor = SKColor(red: 0.65, green: 0.50, blue: 0.30, alpha: 0.8)
@@ -1005,7 +1005,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         dismissBtn.addChild(xLabel)
         headerBar.addChild(dismissBtn)
         
-        // Indikator Ketukan Palu (Visual Pips, bukan teks!)
+        // Hammer Tap Indicator (Visual Pips, no text!)
         buildHammerIndicator()
     }
     
@@ -1059,8 +1059,8 @@ public final class ShelfBalanceMinigameNode: SKNode {
             motionManager.startDeviceMotionUpdates()
         }
         
-        // Dialogue pembuka Bu Mara dengan SpeechBubbleNode
-        showBuMaraDialog("Arthur! Tolong aku, rak tembikarku miring dan potnya mau jatuh!")
+        // Mrs. Mara's opening dialogue with SpeechBubbleNode
+        showBuMaraDialog("Arthur! Help me, my pottery shelf is tilting and the pots are about to fall!")
         
         let loop = SKAction.customAction(withDuration: 1000.0) { [weak self] _, elapsedTime in
             guard let self, self.isRunning else { return }
@@ -1074,29 +1074,28 @@ public final class ShelfBalanceMinigameNode: SKNode {
     
     private func updatePhysics(deltaTime: TimeInterval) {
         if isWedgePlaced {
-            // Rak sudah diganjal batu bata: Berdiri kokoh tegak lurus sama tanah, setara dan gak ngangkat!
+            // Shelf is wedged: Stands firm, straight, and doesn't lift!
             shelfAngle = 0.0
             shelfPivotNode.zRotation = 0.0
             waterpassBubble.position.x = 0.0
             return
         }
         
-        // CoreMotion: Membaca tilt perangkat di mode portrait
+        // CoreMotion: Read device tilt in portrait mode
         var tilt: CGFloat = simulatedTilt
         if let motion = motionManager.deviceMotion {
             tilt = CGFloat(motion.gravity.x)
         }
         
         if isShelfLifted {
-            // SAAT RAK SUDAH DIANGKAT: Langsung STAY di posisi terangkat,
-            // dan pemain menyeimbangkannya menggunakan Gyro (CoreMotion)
+            // ONCE SHELF IS LIFTED: STAYS in lifted position, balanced via Gyro
             let targetTilt = -tilt * 0.35
             shelfAngle += (targetTilt - shelfAngle) * CGFloat(deltaTime * 6.0)
             
-            // Batasi agar tidak melayang terlalu tinggi (gak ngangkat di atas tanah)
+            // Cap rotation so it doesn't float above ground
             shelfAngle = max(-0.09, min(0.18, shelfAngle))
             
-            // Cek status seimbang
+            // Check balance status
             let prevBalanced = isBalanced
             isBalanced = abs(shelfAngle) <= config.balanceTolerance
             
@@ -1113,7 +1112,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
                 waterpassGlow.run(.fadeAlpha(to: 0.0, duration: 0.2))
             }
             
-            // Gerakkan slider DBD hanya saat seimbang
+            // Move DBD slider only when balanced
             if isBalanced && !isWedgePlaced {
                 sliderProgress += (config.dbdSliderSpeed * CGFloat(deltaTime)) * sliderDirection
                 if sliderProgress >= 1.0 { sliderProgress = 1.0; sliderDirection = -1.0 }
@@ -1124,11 +1123,11 @@ public final class ShelfBalanceMinigameNode: SKNode {
             }
             
         } else {
-            // SEBELUM DIANGKAT: Kemiringan gyro / drag mengangkat kaki rak dari posisi ambles ke lurus
-            let targetTilt = 0.17 - (tilt * 0.35)
+            // BEFORE LIFTED: Gyro tilt / drag lifts the shelf from the mud to a straight position
+            let targetTilt = 0.17 + (tilt * 0.35)
             shelfAngle += (targetTilt - shelfAngle) * CGFloat(deltaTime * 5.0)
             
-            // Begitu terangkat mendekati 0 derajat, LANGSUNG STAY di atas!
+            // Once lifted near 0 degrees, it IMMEDIATELY STAYS up!
             if abs(shelfAngle) <= config.balanceTolerance {
                 isShelfLifted = true
                 shelfAngle = 0.0
@@ -1138,14 +1137,14 @@ public final class ShelfBalanceMinigameNode: SKNode {
             }
         }
         
-        // Terapkan rotasi rak berpusat di kaki kiri
+        // Apply shelf rotation pivoting on the left leg
         shelfPivotNode.zRotation = -shelfAngle
         
-        // Update posisi gelembung waterpass
+        // Update waterpass bubble position
         let bubbleX = max(-45, min(45, -shelfAngle * 180))
         waterpassBubble.position.x = bubbleX
         
-        // Cek jika miring melampaui batas (Pot Tergelincir & Pecah)
+        // Check if tilt exceeds limit (Pots Slip & Break)
         if abs(shelfAngle) > config.failAngle {
             handleFailTippedOver()
         }
@@ -1157,7 +1156,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard isRunning else { return }
         
-        // Cek tombol dismiss / tutup
+        // Check dismiss button
         if let touch = touches.first {
             let locInHeader = touch.location(in: headerBar)
             if hypot(locInHeader.x - 155, locInHeader.y) <= 24 {
@@ -1171,7 +1170,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             // Precision Tap DBD Slider
             evaluateDBDTap()
         } else if !isShelfLifted {
-            // Tap untuk langsung mengangkat rak dan STAY tegak lurus
+            // Tap to immediately lift shelf and STAY straight
             isShelfLifted = true
             shelfAngle = 0.0
             shelfPivotNode.zRotation = 0.0
@@ -1179,7 +1178,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             HapticsService.shared.playImpact(style: .medium)
             #endif
         } else if isWedgePlaced && hammerTaps < 2 {
-            // Ketuk palu mengunci pasak
+            // Hammer tap to lock the pin
             handleHammerTap()
         }
     }
@@ -1195,10 +1194,10 @@ public final class ShelfBalanceMinigameNode: SKNode {
     
     private func evaluateDBDTap() {
         if isBalanced && sliderProgress >= config.dbdTargetStart && sliderProgress <= config.dbdTargetEnd {
-            // SUKSES! Bata tepat masuk mengganjal kaki kanan
+            // SUCCESS! Brick slides perfectly under the right leg
             handleSuccessWedge()
         } else {
-            // MELESET! Kaki anjlok kembali ke lumpur
+            // MISSED! Leg sinks back into the mud
             handleMissedTap()
         }
     }
@@ -1215,20 +1214,20 @@ public final class ShelfBalanceMinigameNode: SKNode {
         
         dbdTrackNode.run(.fadeOut(withDuration: 0.15))
         
-        // Bata muncul mengganjal kaki kanan napak tanah sehingga setara dan tegak
+        // Brick appears wedging the right leg flat on the ground so it stays straight
         brickWedgeNode.alpha = 1.0
         brickWedgeNode.setScale(0.2)
         brickWedgeNode.run(.scale(to: 1.0, duration: 0.15).applyTimingMode(.easeOut))
         
-        // Waterpass langsung seimbang sempurna
+        // Waterpass instantly perfectly balanced
         waterpassBubble.position.x = 0.0
         waterpassBubble.fillColor = SKColor(red: 0.25, green: 0.95, blue: 0.45, alpha: 1.0)
         waterpassGlow.run(.fadeAlpha(to: 0.8, duration: 0.15))
         
-        // Indikator visual ketukan palu muncul
+        // Visual hammer tap indicator appears
         hammerPromptNode.run(.fadeIn(withDuration: 0.2))
         
-        showBuMaraDialog("Kunci batanya sekarang!", isSuccess: true)
+        showBuMaraDialog("Lock the brick in now!", isSuccess: true)
     }
     
     private func handleHammerTap() {
@@ -1238,13 +1237,13 @@ public final class ShelfBalanceMinigameNode: SKNode {
         HapticsService.shared.playImpact(style: hammerTaps == 2 ? .heavy : .medium)
         #endif
         
-        // Efek ketukan palu yang mantap mengunci pasak ke dalam tanah (tidak melayang/ngangkat)
+        // Solid hammer hit effect locking the pin into the ground (doesn't float)
         shelfPivotNode.run(.sequence([
             .moveBy(x: 0, y: -2.5, duration: 0.03),
             .moveBy(x: 0, y: 2.5, duration: 0.03)
         ]))
         
-        // Update visual pip indikator (tanpa teks!)
+        // Update visual pip indicator
         if hammerTaps == 1 {
             hammerPip1.fillColor = SKColor(red: 0.95, green: 0.82, blue: 0.35, alpha: 1.0)
             hammerPromptNode.run(.sequence([
@@ -1273,7 +1272,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         
         hammerPromptNode.run(.fadeOut(withDuration: 0.2))
         
-        // Efek pendar berkilau kemenangan
+        // Glowing victory effect
         let winGlow = SKShapeNode(rectOf: CGSize(width: 280, height: 140), cornerRadius: 8)
         winGlow.position = CGPoint(x: 85, y: 55)
         winGlow.fillColor = SKColor(red: 0.95, green: 0.85, blue: 0.45, alpha: 0.35)
@@ -1287,7 +1286,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             .removeFromParent()
         ]))
         
-        showBuMaraDialog("Rak sudah kokoh! Terima kasih!", isSuccess: true)
+        showBuMaraDialog("The shelf is sturdy now! Thank you!", isSuccess: true)
         
         onComplete?(true)
         
@@ -1305,21 +1304,21 @@ public final class ShelfBalanceMinigameNode: SKNode {
         HapticsService.shared.playNotification(.error)
         #endif
         
-        // Kaki anjlok kembali ke lumpur
+        // Leg sinks back into the mud
         isShelfLifted = false
         shelfAngle = 0.17
         shelfPivotNode.zRotation = -shelfAngle
         
         dbdTrackNode.run(.fadeAlpha(to: 0.0, duration: 0.15))
         
-        // Goyangan benturan keras
+        // Hard impact shake
         container.run(.sequence([
             .moveBy(x: -8, y: 0, duration: 0.04),
             .moveBy(x: 16, y: 0, duration: 0.08),
             .moveBy(x: -8, y: 0, duration: 0.04)
         ]))
         
-        showBuMaraDialog("Aduh, batanya meleset!")
+        showBuMaraDialog("Oh no, the brick missed!")
     }
     
     private func handleFailTippedOver() {
@@ -1333,12 +1332,12 @@ public final class ShelfBalanceMinigameNode: SKNode {
         HapticsService.shared.playNotification(.error)
         #endif
         
-        // Pot jatuh dan pecah
+        // Pots fall and break
         pot1Node.run(.moveBy(x: -60, y: -90, duration: 0.3).applyTimingMode(.easeIn))
         pot2Node.run(.moveBy(x: 40, y: -100, duration: 0.3).applyTimingMode(.easeIn))
         pot3Node.run(.moveBy(x: 80, y: -110, duration: 0.3).applyTimingMode(.easeIn))
         
-        showBuMaraDialog("Astaga, potnya pecah!")
+        showBuMaraDialog("Oh my, the pots broke!")
         
         onComplete?(false)
         
@@ -1359,7 +1358,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         
         let config = SpeechBubbleConfig(
             text: message,
-            speaker: "BU MARA",
+            speaker: "MRS. MARA",
             fontName: "AvenirNext-Bold",
             fontSize: 13,
             fontColor: .white,
