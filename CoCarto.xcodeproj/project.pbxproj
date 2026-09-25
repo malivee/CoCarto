@@ -22,6 +22,7 @@
 		AA3EDF743066D75D00BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA3EE8F53066F18200BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA3EF6103066FC8400BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
+		AA3EF9AC306704F500BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AAD4F6B730661F4600F88A5D /* CoCarto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoCarto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE15C2DA3066F1DE0000F592 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -150,6 +151,11 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		AA3EF9B2306704F500BCF5E3 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 		AAD4F6AE30661F4600F88A5D = {
 			isa = PBXGroup;
 			children = (
@@ -226,6 +232,26 @@
 			projectDirPath = "";
 			projectReferences = (
 				{
+					ProductGroup = AA3EC8373066876C00BCF5E3 /* Products */;
+					ProjectRef = AA3EC8313066876C00BCF5E3 /* CoCarto.xcodeproj */;
+				},
+				{
+					ProductGroup = AA3EAE563066571400BCF5E3 /* Products */;
+					ProjectRef = AA3EAE503066571400BCF5E3 /* CoCarto.xcodeproj */;
+				},
+				{
+					ProductGroup = AA3EBCEF306672FC00BCF5E3 /* Products */;
+					ProjectRef = AA3EBCE9306672FC00BCF5E3 /* CoCarto.xcodeproj */;
+				},
+				{
+					ProductGroup = 23619638306627AE00C66ECB /* Products */;
+					ProjectRef = 23619632306627AE00C66ECB /* CoCarto.xcodeproj */;
+				},
+				{
+					ProductGroup = AA3EAAD830664B8000BCF5E3 /* Products */;
+					ProjectRef = AA3EAAD230664B8000BCF5E3 /* CoCarto.xcodeproj */;
+				},
+				{
 					ProductGroup = AA3EE8FB3066F18200BCF5E3 /* Products */;
 					ProjectRef = AA3EE8F53066F18200BCF5E3 /* CoCarto.xcodeproj */;
 				},
@@ -234,20 +260,8 @@
 					ProjectRef = AA3EB30E3066687A00BCF5E3 /* CoCarto.xcodeproj */;
 				},
 				{
-					ProductGroup = AA3EAE563066571400BCF5E3 /* Products */;
-					ProjectRef = AA3EAE503066571400BCF5E3 /* CoCarto.xcodeproj */;
-				},
-				{
 					ProductGroup = 2361980530666E4700C66ECB /* Products */;
 					ProjectRef = 236197FF30666E4700C66ECB /* CoCarto.xcodeproj */;
-				},
-				{
-					ProductGroup = AA3EC8373066876C00BCF5E3 /* Products */;
-					ProjectRef = AA3EC8313066876C00BCF5E3 /* CoCarto.xcodeproj */;
-				},
-				{
-					ProductGroup = AA3EBCEF306672FC00BCF5E3 /* Products */;
-					ProjectRef = AA3EBCE9306672FC00BCF5E3 /* CoCarto.xcodeproj */;
 				},
 				{
 					ProductGroup = AA3ED65A3066D07E00BCF5E3 /* Products */;
@@ -256,10 +270,6 @@
 				{
 					ProductGroup = AA3EF6163066FC8400BCF5E3 /* Products */;
 					ProjectRef = AA3EF6103066FC8400BCF5E3 /* CoCarto.xcodeproj */;
-				},
-				{
-					ProductGroup = 23619638306627AE00C66ECB /* Products */;
-					ProjectRef = 23619632306627AE00C66ECB /* CoCarto.xcodeproj */;
 				},
 				{
 					ProductGroup = AA3EB6F430666C9500BCF5E3 /* Products */;
@@ -286,8 +296,8 @@
 					ProjectRef = EE15C2DA3066F1DE0000F592 /* CoCarto.xcodeproj */;
 				},
 				{
-					ProductGroup = AA3EAAD830664B8000BCF5E3 /* Products */;
-					ProjectRef = AA3EAAD230664B8000BCF5E3 /* CoCarto.xcodeproj */;
+					ProductGroup = AA3EF9B2306704F500BCF5E3 /* Products */;
+					ProjectRef = AA3EF9AC306704F500BCF5E3 /* CoCarto.xcodeproj */;
 				},
 			);
 			projectRoot = "";
