@@ -348,6 +348,7 @@ public struct RockSaltCarvingView: View {
     }
     
     private func executeStrikeAt(_ point: CGPoint) {
+        AudioService.shared.playSFX("RockSalt")
         heavyImpact.impactOccurred(intensity: 0.8)
         triggerShake(intensity: 5.0)
         spawnSparks(at: point, count: 15)

@@ -134,6 +134,7 @@ final class GameScene: SKScene {
         puzzleManager.evaluate(worldState: worldState)
         presentInitialMapOverview()
         updateWorldQuestLabel()
+        updateAreaAudio()
 
         let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handleMapPinch(_:)))
         pinch.cancelsTouchesInView = true
@@ -220,6 +221,7 @@ final class GameScene: SKScene {
         cameraController.update(targetPosition: playerNode.position)
         layoutEnterMapButton()
         resolveLandmarkArrival(at: playerNode.position)
+        updateAreaAudio()
 
         if showsDebugOverlay {
             debugRenderer.update(

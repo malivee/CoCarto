@@ -39,6 +39,7 @@ public final class ItemSortingMinigameNode: SKNode {
     private var activeTuber: SKNode?
     private var isActiveTuberWashed: Bool = false
     private var originalTuberPosition: CGPoint = .zero
+    private var isTuberCurrentlyInBasin: Bool = false
     
     // Multi-Stage Washing State (Kentang Paling Hitam: Cuci 3x)
     private var isCurrentTuberBlack: Bool = false
@@ -498,7 +499,12 @@ public final class ItemSortingMinigameNode: SKNode {
         let locInBasin = touch.location(in: basinNode)
         
         // Akurasi Hitbox: Jika berada di dalam baskom air, hitung scrubbing
-        if washBasinZone.path?.contains(locInBasin) == true {
+        let isInsideBasin = washBasinZone.path?.contains(locInBasin) == true
+        if isInsideBasin {
+            if !isTuberCurrentlyInBasin {
+                isTuberCurrentlyInBasin = true
+                AudioService.shared.playSFX("WaterSorting")
+            }
             if let lastLoc = lastScrubLocation {
                 let dx = currentTouchPosInWorkspace.x - lastLoc.x
                 let dy = currentTouchPosInWorkspace.y - lastLoc.y
@@ -507,6 +513,8 @@ public final class ItemSortingMinigameNode: SKNode {
                     handleScrubbingInBasin(deltaDist: dist, tuber: tuber)
                 }
             }
+        } else {
+            isTuberCurrentlyInBasin = false
         }
         lastScrubLocation = currentTouchPosInWorkspace
     }
@@ -553,6 +561,7 @@ public final class ItemSortingMinigameNode: SKNode {
         
         activeTuber = nil
         lastScrubLocation = nil
+        isTuberCurrentlyInBasin = false
     }
     #endif
     
@@ -566,6 +575,7 @@ public final class ItemSortingMinigameNode: SKNode {
         // Efek busa air halus saat menggosok
         if Int(accumulatedScrubDistance) % 30 < Int(deltaDist) + 3 {
             spawnScrubFoam(at: tuber.position)
+            AudioService.shared.playSFX("WaterSorting", volumeMultiplier: 0.6, throttleInterval: 0.8)
             #if canImport(UIKit)
             HapticsService.shared.playImpact(style: .light)
             #endif

@@ -345,6 +345,8 @@ public final class SeedSortingMinigameNode: SKNode {
             updateDynamicInstruction()
             onProgress?(currentProgress)
             
+            AudioService.shared.playSFX("TampahTray", throttleInterval: 0.6)
+            
             // Efek haptic tipis berirama saat goyangan efektif
             if Int(accumulatedShake * 10) % 6 == 0 {
                 #if canImport(UIKit)
