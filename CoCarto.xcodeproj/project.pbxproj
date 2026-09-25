@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXFileReference section */
+		23619632306627AE00C66ECB /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
+		2361970D30662A6B00C66ECB /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AAD4F6B730661F4600F88A5D /* CoCarto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoCarto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -26,7 +28,7 @@
 			exceptions = (
 				AAD4F6CC30661F4700F88A5D /* Exceptions for "CoCarto" folder in "CoCarto" target */,
 			);
-			path = CoCarto;
+			name = CoCarto;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -42,11 +44,30 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		23619638306627AE00C66ECB /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2361969F30662A6B00C66ECB /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				23619632306627AE00C66ECB /* CoCarto.xcodeproj */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
+		2361971330662A6B00C66ECB /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 		AAD4F6AE30661F4600F88A5D = {
 			isa = PBXGroup;
 			children = (
 				AAD4F6B930661F4600F88A5D /* CoCarto */,
 				AAD4F6B830661F4600F88A5D /* Products */,
+				2361969F30662A6B00C66ECB /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -110,6 +131,16 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AAD4F6B830661F4600F88A5D /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 23619638306627AE00C66ECB /* Products */;
+					ProjectRef = 23619632306627AE00C66ECB /* CoCarto.xcodeproj */;
+				},
+				{
+					ProductGroup = 2361971330662A6B00C66ECB /* Products */;
+					ProjectRef = 2361970D30662A6B00C66ECB /* CoCarto.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				AAD4F6B630661F4600F88A5D /* CoCarto */,
@@ -145,14 +176,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DTTY9ZX5T4;
+				DEVELOPMENT_TEAM = WB3D823668;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = CoCarto/Info.plist;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -177,14 +208,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DTTY9ZX5T4;
+				DEVELOPMENT_TEAM = WB3D823668;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = CoCarto/Info.plist;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

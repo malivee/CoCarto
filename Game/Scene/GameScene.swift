@@ -23,6 +23,8 @@ final class GameScene: SKScene {
     private var mapViewport = MapViewportController()
     private var footprintDebugTarget: VillageSoilFootprintDebugTarget?
     private var lastMapDragScreenPosition: CGPoint?
+    private var inventoryLastTouchY: CGFloat?
+    private var rotationInputLocked = false
     private let puzzleManager = PuzzleManager()
     private let worldEventManager = WorldEventManager()
     private let landmarkInteractionResolver = LandmarkInteractionResolver()
@@ -33,7 +35,6 @@ final class GameScene: SKScene {
     private var playerNode: PlayerNode?
     private var showsDebugOverlay = true
     private var gameMode: GameMode = .exploring
-    private var mapDragMoved = false
     private var lastUpdateTime: TimeInterval?
     private var pendingPresentationEvents: [GameDomainEvent] = []
     private var pendingLoadedPlayerSpatialState: PlayerSpatialState?
@@ -172,6 +173,18 @@ final class GameScene: SKScene {
                 inputController.beginTouch(at: location)
             }
         case .mapIdle, .mapPieceSelected:
+            if stack.contains(where: { $0.name == MapNodeName.inventoryToggle.rawValue }) {
+                mapRenderer.toggleInventory()
+                rebuildMapView()
+                return
+            }
+            if mapRenderer.inventoryExpanded,
+               stack.contains(where: {
+                   $0.name == MapNodeName.inventoryPanel.rawValue || $0.name == MapNodeName.inventoryItem.rawValue
+               }) {
+                inventoryLastTouchY = location.y
+                return
+            }
             handleMapTouchBegan(at: location)
         case .mapDragging:
             break
@@ -186,6 +199,12 @@ final class GameScene: SKScene {
         }
 
         let location = touch.location(in: self)
+        if let lastY = inventoryLastTouchY {
+            mapRenderer.scrollInventory(by: location.y - lastY)
+            inventoryLastTouchY = location.y
+            rebuildMapView()
+            return
+        }
         switch gameMode {
         case .exploring:
             inputController.moveTouch(to: location)
@@ -203,6 +222,10 @@ final class GameScene: SKScene {
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if inventoryLastTouchY != nil {
+            inventoryLastTouchY = nil
+            return
+        }
         switch gameMode {
         case .exploring:
             inputController.endTouch()
@@ -211,7 +234,6 @@ final class GameScene: SKScene {
             }
         case .mapDragging(let pieceID):
             finishPieceDrag(pieceID: pieceID)
-            mapDragMoved = false
         case .mapIdle, .mapPieceSelected:
             mapController.endGesture()
         case .enteringMap, .committingMapChange, .exitingMap:
@@ -345,6 +367,9 @@ final class GameScene: SKScene {
         mapDebugRoot.alpha = 1
         playerNode?.alpha = 0
         enterMapButton.alpha = 0
+        resetButton.alpha = 0
+        saveButton.alpha = 0
+        loadButton.alpha = 0
         gameMode = .mapIdle
     }
 
@@ -371,8 +396,13 @@ final class GameScene: SKScene {
             return
         }
 
-        if stack.contains(where: { $0.name == MapNodeName.rotateButton.rawValue }) {
-            rotateSelectedPiece()
+        if stack.contains(where: { $0.name == MapNodeName.rotateLeftButton.rawValue }) {
+            rotateSelectedPiece(clockwise: false)
+            return
+        }
+
+        if stack.contains(where: { $0.name == MapNodeName.rotateRightButton.rawValue }) {
+            rotateSelectedPiece(clockwise: true)
             return
         }
 
@@ -392,6 +422,10 @@ final class GameScene: SKScene {
         }
 
         guard let pieceID = pieceID(in: stack) else {
+            if mapController.preview != nil {
+                finishCurrentSelection()
+                return
+            }
             mapController.beginPan(at: location)
             return
         }
@@ -416,9 +450,17 @@ final class GameScene: SKScene {
         }
     }
 
-    private func rotateSelectedPiece() {
-        guard let preview = mapController.rotateSelected(in: worldState, mapper: mapRenderer.mapper, locksInteraction: true),
+    private func rotateSelectedPiece(clockwise: Bool) {
+        guard !rotationInputLocked else { return }
+        rotationInputLocked = true
+        guard let preview = mapController.rotateSelected(
+            clockwise: clockwise,
+            in: worldState,
+            mapper: mapRenderer.mapper,
+            locksInteraction: true
+        ),
               let piece = worldState.piece(id: preview.pieceID) else {
+            rotationInputLocked = false
             return
         }
 
@@ -426,10 +468,11 @@ final class GameScene: SKScene {
         mapRenderer.updatePreviewNode(piece: piece, preview: preview, in: mapRoot, animated: true)
         mapRoot.removeAction(forKey: "finishMapRotation")
         mapRoot.run(.sequence([
-            .wait(forDuration: 0.2),
+            .wait(forDuration: 0.12),
             .run { [weak self] in
                 guard let self else { return }
                 self.mapController.finishRotation()
+                self.rotationInputLocked = false
                 self.rebuildMapView()
             }
         ]), withKey: "finishMapRotation")
@@ -446,7 +489,6 @@ final class GameScene: SKScene {
             return
         }
 
-        mapDragMoved = true
         mapRenderer.updatePreviewNode(piece: piece, preview: preview, in: mapRoot)
     }
 
@@ -466,6 +508,14 @@ final class GameScene: SKScene {
             }
             self.mapRenderer.updatePreviewNode(piece: piece, preview: currentPreview, in: self.mapRoot)
             self.rebuildMapView()
+        }
+    }
+
+    private func finishCurrentSelection() {
+        if mapController.preview?.isValid == true {
+            confirmMapPreview()
+        } else {
+            cancelMapPreview()
         }
     }
 
@@ -611,7 +661,7 @@ final class GameScene: SKScene {
             x: cameraNode.position.x - size.width * 0.18,
             y: cameraNode.position.y - size.height * 0.36
         )
-        let debugButtonAlpha: CGFloat = gameMode == .exploring || gameMode.isMapInteractionActive ? 1 : 0.35
+        let debugButtonAlpha: CGFloat = gameMode == .exploring ? 1 : 0
         resetButton.alpha = debugButtonAlpha
         saveButton.alpha = debugButtonAlpha
         loadButton.alpha = debugButtonAlpha

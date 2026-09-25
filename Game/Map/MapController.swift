@@ -137,12 +137,21 @@ final class MapController {
         return preview
     }
 
-    func rotateSelected(in worldState: WorldState, mapper: MapGridMapper? = nil, locksInteraction: Bool = false) -> PiecePlacementPreview? {
+    func rotateSelected(
+        clockwise: Bool = true,
+        in worldState: WorldState,
+        mapper: MapGridMapper? = nil,
+        locksInteraction: Bool = false
+    ) -> PiecePlacementPreview? {
         guard var preview, !isRotatingPiece else {
             return nil
         }
 
-        preview.proposedRotation = preview.proposedRotation.nextQuarterTurn
+        // The authored piece cells use a Y-down diagram convention. In the map,
+        // advancing the stored quarter turn produces the expected visual right turn.
+        preview.proposedRotation = clockwise
+            ? preview.proposedRotation.nextQuarterTurn
+            : preview.proposedRotation.previousQuarterTurn
         preview.isValid = validator.canPlace(
             pieceID: preview.pieceID,
             at: preview.proposedPosition,
