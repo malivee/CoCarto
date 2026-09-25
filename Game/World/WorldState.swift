@@ -93,16 +93,19 @@ struct WorldState: Codable, Equatable, Sendable {
     }
 
     @discardableResult
-    mutating func unlockPuzzlePieces(allowing roles: Set<PieceRole>, from prototype: WorldState = .buildingPuzzleBiomePrototype) -> Bool {
-        var didChange = false
+    mutating func synchronizePuzzlePieces(allowing roles: Set<PieceRole>, from prototype: WorldState = .buildingPuzzleBiomePrototype) -> Bool {
+        let progressionRoles = Set(prototype.pieces.map(\.role))
+        let originalPieces = pieces
+        pieces.removeAll { piece in
+            progressionRoles.contains(piece.role) && !roles.contains(piece.role)
+        }
         for prototypePiece in prototype.pieces where roles.contains(prototypePiece.role) {
             guard !pieces.contains(where: { $0.id == prototypePiece.id }) else {
                 continue
             }
             pieces.append(prototypePiece)
-            didChange = true
         }
-        return didChange
+        return pieces != originalPieces
     }
 }
 

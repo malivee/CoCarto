@@ -55,6 +55,7 @@ final class CellNode: SKNode {
 
     private func addMicroBiomeDebugGrid(_ microBiomeGrid: MicroBiomeGrid, gridID: GridID, piece: WorldPiece, cellSize: CGFloat) {
         if let override = TileAssetResolver.override(for: piece, gridID: gridID) {
+            addChild(TileAssetResolver.shadowNode(size: cellSize))
             let tile = TileAssetResolver.overrideNode(for: override, size: cellSize)
             tile.alpha = 0.92
             tile.zPosition = 0.5

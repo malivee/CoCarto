@@ -65,13 +65,13 @@ extension GameScene {
 
     @discardableResult
     func synchronizeQuestProgressionUnlocks() -> Bool {
-        let didUnlockPiece = worldState.unlockPuzzlePieces(allowing: questUnlockedPieceRoles())
-        if didUnlockPiece {
+        let didChangePieces = worldState.synchronizePuzzlePieces(allowing: questUnlockedPieceRoles())
+        if didChangePieces {
             playerController.updateWorldState(worldState)
             worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
             syncVillageNPCs()
         }
-        return didUnlockPiece
+        return didChangePieces
     }
 
     // Placement only updates the UI. Quest 2 completes through Bu Mara's interaction and minigame.

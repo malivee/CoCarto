@@ -38,10 +38,28 @@ enum BuildingObjectRenderer {
             y: (CGFloat(object.origin.y) + CGFloat(dimensions.height) / 2) * microSize - cellSize / 2
         )
         let outline = SKShapeNode(rectOf: size, cornerRadius: 3)
-        outline.fillColor = result == nil ? SKColor(red: 0.48, green: 0.29, blue: 0.16, alpha: 0.88) : .clear
-        outline.strokeColor = result.map { $0 == .valid ? .systemGreen : .systemRed } ?? .white
+        let usesAsset = object.kind == .arthurHouse
+        outline.fillColor = result == nil && !usesAsset
+            ? SKColor(red: 0.48, green: 0.29, blue: 0.16, alpha: 0.88)
+            : .clear
+        outline.strokeColor = result.map { $0 == .valid ? .systemGreen : .systemRed }
+            ?? (usesAsset ? .clear : .white)
         outline.lineWidth = result == nil ? 1.5 : 3
         root.addChild(outline)
+
+        if usesAsset {
+            let assetSize = quarterTurn
+                ? CGSize(width: size.height, height: size.width)
+                : size
+            let sprite = SKSpriteNode(imageNamed: "rumahArthur")
+            sprite.name = "BuildingAsset"
+            sprite.size = assetSize
+            sprite.zRotation = object.rotation.radians
+            sprite.zPosition = 1
+            root.addChild(sprite)
+            root.zPosition = result == nil ? 0 : 50
+            return root
+        }
 
         let icon = SKLabelNode(fontNamed: "AvenirNext-Bold")
         switch object.kind {

@@ -49,6 +49,15 @@ struct TileAssetResolver {
         return sprite
     }
 
+    static func shadowNode(size: CGFloat) -> SKNode {
+        let shadow = SKShapeNode(rectOf: CGSize(width: size * 1.16, height: size * 1.14), cornerRadius: size * 0.07)
+        shadow.fillColor = SKColor.black.withAlphaComponent(0.24)
+        shadow.strokeColor = .clear
+        shadow.position = CGPoint(x: size * 0.055, y: -size * 0.065)
+        shadow.zPosition = 0.44
+        return shadow
+    }
+
     private static func firstITileOverride(for gridID: GridID) -> TileOverride? {
         switch gridID.rawValue {
         case "A":
