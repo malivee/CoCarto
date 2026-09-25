@@ -29,7 +29,7 @@ enum BuildingObjectCatalog {
         .barn: .init(kind: .barn, title: "Lumbung", mapWidth: 6, mapHeight: 8),
         .animalPen: .init(kind: .animalPen, title: "Kandang", mapWidth: 8, mapHeight: 10),
         .annethHouse: .init(kind: .annethHouse, title: "Rumah Anneth", mapWidth: 8, mapHeight: 6),
-        .rockSalt: .init(kind: .rockSalt, title: "Rock Salt", mapWidth: 4, mapHeight: 5)
+        .rockSalt: .init(kind: .rockSalt, title: "Rock Salt Mine", mapWidth: 4, mapHeight: 5)
     ]
 
     static func definition(for kind: BuildingObjectKind) -> BuildingObjectDefinition {
@@ -60,29 +60,39 @@ struct BuildingObject: Identifiable, Codable, Equatable, Sendable {
 }
 
 enum BuildingPlacementResult: Equatable {
-    case valid, requiresVillageSoil, overlapsObject
+    case valid, requiresVillageSoil, requiresRockSalt, overlapsObject, placementLimitReached
 
     var message: String {
         switch self {
         case .valid: return "Siap dipasang"
         case .requiresVillageSoil: return "Seluruh area harus village soil utuh"
+        case .requiresRockSalt: return "Seluruh area harus biome rock salt"
         case .overlapsObject: return "Area sudah ditempati objek"
+        case .placementLimitReached: return "Maksimal 3 tambang rock salt"
         }
     }
 }
 
 struct BuildingPlacementValidator {
     func villagePositions(in world: WorldState) -> Set<GridPosition> {
-        world.pieces.reduce(into: Set<GridPosition>()) { positions, piece in
-            positions.formUnion(villagePositions(for: piece))
-        }
+        biomePositions(.villageSoil, in: world)
     }
 
     func villagePositions(for piece: WorldPiece) -> Set<GridPosition> {
+        biomePositions(.villageSoil, for: piece)
+    }
+
+    func biomePositions(_ biome: BiomeType, in world: WorldState) -> Set<GridPosition> {
+        world.pieces.reduce(into: Set<GridPosition>()) { positions, piece in
+            positions.formUnion(biomePositions(biome, for: piece))
+        }
+    }
+
+    func biomePositions(_ biome: BiomeType, for piece: WorldPiece) -> Set<GridPosition> {
         var positions = Set<GridPosition>()
         let dimension = MicroBiomeGrid.dimension
         for cell in piece.cellDefinitions {
-            for microCell in cell.microBiomeGrid.cells() where microCell.biome == .villageSoil {
+            for microCell in cell.microBiomeGrid.cells() where microCell.biome == biome {
                 // Rotate actual rendered square centers, including the downward microgrid Y.
                 let center = GridPosition(
                     x: cell.localPosition.x * dimension * 2 + microCell.localPosition.x * 2 + 1 - dimension,
@@ -99,8 +109,13 @@ struct BuildingPlacementValidator {
     }
 
     func validate(_ object: BuildingObject, in world: WorldState) -> BuildingPlacementResult {
-        guard object.occupiedPositions.isSubset(of: villagePositions(in: world)) else {
-            return .requiresVillageSoil
+        let requiredBiome: BiomeType = object.kind == .rockSalt ? .rocksalt : .villageSoil
+        guard object.occupiedPositions.isSubset(of: biomePositions(requiredBiome, in: world)) else {
+            return object.kind == .rockSalt ? .requiresRockSalt : .requiresVillageSoil
+        }
+        if object.kind == .rockSalt,
+           world.buildingObjects.filter({ $0.kind == .rockSalt && $0.id != object.id }).count >= 3 {
+            return .placementLimitReached
         }
         guard world.buildingObjects.filter({ $0.id != object.id }).allSatisfy({
             $0.occupiedPositions.isDisjoint(with: object.occupiedPositions)
@@ -111,6 +126,9 @@ struct BuildingPlacementValidator {
     func supportsExistingObjects(in world: WorldState) -> Bool {
         guard !world.buildingObjects.isEmpty else { return true }
         let village = villagePositions(in: world)
-        return world.buildingObjects.allSatisfy { $0.occupiedPositions.isSubset(of: village) }
+        let rockSalt = biomePositions(.rocksalt, in: world)
+        return world.buildingObjects.allSatisfy {
+            $0.occupiedPositions.isSubset(of: $0.kind == .rockSalt ? rockSalt : village)
+        }
     }
 }

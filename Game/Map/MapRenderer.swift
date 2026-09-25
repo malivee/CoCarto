@@ -33,6 +33,9 @@ final class MapRenderer {
     ) {
         mapRoot.removeAllChildren()
         var unavailableKinds = Set(worldState.buildingObjects.map(\.kind))
+        if worldState.buildingObjects.filter({ $0.kind == .rockSalt }).count < 3 {
+            unavailableKinds.remove(.rockSalt)
+        }
         if let selectedObjectKind {
             unavailableKinds.insert(selectedObjectKind)
         }

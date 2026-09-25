@@ -101,6 +101,26 @@ struct VillageQuest5Progress: Codable {
     }
 }
 
+struct VillageQuest6Progress: Codable {
+    static let saveKey = "village.carto.quest6.v1"
+
+    var acceptedSaltErrand = false
+    var pickedUpRockSalt = false
+    var deliveredRockSalt = false
+    var completed = false
+
+    static func load(defaults: UserDefaults = .standard) -> Self {
+        guard let data = defaults.data(forKey: saveKey),
+              let saved = try? JSONDecoder().decode(Self.self, from: data) else { return Self() }
+        return saved
+    }
+
+    func save(defaults: UserDefaults = .standard) {
+        guard let data = try? JSONEncoder().encode(self) else { return }
+        defaults.set(data, forKey: Self.saveKey)
+    }
+}
+
 struct VillageQuest7Progress: Codable {
     static let saveKey = "village.carto.quest7.v1"
 
@@ -354,6 +374,11 @@ enum VillageQuestCatalog {
                 text: "Sure, but I need to bring this water back to Grandpa first."
             )
         ]
+    }
+
+    enum Quest6 {
+        static let mapObjectives = ["Place Anneth Home", "Place rock salt mine (0/3)"]
+        static let worldObjective = "Pick up Rock Salt"
     }
 
     static func buildingID(for kind: BuildingObjectKind) -> String {

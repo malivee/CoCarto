@@ -25,7 +25,9 @@ struct WorldState: Codable, Equatable, Sendable {
         let result = BuildingPlacementValidator().validate(object, in: self)
         guard result == .valid else { return result }
         guard !buildingObjects.contains(where: { $0.id == object.id }) else { return .overlapsObject }
-        guard !buildingObjects.contains(where: { $0.kind == object.kind }) else { return .overlapsObject }
+        guard object.kind == .rockSalt || !buildingObjects.contains(where: { $0.kind == object.kind }) else {
+            return .overlapsObject
+        }
         buildingObjects.append(object)
         return .valid
     }
@@ -95,9 +97,12 @@ struct WorldState: Codable, Equatable, Sendable {
 
     func hasBuildingObject(onPieceID pieceID: UUID) -> Bool {
         guard let piece = piece(id: pieceID) else { return false }
-        let villagePositions = BuildingPlacementValidator().villagePositions(for: piece)
+        let validator = BuildingPlacementValidator()
+        let villagePositions = validator.villagePositions(for: piece)
+        let rockSaltPositions = validator.biomePositions(.rocksalt, for: piece)
         return buildingObjects.contains { object in
-            !object.occupiedPositions.isDisjoint(with: villagePositions)
+            let supportedPositions = object.kind == .rockSalt ? rockSaltPositions : villagePositions
+            return !object.occupiedPositions.isDisjoint(with: supportedPositions)
         }
     }
 

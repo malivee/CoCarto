@@ -51,6 +51,7 @@ final class GameScene: SKScene {
     let quest1Controller = VillageQuest1Controller()
     let quest2Controller = VillageQuest2Controller()
     let quest3Controller = VillageQuest3Controller()
+    let quest6Controller = VillageQuest6Controller()
     let saveService = try? SaveGameService()
     let puzzleFeedbackLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     let worldQuestLabel = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
@@ -259,6 +260,8 @@ final class GameScene: SKScene {
             }
             if nodeStack(at: location).contains(where: { $0.name == MapNodeName.enterButton.rawValue }) {
                 enterMapView()
+            } else if stack.contains(where: { $0.name == BuildingObjectRenderer.quest6PickupName }) {
+                interactWithQuest6Pickup(in: stack)
             } else if let objectID = buildingObjectID(in: stack) {
                 interactWithQuestObject(id: objectID, in: stack)
             } else {

@@ -6,6 +6,8 @@ extension GameScene {
         let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
         let hasMaraHome = worldState.buildingObjects.contains { $0.kind == .buMaraHouse }
         let hasBarn = worldState.buildingObjects.contains { $0.kind == .barn }
+        let hasAnnethHome = worldState.buildingObjects.contains { $0.kind == .annethHouse }
+        let rockSaltMineCount = worldState.buildingObjects.filter { $0.kind == .rockSalt }.count
 
         if !hasArthurHome {
             return [MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: false)]
@@ -24,6 +26,12 @@ extension GameScene {
         }
         if quest1Controller.isCompleted && quest2Controller.isCompleted && !hasBarn {
             return [MapQuestItem(category: "Quest 3", title: VillageQuest3Catalog.mapObjective, isCompleted: false)]
+        }
+        if quest6Controller.isUnlocked && !quest6Controller.isCompleted {
+            return [
+                MapQuestItem(category: "Quest 6", title: VillageQuestCatalog.Quest6.mapObjectives[0], isCompleted: hasAnnethHome),
+                MapQuestItem(category: "Quest 6", title: "Place rock salt mine (\(rockSaltMineCount)/3)", isCompleted: rockSaltMineCount >= 3)
+            ]
         }
 
         var items: [MapQuestItem] = []
@@ -53,6 +61,10 @@ extension GameScene {
         }
         if quest1Controller.isCompleted && quest2Controller.isCompleted {
             unlocked.insert(.barn)
+        }
+        if quest6Controller.isUnlocked || quest6Controller.isActive {
+            unlocked.insert(.annethHouse)
+            unlocked.insert(.rockSalt)
         }
         return unlocked
     }
@@ -85,6 +97,11 @@ extension GameScene {
     }
 
     func updateWorldQuestLabel() {
+        if gameMode == .exploring,
+           activeQuestDialogue == nil,
+           let activation = quest6Controller.activateIfEligible() {
+            handleQuest6Result(activation)
+        }
         var items: [MapQuestItem] = []
         let hasArthurHome = worldState.buildingObjects.contains { $0.kind == .arthurHouse }
         let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
@@ -145,6 +162,16 @@ extension GameScene {
                 isCompleted: quest3Progress.sortedSeeds
             ))
         }
+        if quest6Controller.isActive {
+            let hasAnnethHome = worldState.buildingObjects.contains { $0.kind == .annethHouse }
+            let mineCount = worldState.buildingObjects.filter { $0.kind == .rockSalt }.count
+            let title: String
+            if !hasAnnethHome { title = VillageQuestCatalog.Quest6.mapObjectives[0] }
+            else if mineCount < 3 { title = "Place rock salt mine (\(mineCount)/3)" }
+            else if !quest6Controller.hasCollectedRockSalt { title = VillageQuestCatalog.Quest6.worldObjective }
+            else { title = "Return the Rock Salt to Mrs. Anneth" }
+            items.append(MapQuestItem(category: "Quest 6", title: title, isCompleted: false))
+        }
         worldQuestTracker.update(with: items)
         worldQuestTracker.isHidden = gameMode != .exploring || items.isEmpty
         worldQuestLabel.isHidden = true
@@ -177,10 +204,43 @@ extension GameScene {
             ))
         case .barn:
             handleQuest3Interaction(object: object)
+        case .annethHouse where quest6Controller.isActive || quest6Controller.hasCollectedRockSalt:
+            handleQuest6Result(quest6Controller.deliverToAnneth())
         default:
             return
         }
         updateWorldQuestLabel()
+    }
+
+    func interactWithQuest6Pickup(in stack: [SKNode]) {
+        guard let playerNode,
+              let pickup = stack.first(where: { $0.name == BuildingObjectRenderer.quest6PickupName }) else { return }
+        let pickupPosition = pickup.convert(CGPoint.zero, to: self)
+        guard hypot(playerNode.position.x - pickupPosition.x, playerNode.position.y - pickupPosition.y) <= 220 else {
+            showProgressionFeedback("MOVE CLOSER")
+            return
+        }
+        handleQuest6Result(quest6Controller.collectRockSalt(in: worldState))
+        worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+        updateWorldQuestLabel()
+    }
+
+    func handleQuest6Result(_ result: VillageQuest6InteractionResult) {
+        switch result {
+        case .unavailable(let lines), .alreadyCompleted(let lines):
+            showQuestDialogue(lines)
+        case .activated(let lines):
+            showQuestDialogue(lines)
+            showProgressionFeedback("ROCK SALT MINES UNLOCKED")
+        case .rockSaltCollected(let lines):
+            showQuestDialogue(lines)
+            showProgressionFeedback("ROCK SALT COLLECTED")
+            autosave(reason: "rock salt collected")
+        case .completed(let lines):
+            showQuestDialogue(lines)
+            showProgressionFeedback("QUEST 6 COMPLETE")
+            autosave(reason: "quest 6 completed")
+        }
     }
 
     func handleQuest1Result(_ result: VillageQuest1InteractionResult) {

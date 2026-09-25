@@ -4,14 +4,26 @@ enum BuildingObjectRenderer {
     static let rootName = "buildingObjects"
     static let nodeName = "BuildingObjectNode"
     static let objectIDKey = "buildingObjectID"
+    static let quest6PickupName = "Quest6RockSaltPickup"
 
     static func render(_ objects: [BuildingObject], in parent: SKNode, cellSize: CGFloat, isWorld: Bool) {
         parent.childNode(withName: rootName)?.removeFromParent()
         let root = SKNode()
         root.name = rootName
         root.zPosition = 40
+        var lastRockSaltNode: SKNode?
         for object in objects {
-            root.addChild(makeNode(object, cellSize: cellSize, isWorld: isWorld))
+            let node = makeNode(object, cellSize: cellSize, isWorld: isWorld)
+            root.addChild(node)
+            if object.kind == .rockSalt { lastRockSaltNode = node }
+        }
+        if isWorld,
+           objects.contains(where: { $0.kind == .annethHouse }),
+           objects.filter({ $0.kind == .rockSalt }).count >= 3,
+           VillageQuest5Progress.load().completed,
+           !VillageQuest6Progress.load().pickedUpRockSalt,
+           let lastRockSaltNode {
+            lastRockSaltNode.addChild(makeQuest6Pickup())
         }
         parent.addChild(root)
     }
@@ -84,6 +96,36 @@ enum BuildingObjectRenderer {
         title.position.y = -size.height * 0.3
         root.addChild(title)
         root.zPosition = result == nil ? 0 : 50
+        return root
+    }
+
+    private static func makeQuest6Pickup() -> SKNode {
+        let root = SKNode()
+        root.name = quest6PickupName
+        root.position = CGPoint(x: 0, y: 54)
+        root.zPosition = 20
+
+        let crystal = SKShapeNode(path: {
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: 0, y: 24))
+            path.addLine(to: CGPoint(x: 18, y: 3))
+            path.addLine(to: CGPoint(x: 10, y: -20))
+            path.addLine(to: CGPoint(x: -14, y: -17))
+            path.addLine(to: CGPoint(x: -19, y: 4))
+            path.closeSubpath()
+            return path
+        }())
+        crystal.name = quest6PickupName
+        crystal.fillColor = SKColor(red: 0.91, green: 0.96, blue: 0.92, alpha: 1)
+        crystal.strokeColor = .white
+        crystal.lineWidth = 3
+        root.addChild(crystal)
+
+        let pulse = SKAction.sequence([
+            .scale(to: 1.12, duration: 0.55),
+            .scale(to: 1.0, duration: 0.55)
+        ])
+        root.run(.repeatForever(pulse))
         return root
     }
 
