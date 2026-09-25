@@ -97,7 +97,7 @@ extension GameScene {
 
             case .well:
                 if isQuest1TutorialActive && quest1Controller.isWellUnlocked && !quest1Controller.hasCollectedWater {
-                    let wellBadge = makeWellTutorialBadge(for: object.id)
+                    let wellBadge = makeWellTutorialBadge()
                     wellBadge.position = CGPoint(x: buildingPos.x, y: buildingPos.y + 44)
                     root.addChild(wellBadge)
                 }
@@ -225,10 +225,9 @@ extension GameScene {
         }
     }
 
-    private func makeWellTutorialBadge(for objectID: UUID) -> SKNode {
+    private func makeWellTutorialBadge() -> SKNode {
         let node = SKNode()
         node.name = "WellTutorialBadge"
-        node.userData = [BuildingObjectRenderer.objectIDKey: objectID.uuidString]
         node.zPosition = 60
 
         let pill = SKShapeNode(rectOf: CGSize(width: 104, height: 32), cornerRadius: 10)

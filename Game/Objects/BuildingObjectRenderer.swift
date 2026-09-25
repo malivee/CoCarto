@@ -41,6 +41,9 @@ enum BuildingObjectRenderer {
             x: (CGFloat(object.origin.x) + CGFloat(dimensions.width) / 2) * microSize - cellSize / 2,
             y: (CGFloat(object.origin.y) + CGFloat(dimensions.height) / 2) * microSize - cellSize / 2
         )
+        if isWorld, result == nil {
+            root.physicsBody = makeCollisionBody(for: object.kind, size: size)
+        }
         let outline = SKShapeNode(rectOf: size, cornerRadius: 3)
         let assetName = assetName(for: object.kind)
         let usesAsset = assetName != nil
@@ -114,6 +117,85 @@ enum BuildingObjectRenderer {
         case .barn:
             return "lumbung"
         }
+    }
+
+    private static func makeCollisionBody(for kind: BuildingObjectKind, size: CGSize) -> SKPhysicsBody {
+        let body: SKPhysicsBody
+
+        switch kind {
+        case .arthurHouse:
+            body = doorwayCollision(width: 0.90, upperHeight: 0.68, entranceWidth: 0.30, size: size)
+        case .well:
+            // Keep the physical rim inside the one-subgrid interaction radius,
+            // so the player can stand close enough to tap the well itself.
+            body = SKPhysicsBody(circleOfRadius: min(size.width, size.height) * 0.28)
+        case .buMaraHouse:
+            body = doorwayCollision(width: 0.92, upperHeight: 0.68, entranceWidth: 0.28, size: size)
+        case .barn:
+            body = doorwayCollision(width: 0.88, upperHeight: 0.70, entranceWidth: 0.32, size: size)
+        case .animalPen:
+            // The pen is much taller than the other assets. Keep its collision
+            // on the rear half and leave a wider front opening for Roland.
+            body = doorwayCollision(width: 0.86, upperHeight: 0.48, entranceWidth: 0.52, size: size)
+        case .annethHouse:
+            body = doorwayCollision(width: 0.90, upperHeight: 0.68, entranceWidth: 0.30, size: size)
+        case .rockSalt:
+            body = rectangularCollision(width: 0.82, height: 0.86, yOffset: 0, size: size)
+        }
+
+        body.isDynamic = false
+        body.affectedByGravity = false
+        body.friction = 0
+        body.restitution = 0
+        body.categoryBitMask = PhysicsCategory.building
+        body.collisionBitMask = PhysicsCategory.player
+        body.contactTestBitMask = 0
+        return body
+    }
+
+    private static func rectangularCollision(
+        width: CGFloat,
+        height: CGFloat,
+        yOffset: CGFloat,
+        size: CGSize
+    ) -> SKPhysicsBody {
+        SKPhysicsBody(
+            rectangleOf: CGSize(width: size.width * width, height: size.height * height),
+            center: CGPoint(x: 0, y: size.height * yOffset)
+        )
+    }
+
+    private static func doorwayCollision(
+        width: CGFloat,
+        upperHeight: CGFloat,
+        entranceWidth: CGFloat,
+        size: CGSize
+    ) -> SKPhysicsBody {
+        let lowerHeight = 1 - upperHeight
+        let sideWidth = (width - entranceWidth) / 2
+        let sideCenterX = (entranceWidth + sideWidth) / 2
+
+        let upper = rectangularCollision(
+            width: width,
+            height: upperHeight,
+            yOffset: (1 - upperHeight) / 2,
+            size: size
+        )
+        let lowerLeft = SKPhysicsBody(
+            rectangleOf: CGSize(width: size.width * sideWidth, height: size.height * lowerHeight),
+            center: CGPoint(
+                x: -size.width * sideCenterX,
+                y: -size.height * upperHeight / 2
+            )
+        )
+        let lowerRight = SKPhysicsBody(
+            rectangleOf: CGSize(width: size.width * sideWidth, height: size.height * lowerHeight),
+            center: CGPoint(
+                x: size.width * sideCenterX,
+                y: -size.height * upperHeight / 2
+            )
+        )
+        return SKPhysicsBody(bodies: [upper, lowerLeft, lowerRight])
     }
 
     private static func makeAssetShadow(size: CGSize, isWorld: Bool, kind: BuildingObjectKind) -> SKShapeNode {

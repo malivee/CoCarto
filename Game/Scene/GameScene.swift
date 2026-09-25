@@ -281,7 +281,8 @@ final class GameScene: SKScene {
                 enterMapView()
             } else if let npc = villageNPC(in: stack) {
                 interactWithQuestNPC(npc)
-            } else if let objectID = buildingObjectID(in: stack) {
+            } else if let objectID = buildingObjectID(in: stack),
+                      worldState.buildingObject(id: objectID)?.kind == .well {
                 interactWithQuestBuildingWithoutNPC(id: objectID, in: stack)
             } else {
                 let controlPosition = touch.location(in: cameraNode)

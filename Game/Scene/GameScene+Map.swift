@@ -436,10 +436,33 @@ extension GameScene {
             return
         }
 
-        if BuildingPlacementValidator().validate(preview, in: worldState) == .valid {
+        let validator = BuildingPlacementValidator()
+        let title = BuildingObjectCatalog.definition(for: preview.kind).title
+
+        // Dropping fully outside every tile returns the object to inventory.
+        // A moved object has already been removed from worldState, so clearing
+        // originalDraggedBuilding deliberately keeps it out of the world.
+        if !validator.overlapsWorldTiles(preview, in: worldState) {
+            let removedPlacedObject = originalDraggedBuilding != nil
+            selectedObjectKind = nil
+            objectPreview = nil
+            isDraggingPlacedObject = false
+            originalDraggedBuilding = nil
+
+            if removedPlacedObject {
+                worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+                syncVillageNPCs()
+                autosave(reason: "building returned to inventory")
+            }
+            AudioService.shared.playSFX("PaperMap")
+            showProgressionFeedback("\(title.uppercased()) RETURNED")
+            rebuildMapView()
+            return
+        }
+
+        if validator.validate(preview, in: worldState) == .valid {
             _ = worldState.placeBuildingObject(preview)
             syncQuest2PlacementProgress()
-            let title = BuildingObjectCatalog.definition(for: preview.kind).title
             selectedObjectKind = nil
             objectPreview = nil
             isDraggingPlacedObject = false
@@ -449,9 +472,20 @@ extension GameScene {
             AudioService.shared.playSFX("PaperMap")
             showProgressionFeedback("\(title.uppercased()) PLACED")
             rebuildMapView()
+        } else if originalDraggedBuilding != nil {
+            // An existing building released on an invalid position that still
+            // touches the map returns to its last valid placement.
+            restoreOriginalDraggedBuilding()
+            selectedObjectKind = nil
+            objectPreview = nil
+            worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+            syncVillageNPCs()
+            AudioService.shared.playSFX("PaperMap")
+            showProgressionFeedback("\(title.uppercased()) RESTORED")
+            rebuildMapView()
         } else {
-            // Keep the preview active so it can be adjusted. A previously placed
-            // building remains restorable if the player exits or cancels.
+            // A new building that still touches a tile remains selected in red
+            // so the player can drag it to another position.
             AudioService.shared.playSFX("PaperMap")
             rebuildMapView()
         }
