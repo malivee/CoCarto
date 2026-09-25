@@ -429,7 +429,7 @@ extension GameScene {
 
     func finishPieceDrag(pieceID: UUID) {
         lastMapDragScreenPosition = nil
-        guard let preview = mapController.snapSelectedVisualToGrid(mapper: mapRenderer.mapper) else {
+        guard let preview = mapController.resolveDrop(in: worldState, mapper: mapRenderer.mapper) else {
             gameMode = .mapIdle
             return
         }
@@ -443,7 +443,11 @@ extension GameScene {
                 return
             }
             self.mapRenderer.updatePreviewNode(piece: piece, preview: currentPreview, in: self.mapRoot, worldState: self.worldState)
-            self.rebuildMapView()
+            if currentPreview.isValid {
+                self.confirmMapPreview()
+            } else {
+                self.rebuildMapView()
+            }
         }
     }
 

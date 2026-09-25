@@ -297,10 +297,20 @@ extension GameScene {
             showProgressionFeedback("ROCK SALT COLLECTED")
             autosave(reason: "rock salt collected")
         case .completed(let lines):
-            showQuestDialogue(lines)
+            showQuestDialogue(lines) { [weak self] in
+                self?.presentToBeContinuedScreen()
+            }
             showProgressionFeedback("QUEST 6 COMPLETE")
             autosave(reason: "quest 6 completed")
         }
+    }
+
+    func presentToBeContinuedScreen() {
+        guard let view else { return }
+        inputController.endTouch()
+        let scene = ToBeContinuedScene(size: view.bounds.size)
+        scene.scaleMode = .resizeFill
+        view.presentScene(scene, transition: .fade(withDuration: 0.65))
     }
 
     func handleQuest1Result(_ result: VillageQuest1InteractionResult) {

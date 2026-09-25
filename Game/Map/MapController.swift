@@ -140,6 +140,49 @@ final class MapController {
         return preview
     }
 
+    /// Finalizes the grid position only when the drag ends. If the exact drop
+    /// overlaps or has incompatible edges, try a small nearby displacement so
+    /// the piece does not jump back across the map.
+    func resolveDrop(in worldState: WorldState, mapper: MapGridMapper, nudgeRadius: Int = 2) -> PiecePlacementPreview? {
+        guard var preview else { return nil }
+
+        if !preview.isValid {
+            let origin = preview.proposedPosition
+            let offsets = (-nudgeRadius...nudgeRadius).flatMap { y in
+                (-nudgeRadius...nudgeRadius).map { x in GridPosition(x: x, y: y) }
+            }.filter { offset in
+                let distance = abs(offset.x) + abs(offset.y)
+                return distance > 0 && distance <= nudgeRadius
+            }.sorted { lhs, rhs in
+                let lhsDistance = abs(lhs.x) + abs(lhs.y)
+                let rhsDistance = abs(rhs.x) + abs(rhs.y)
+                if lhsDistance != rhsDistance { return lhsDistance < rhsDistance }
+                if abs(lhs.y) != abs(rhs.y) { return abs(lhs.y) < abs(rhs.y) }
+                return abs(lhs.x) < abs(rhs.x)
+            }
+
+            if let nearby = offsets
+                .map({ GridPosition(x: origin.x + $0.x, y: origin.y + $0.y) })
+                .first(where: {
+                    validator.canPlace(
+                        pieceID: preview.pieceID,
+                        at: $0,
+                        rotation: preview.proposedRotation,
+                        in: worldState
+                    )
+                }) {
+                preview.proposedPosition = nearby
+                preview.isValid = true
+            }
+        }
+
+        preview.visualPosition = mapper.mapPosition(for: preview.proposedPosition)
+        self.preview = preview
+        interactionState = .pieceSelected(preview.pieceID)
+        dragOffsetFromPieceOrigin = .zero
+        return preview
+    }
+
     func rotateSelected(
         clockwise: Bool = true,
         in worldState: WorldState,
