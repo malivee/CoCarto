@@ -198,7 +198,16 @@ private extension BuildingPuzzleBiomeFixture {
         south: BiomeType,
         west: BiomeType
     ) -> CellBiomeEdges {
-        CellBiomeEdges(north: north, east: east, south: south, west: west)
+        // The prototype originally used only soil and grass, so the third palette
+        // color could never appear. Split soil by edge axis while preserving every
+        // existing match: north/south soil becomes blue rocksalt, while east/west
+        // soil stays yellow village soil.
+        CellBiomeEdges(
+            north: north == .villageSoil ? .rocksalt : north,
+            east: east,
+            south: south == .villageSoil ? .rocksalt : south,
+            west: west
+        )
     }
 
     static func microBiomeGridOverride(for cellID: BuildingPuzzleCellID) -> MicroBiomeGrid? {

@@ -147,11 +147,11 @@ final class MapController {
             return nil
         }
 
-        // The authored piece cells use a Y-down diagram convention. In the map,
-        // advancing the stored quarter turn produces the expected visual right turn.
+        // SpriteKit displays the stored positive turn counter-clockwise. Keep the
+        // control semantics visual: left advances, right moves to the previous turn.
         preview.proposedRotation = clockwise
-            ? preview.proposedRotation.nextQuarterTurn
-            : preview.proposedRotation.previousQuarterTurn
+            ? preview.proposedRotation.previousQuarterTurn
+            : preview.proposedRotation.nextQuarterTurn
         preview.isValid = validator.canPlace(
             pieceID: preview.pieceID,
             at: preview.proposedPosition,

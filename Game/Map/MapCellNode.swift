@@ -52,7 +52,7 @@ final class MapCellNode: SKSpriteNode {
                 x: topLeft.x + CGFloat(microCell.localPosition.x) * microSize,
                 y: topLeft.y - CGFloat(microCell.localPosition.y) * microSize
             )
-            node.alpha = 0.74
+            node.alpha = 0.92
             node.zPosition = 0.5
             addChild(node)
         }
@@ -184,16 +184,12 @@ private extension EdgeType {
 extension BiomeType {
     var debugColor: SKColor {
         switch self {
-        case .rocksalt:
-            return SKColor(red: 0.70, green: 0.74, blue: 0.78, alpha: 1)
-        case .villageSoil:
-            return SKColor(red: 0.62, green: 0.42, blue: 0.28, alpha: 1)
+        case .villageSoil, .hillSoil:
+            return SKColor(red: 0.96, green: 0.76, blue: 0.20, alpha: 1)
         case .naturalGrass:
-            return SKColor(red: 0.42, green: 0.68, blue: 0.32, alpha: 1)
-        case .darkGreenForest:
-            return SKColor(red: 0.12, green: 0.36, blue: 0.22, alpha: 1)
-        case .hillSoil:
-            return SKColor(red: 0.55, green: 0.47, blue: 0.36, alpha: 1)
+            return SKColor(red: 0.20, green: 0.76, blue: 0.38, alpha: 1)
+        case .rocksalt, .darkGreenForest:
+            return SKColor(red: 0.18, green: 0.52, blue: 0.95, alpha: 1)
         }
     }
 }
