@@ -166,14 +166,14 @@ extension WorldState {
     static let buildingPuzzleBiomePrototype = WorldState(pieces: [
         BuildingPuzzleBiomeFixture.makePiece(
             pieceID: .z1,
-            type: .z,
+            type: .i,
             role: .z1,
             position: GridPosition(x: -5, y: 0),
             rotation: .degrees0
         ),
         BuildingPuzzleBiomeFixture.makePiece(
             pieceID: .z2,
-            type: .z,
+            type: .i,
             role: .z2,
             position: GridPosition(x: 2, y: -4),
             rotation: .degrees0
@@ -183,20 +183,6 @@ extension WorldState {
             type: .l,
             role: .l1,
             position: GridPosition(x: 5, y: 1),
-            rotation: .degrees0
-        ),
-        BuildingPuzzleBiomeFixture.makePiece(
-            pieceID: .t1,
-            type: .t,
-            role: .t1,
-            position: GridPosition(x: -1, y: 4),
-            rotation: .degrees0
-        ),
-        BuildingPuzzleBiomeFixture.makePiece(
-            pieceID: .s1,
-            type: .s,
-            role: .s1,
-            position: GridPosition(x: 4, y: 5),
             rotation: .degrees0
         )
     ], landmarks: [])

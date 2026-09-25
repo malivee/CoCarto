@@ -202,7 +202,7 @@ private extension PieceRole {
     var debugName: String {
         switch self {
         case .z1, .z2, .l1, .t1, .s1:
-            return rawValue.uppercased()
+            return String(debugSymbol)
         case .village, .forestWest, .forestEast, .forestPass, .hill, .outerWilderness:
             return String(debugSymbol)
         }

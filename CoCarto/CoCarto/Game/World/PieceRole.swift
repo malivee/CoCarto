@@ -26,9 +26,9 @@ enum PieceRole: String, CaseIterable, Codable, Hashable, Sendable {
         case .outerWilderness:
             return "F"
         case .z1:
-            return "Z"
+            return "I"
         case .z2:
-            return "2"
+            return "I"
         case .l1:
             return "L"
         case .t1:
