@@ -1,5 +1,6 @@
 import SpriteKit
 import UIKit
+import CoreImage
 
 final class GameScene: SKScene {
     private let worldRoot = SKNode()
@@ -7,7 +8,12 @@ final class GameScene: SKScene {
     private let worldDebugRoot = SKNode()
     private let mapDebugRoot = SKNode()
     private let cameraNode = SKCameraNode()
-    private let enterMapButton = MapButtonNode(title: "MAP", name: MapNodeName.enterButton.rawValue)
+    private let enterMapButton = MapButtonNode(
+        title: "‹ BACK",
+        name: MapNodeName.enterButton.rawValue,
+        size: CGSize(width: 104, height: 52),
+        fontSize: 16
+    )
     private let resetButton = MapButtonNode(title: "RESET", name: MapNodeName.resetButton.rawValue)
     private let saveButton = MapButtonNode(title: "SAVE", name: MapNodeName.saveButton.rawValue)
     private let loadButton = MapButtonNode(title: "LOAD", name: MapNodeName.loadButton.rawValue)
@@ -43,9 +49,12 @@ final class GameScene: SKScene {
     private let transitionController = MapWorldTransitionController()
     private let saveService = try? SaveGameService()
     private let puzzleFeedbackLabel = SKLabelNode(fontNamed: "Menlo-Bold")
+    private let transitionFog = SKEffectNode()
+    private let joystickBase = SKShapeNode(circleOfRadius: 72)
+    private let joystickKnob = SKShapeNode(circleOfRadius: 28)
 
     private var playerNode: PlayerNode?
-    private var showsDebugOverlay = true
+    private var showsDebugOverlay = false
     private var gameMode: GameMode = .exploring
     private var lastUpdateTime: TimeInterval?
     private var pendingPresentationEvents: [GameDomainEvent] = []
@@ -72,6 +81,8 @@ final class GameScene: SKScene {
         enterMapButton.zPosition = 1_000
         resetButton.zPosition = 1_000
         configurePuzzleFeedback()
+        configureTransitionFog()
+        configureJoystick()
         puzzleManager.onPuzzleCompleted = { [weak self] puzzleID in
             self?.handlePuzzleCompleted(puzzleID)
         }
@@ -92,18 +103,21 @@ final class GameScene: SKScene {
         addChild(mapRoot)
         addChild(worldDebugRoot)
         addChild(mapDebugRoot)
-        addChild(enterMapButton)
         addChild(resetButton)
         addChild(saveButton)
         addChild(loadButton)
         addChild(puzzleFeedbackLabel)
         addChild(cameraNode)
+        cameraNode.addChild(enterMapButton)
+        cameraNode.addChild(transitionFog)
+        cameraNode.addChild(joystickBase)
         camera = cameraNode
 
         restoreSavedGameIfAvailable()
         rebuildWorldFromState()
         spawnPlayer()
         puzzleManager.evaluate(worldState: worldState)
+        presentInitialMapOverview()
 
         let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handleMapPinch(_:)))
         pinch.cancelsTouchesInView = true
@@ -227,9 +241,16 @@ final class GameScene: SKScene {
             if nodeStack(at: location).contains(where: { $0.name == MapNodeName.enterButton.rawValue }) {
                 enterMapView()
             } else {
-                inputController.beginTouch(at: location)
+                let controlPosition = touch.location(in: cameraNode)
+                inputController.beginTouch(at: controlPosition)
+                showJoystick(at: controlPosition)
             }
         case .mapIdle, .mapPieceSelected:
+            if touch.tapCount >= 2,
+               let pieceID = pieceID(in: stack) {
+                enterWorldByDoubleTappingTile(at: location, pieceID: pieceID)
+                return
+            }
             if stack.contains(where: { $0.name == MapNodeName.inventoryToggle.rawValue }) {
                 mapRenderer.toggleInventory()
                 rebuildMapView()
@@ -287,7 +308,9 @@ final class GameScene: SKScene {
         }
         switch gameMode {
         case .exploring:
-            inputController.moveTouch(to: location)
+            let controlPosition = touch.location(in: cameraNode)
+            inputController.moveTouch(to: controlPosition)
+            updateJoystick(to: controlPosition)
         case .mapDragging(let pieceID):
             updatePieceDrag(at: location, pieceID: pieceID)
         case .mapIdle, .mapPieceSelected:
@@ -328,6 +351,7 @@ final class GameScene: SKScene {
         switch gameMode {
         case .exploring:
             inputController.endTouch()
+            hideJoystick()
             if let playerNode {
                 playerController.stop(playerNode: playerNode)
             }
@@ -363,21 +387,42 @@ final class GameScene: SKScene {
 
         gameMode = .enteringMap
         inputController.endTouch()
+        hideJoystick()
         if let playerNode {
             playerController.stop(playerNode: playerNode)
             playerController.updateState(from: playerNode.position)
         }
 
         mapController.cancel()
-        prepareMapForTransition()
-        cameraController.beginTransitionToMap()
-        let didStart = transitionController.beginWorldToMap(
-            from: cameraNode.position,
-            cameraScale: cameraController.currentScale,
-            to: mapRenderer.cameraCenter
-        )
-        if !didStart {
-            gameMode = .exploring
+        playTransitionFog { [weak self] in
+            guard let self, self.gameMode == .enteringMap else {
+                return
+            }
+
+            let startingScale = self.cameraController.currentScale
+            self.prepareMapForTransition()
+            self.cameraController.beginTransitionToMap()
+            self.cameraController.applyTransitionFrame(
+                position: self.mapRenderer.cameraCenter,
+                scale: startingScale
+            )
+
+            self.worldRoot.alpha = 0.08
+            self.worldDebugRoot.alpha = 0
+            self.mapRoot.alpha = 1
+            self.mapDebugRoot.alpha = 1
+            self.playerNode?.alpha = 0
+            self.enterMapButton.alpha = 0
+            self.resetButton.alpha = 0
+            self.saveButton.alpha = 0
+            self.loadButton.alpha = 0
+
+            let zoomOut = SKAction.scale(to: 1.35, duration: 0.72)
+            zoomOut.timingMode = .easeInEaseOut
+            self.cameraNode.run(zoomOut) { [weak self] in
+                guard let self, self.gameMode == .enteringMap else { return }
+                self.finishWorldToMapTransition()
+            }
         }
     }
 
@@ -386,6 +431,22 @@ final class GameScene: SKScene {
             return
         }
 
+        startMapToWorldTransition()
+    }
+
+    private func enterWorldByDoubleTappingTile(at _: CGPoint, pieceID: UUID) {
+        guard worldState.piece(id: pieceID) != nil,
+              let playerNode else {
+            return
+        }
+
+        // A first tap may have selected this piece. A double tap is navigation,
+        // so discard that transient edit before resolving the destination tile.
+        mapController.cancel()
+        rotationInputLocked = false
+
+        playerNode.physicsBody?.velocity = .zero
+        playerController.updateState(from: playerNode.position)
         startMapToWorldTransition()
     }
 
@@ -401,8 +462,24 @@ final class GameScene: SKScene {
             puzzleStatusText: puzzleStatusText(),
             footprintRectangle: currentFootprintRectangle(),
             selectedObjectKind: selectedObjectKind,
-            objectPreview: objectPreview
+            objectPreview: objectPreview,
+            questItems: mapQuestItems()
         )
+    }
+
+    private func mapQuestItems() -> [MapQuestItem] {
+        [
+            MapQuestItem(
+                category: "Story",
+                title: "Connect the land",
+                isCompleted: puzzleManager.status(for: .snowRoutePrototype) == .completed
+            ),
+            MapQuestItem(
+                category: "Quest",
+                title: "Reach the outer exit",
+                isCompleted: worldEventManager.progressState.prototypeStatus == .reachedExit
+            )
+        ]
     }
 
     private func prepareMapForTransition() {
@@ -437,17 +514,38 @@ final class GameScene: SKScene {
         worldDebugRoot.isHidden = false
         mapRoot.isHidden = false
         mapDebugRoot.isHidden = false
-        cameraController.beginTransitionToWorld()
-
         let targetPosition = playerNode?.position ?? cameraNode.position
-        let didStart = transitionController.beginMapToWorld(
-            from: cameraNode.position,
-            cameraScale: cameraController.currentScale,
-            to: targetPosition
-        )
-        if !didStart {
-            finishMapToWorldTransition()
+        playTransitionFog { [weak self] in
+            guard let self, self.gameMode == .exitingMap else {
+                return
+            }
+
+            // Recenter only while the screen is fully covered. The visible part
+            // of the transition is then a pure zoom into the player's position,
+            // without a sideways camera sweep.
+            let startingScale = self.cameraController.currentScale
+            self.cameraController.beginTransitionToWorld()
+            self.cameraController.applyTransitionFrame(
+                position: targetPosition,
+                scale: startingScale
+            )
+            let didStart = self.transitionController.beginMapToWorld(
+                from: targetPosition,
+                cameraScale: startingScale,
+                to: targetPosition
+            )
+            if !didStart {
+                self.finishMapToWorldTransition()
+            }
         }
+    }
+
+    private func presentInitialMapOverview() {
+        mapController.cancel()
+        prepareMapForTransition()
+        transitionController.presentMapImmediately(at: mapRenderer.cameraCenter)
+        cameraController.snapToMapOverview(center: mapRenderer.cameraCenter)
+        finishWorldToMapTransition()
     }
 
     private func updateViewTransition(deltaTime: TimeInterval) {
@@ -838,8 +936,8 @@ final class GameScene: SKScene {
 
     private func layoutEnterMapButton() {
         enterMapButton.position = CGPoint(
-            x: cameraNode.position.x + size.width * 0.40,
-            y: cameraNode.position.y - size.height * 0.36
+            x: -size.width * 0.5 + 70,
+            y: size.height * 0.5 - 82
         )
         resetButton.position = CGPoint(
             x: cameraNode.position.x - size.width * 0.40,
@@ -853,7 +951,7 @@ final class GameScene: SKScene {
             x: cameraNode.position.x - size.width * 0.18,
             y: cameraNode.position.y - size.height * 0.36
         )
-        let debugButtonAlpha: CGFloat = gameMode == .exploring ? 1 : 0
+        let debugButtonAlpha: CGFloat = showsDebugOverlay && gameMode == .exploring ? 1 : 0
         resetButton.alpha = debugButtonAlpha
         saveButton.alpha = debugButtonAlpha
         loadButton.alpha = debugButtonAlpha
@@ -1069,6 +1167,232 @@ final class GameScene: SKScene {
             pieceID: village.id,
             localPositionInPiece: transform.worldToLocal(worldPosition)
         )
+    }
+
+    private func configureTransitionFog() {
+        transitionFog.name = "TransitionFog"
+        transitionFog.zPosition = 10_000
+        transitionFog.alpha = 0
+        transitionFog.isHidden = true
+        transitionFog.shouldRasterize = true
+        transitionFog.shouldEnableEffects = true
+        transitionFog.filter = CIFilter(
+            name: "CIGaussianBlur",
+            parameters: [kCIInputRadiusKey: 54]
+        )
+
+        let veil = SKSpriteNode(
+            color: SKColor(red: 0.84, green: 0.91, blue: 0.94, alpha: 0.88),
+            size: CGSize(width: size.width * 2.8, height: size.height * 2.8)
+        )
+        veil.name = "TransitionFogVeil"
+        veil.zPosition = 0
+        transitionFog.addChild(veil)
+
+        let cloudStartPositions: [CGPoint] = [
+            CGPoint(x: -size.width * 0.88, y: size.height * 0.40),
+            CGPoint(x: -size.width * 0.92, y: 0),
+            CGPoint(x: -size.width * 0.86, y: -size.height * 0.42),
+            CGPoint(x: size.width * 0.88, y: size.height * 0.40),
+            CGPoint(x: size.width * 0.92, y: 0),
+            CGPoint(x: size.width * 0.86, y: -size.height * 0.42),
+            CGPoint(x: -size.width * 0.38, y: size.height * 0.86),
+            CGPoint(x: size.width * 0.10, y: size.height * 0.90),
+            CGPoint(x: size.width * 0.42, y: size.height * 0.84),
+            CGPoint(x: -size.width * 0.40, y: -size.height * 0.86),
+            CGPoint(x: size.width * 0.08, y: -size.height * 0.90),
+            CGPoint(x: size.width * 0.44, y: -size.height * 0.84)
+        ]
+
+        for (index, position) in cloudStartPositions.enumerated() {
+            let cloudRoot = SKNode()
+            cloudRoot.name = "TransitionCloud_\(index)"
+            cloudRoot.position = position
+            cloudRoot.zPosition = 1
+
+            let baseRadius = max(size.width, size.height) * 0.25
+            let lobeOffsets: [CGPoint] = [
+                CGPoint(x: -baseRadius * 0.55, y: 0),
+                CGPoint(x: 0, y: baseRadius * 0.18),
+                CGPoint(x: baseRadius * 0.52, y: -baseRadius * 0.04),
+                CGPoint(x: -baseRadius * 0.10, y: -baseRadius * 0.30)
+            ]
+
+            for (lobeIndex, offset) in lobeOffsets.enumerated() {
+                let radius = baseRadius * (lobeIndex == 1 ? 1.08 : 0.92)
+                let lobe = SKShapeNode(circleOfRadius: radius)
+                lobe.position = offset
+                lobe.xScale = lobeIndex.isMultiple(of: 2) ? 1.20 : 0.96
+                lobe.yScale = lobeIndex.isMultiple(of: 2) ? 0.82 : 1.04
+                lobe.fillColor = SKColor.white.withAlphaComponent(0.58)
+                lobe.strokeColor = .clear
+                cloudRoot.addChild(lobe)
+            }
+
+            transitionFog.addChild(cloudRoot)
+        }
+    }
+
+    private func configureJoystick() {
+        joystickBase.name = "MovementJoystickBase"
+        joystickBase.fillColor = SKColor.black.withAlphaComponent(0.30)
+        joystickBase.strokeColor = SKColor.white.withAlphaComponent(0.62)
+        joystickBase.lineWidth = 4
+        joystickBase.zPosition = 11_000
+        joystickBase.alpha = 0
+        joystickBase.isHidden = true
+        joystickBase.addChild(joystickKnob)
+
+        joystickKnob.name = "MovementJoystickKnob"
+        joystickKnob.fillColor = SKColor.white.withAlphaComponent(0.82)
+        joystickKnob.strokeColor = SKColor.white
+        joystickKnob.lineWidth = 3
+        joystickKnob.zPosition = 1
+    }
+
+    private func showJoystick(at position: CGPoint) {
+        joystickBase.removeAllActions()
+        joystickBase.position = position
+        joystickKnob.position = .zero
+        joystickBase.isHidden = false
+        joystickBase.run(.fadeAlpha(to: 1, duration: 0.08))
+    }
+
+    private func updateJoystick(to position: CGPoint) {
+        let dx = position.x - joystickBase.position.x
+        let dy = position.y - joystickBase.position.y
+        let distance = hypot(dx, dy)
+        let maximumDistance: CGFloat = 72
+        guard distance > maximumDistance else {
+            joystickKnob.position = CGPoint(x: dx, y: dy)
+            return
+        }
+
+        joystickKnob.position = CGPoint(
+            x: dx / distance * maximumDistance,
+            y: dy / distance * maximumDistance
+        )
+    }
+
+    private func hideJoystick() {
+        joystickBase.removeAllActions()
+        joystickBase.run(.sequence([
+            .fadeOut(withDuration: 0.10),
+            .run { [weak self] in
+                self?.joystickBase.isHidden = true
+                self?.joystickKnob.position = .zero
+            }
+        ]))
+    }
+
+    private func playTransitionFog(onCovered: @escaping () -> Void) {
+        transitionFog.removeAllActions()
+        transitionFog.children.forEach { $0.removeAllActions() }
+        transitionFog.isHidden = false
+        transitionFog.alpha = 1
+        transitionFog.setScale(1)
+
+        let cloudStartPositions: [CGPoint] = [
+            CGPoint(x: -size.width * 0.88, y: size.height * 0.40),
+            CGPoint(x: -size.width * 0.92, y: 0),
+            CGPoint(x: -size.width * 0.86, y: -size.height * 0.42),
+            CGPoint(x: size.width * 0.88, y: size.height * 0.40),
+            CGPoint(x: size.width * 0.92, y: 0),
+            CGPoint(x: size.width * 0.86, y: -size.height * 0.42),
+            CGPoint(x: -size.width * 0.38, y: size.height * 0.86),
+            CGPoint(x: size.width * 0.10, y: size.height * 0.90),
+            CGPoint(x: size.width * 0.42, y: size.height * 0.84),
+            CGPoint(x: -size.width * 0.40, y: -size.height * 0.86),
+            CGPoint(x: size.width * 0.08, y: -size.height * 0.90),
+            CGPoint(x: size.width * 0.44, y: -size.height * 0.84)
+        ]
+
+        let cloudCenterPositions: [CGPoint] = [
+            CGPoint(x: -size.width * 0.16, y: size.height * 0.18),
+            CGPoint(x: -size.width * 0.18, y: 0),
+            CGPoint(x: -size.width * 0.16, y: -size.height * 0.18),
+            CGPoint(x: size.width * 0.16, y: size.height * 0.18),
+            CGPoint(x: size.width * 0.18, y: 0),
+            CGPoint(x: size.width * 0.16, y: -size.height * 0.18),
+            CGPoint(x: -size.width * 0.10, y: size.height * 0.18),
+            CGPoint(x: size.width * 0.02, y: size.height * 0.16),
+            CGPoint(x: size.width * 0.12, y: size.height * 0.18),
+            CGPoint(x: -size.width * 0.10, y: -size.height * 0.18),
+            CGPoint(x: size.width * 0.02, y: -size.height * 0.16),
+            CGPoint(x: size.width * 0.12, y: -size.height * 0.18)
+        ]
+
+        if let veil = transitionFog.childNode(withName: "TransitionFogVeil") {
+            veil.alpha = 0
+            let veilIn = SKAction.fadeAlpha(to: 1, duration: 0.48)
+            veilIn.timingMode = .easeInEaseOut
+            veil.run(veilIn)
+        }
+
+        for index in cloudStartPositions.indices {
+            guard let cloud = transitionFog.childNode(withName: "TransitionCloud_\(index)") else {
+                continue
+            }
+
+            cloud.position = cloudStartPositions[index]
+            cloud.alpha = 0.28
+            cloud.setScale(0.92)
+
+            let moveIn = SKAction.move(
+                to: cloudCenterPositions[index],
+                duration: 0.58 + Double(index % 3) * 0.025
+            )
+            moveIn.timingMode = .easeInEaseOut
+
+            let fadeIn = SKAction.fadeAlpha(to: 1, duration: 0.40)
+            fadeIn.timingMode = .easeOut
+
+            let grow = SKAction.scale(to: 1.08, duration: 0.60)
+            grow.timingMode = .easeInEaseOut
+
+            cloud.run(.group([moveIn, fadeIn, grow]))
+        }
+
+        transitionFog.run(.sequence([
+            .wait(forDuration: 0.70),
+            .run(onCovered),
+            .wait(forDuration: 0.10),
+            .run { [weak self] in
+                guard let self else { return }
+
+                if let veil = self.transitionFog.childNode(withName: "TransitionFogVeil") {
+                    let veilOut = SKAction.fadeOut(withDuration: 0.58)
+                    veilOut.timingMode = .easeInEaseOut
+                    veil.run(veilOut)
+                }
+
+                for index in cloudStartPositions.indices {
+                    guard let cloud = self.transitionFog.childNode(withName: "TransitionCloud_\(index)") else {
+                        continue
+                    }
+
+                    let moveOut = SKAction.move(
+                        to: cloudStartPositions[index],
+                        duration: 0.58 + Double(index % 2) * 0.03
+                    )
+                    moveOut.timingMode = .easeInEaseOut
+
+                    let fadeOut = SKAction.fadeOut(withDuration: 0.52)
+                    fadeOut.timingMode = .easeInEaseOut
+
+                    let shrink = SKAction.scale(to: 0.96, duration: 0.58)
+                    shrink.timingMode = .easeInEaseOut
+
+                    cloud.run(.group([moveOut, fadeOut, shrink]))
+                }
+            },
+            .wait(forDuration: 0.64),
+            .run { [weak self] in
+                guard let self else { return }
+                self.transitionFog.isHidden = true
+                self.transitionFog.alpha = 0
+            }
+        ]))
     }
 
     private func configurePuzzleFeedback() {

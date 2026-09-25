@@ -27,7 +27,8 @@ final class MapRenderer {
         puzzleStatusText: String = "Goal: shape Village Soil",
         footprintRectangle: GlobalMicroRectangle? = nil,
         selectedObjectKind: BuildingObjectKind? = nil,
-        objectPreview: BuildingObject? = nil
+        objectPreview: BuildingObject? = nil,
+        questItems: [MapQuestItem] = []
     ) {
         mapRoot.removeAllChildren()
         mapper = makeMapper(sceneSize: sceneSize)
@@ -42,13 +43,22 @@ final class MapRenderer {
         contentRoot.setScale(contentScale)
         mapRoot.addChild(contentRoot)
 
+        let playerConnectedPieceIDs = playerConnectedPieceIDs(
+            in: worldState,
+            playerState: playerState,
+            preview: preview
+        )
         for piece in worldState.pieces {
             var renderedPiece = piece
             if let preview, preview.pieceID == piece.id {
                 renderedPiece.gridPosition = preview.proposedPosition
                 renderedPiece.rotation = preview.proposedRotation
             }
-            let state = interactionState(for: piece, preview: preview)
+            let state = interactionState(
+                for: piece,
+                preview: preview,
+                playerConnectedPieceIDs: playerConnectedPieceIDs
+            )
             contentRoot.addChild(MapPieceNode(piece: renderedPiece, mapper: mapper, interactionState: state))
         }
 
@@ -79,7 +89,8 @@ final class MapRenderer {
             animateSelection: shouldAnimateSelection,
             selectedObjectKind: selectedObjectKind,
             objectPreview: objectPreview,
-            objectResult: objectPreview.map { BuildingPlacementValidator().validate($0, in: worldState) }
+            objectResult: objectPreview.map { BuildingPlacementValidator().validate($0, in: worldState) },
+            questItems: questItems,
         )
         lastRenderedSelectionID = preview?.pieceID
         mapRoot.addChild(hud)
@@ -223,10 +234,15 @@ final class MapRenderer {
 
     private func interactionState(
         for piece: WorldPiece,
-        preview: PiecePlacementPreview?
+        preview: PiecePlacementPreview?,
+        playerConnectedPieceIDs: Set<UUID>
     ) -> MapPieceInteractionState {
         if preview?.pieceID == piece.id {
             return .selected(isValid: preview?.isValid ?? true)
+        }
+
+        if playerConnectedPieceIDs.contains(piece.id) {
+            return .playerConnected
         }
 
         if !piece.isMovable {
@@ -234,6 +250,29 @@ final class MapRenderer {
         }
 
         return .movable
+    }
+
+    private func playerConnectedPieceIDs(
+        in worldState: WorldState,
+        playerState: PlayerState,
+        preview: PiecePlacementPreview?
+    ) -> Set<UUID> {
+        let displayedState: WorldState
+        if let preview, preview.isValid {
+            displayedState = worldState.previewingPiece(
+                id: preview.pieceID,
+                at: preview.proposedPosition,
+                rotation: preview.proposedRotation
+            )
+        } else {
+            displayedState = worldState
+        }
+
+        let reachableCells = ConnectedComponentResolver().reachableCells(
+            from: playerState,
+            in: displayedState
+        )
+        return Set(reachableCells.compactMap { displayedState.occupancy.pieceID(at: $0) })
     }
 
     private func makeMapper(sceneSize: CGSize) -> MapGridMapper {

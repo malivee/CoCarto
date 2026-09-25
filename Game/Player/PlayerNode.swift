@@ -3,14 +3,16 @@ import SpriteKit
 final class PlayerNode: SKShapeNode {
     let radius: CGFloat
 
-    init(radius: CGFloat = 42) {
+    // Each 256-point tile contains a 6x6 micro grid. The player's diameter is
+    // one eighth of a single micro-grid cell: 256 / 6 / 8 = 5.33 points.
+    init(radius: CGFloat = 256 / 6 / 16) {
         self.radius = radius
         super.init()
 
         path = CGPath(ellipseIn: CGRect(x: -radius, y: -radius, width: radius * 2, height: radius * 2), transform: nil)
         fillColor = SKColor(red: 0.95, green: 0.92, blue: 0.78, alpha: 1)
         strokeColor = .black
-        lineWidth = 5
+        lineWidth = 0.75
         zPosition = 100
         name = "PlayerNode"
 

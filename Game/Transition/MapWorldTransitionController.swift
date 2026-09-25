@@ -34,6 +34,17 @@ final class MapWorldTransitionController {
         state == .idleMap
     }
 
+    func presentMapImmediately(at cameraPosition: CGPoint) {
+        elapsedTime = 0
+        duration = 0
+        startCameraPosition = cameraPosition
+        targetCameraPosition = cameraPosition
+        startCameraScale = config.mapCameraScale
+        targetCameraScale = config.mapCameraScale
+        activeDirection = .toMap
+        state = .idleMap
+    }
+
     @discardableResult
     func beginWorldToMap(
         from cameraPosition: CGPoint,

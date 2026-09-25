@@ -85,7 +85,7 @@ final class MapPieceNode: SKNode {
             label.text = "LOCK"
         case .lockedByPlayer:
             label.text = "PLAYER"
-        case .movable, .selected:
+        case .movable, .playerConnected, .selected:
             return
         }
         label.fontSize = 13
