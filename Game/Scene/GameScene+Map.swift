@@ -296,6 +296,7 @@ extension GameScene {
             worldState: worldState,
             playerState: playerController.state
         )
+        AudioService.shared.playSFX("PaperMap")
         lastMapDragScreenPosition = location
         gameMode = .mapDragging(pieceID)
         if let preview = mapController.preview,
@@ -376,6 +377,7 @@ extension GameScene {
     func rotateSelectedPiece(clockwise: Bool) {
         guard !rotationInputLocked else { return }
         rotationInputLocked = true
+        AudioService.shared.playSFX("PaperMap")
         guard let preview = mapController.rotateSelected(
             clockwise: clockwise,
             in: worldState,
@@ -432,6 +434,7 @@ extension GameScene {
             return
         }
 
+        AudioService.shared.playSFX("PaperMap")
         gameMode = .mapPieceSelected(pieceID)
         mapRenderer.animatePreviewSnap(pieceID: pieceID, to: preview.visualPosition, in: mapRoot) { [weak self] in
             guard let self,
@@ -491,6 +494,8 @@ extension GameScene {
             rebuildMapView()
             return
         }
+
+        AudioService.shared.playSFX("PaperMap")
 
         playerController.updateWorldState(worldState)
         worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)

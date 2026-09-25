@@ -195,6 +195,7 @@ extension GameScene {
             synchronizeQuestProgressionUnlocks()
             syncVillageNPCs()
         case .waterCollected(let lines):
+            AudioService.shared.playSFX("WellWaterPull")
             showQuestDialogue(lines)
             showProgressionFeedback("MRS. MARA HOME UNLOCKED")
             playerNode?.celebrate()
