@@ -31,6 +31,7 @@ final class WorldRenderer {
         }
 
         rebuildBoundaries(from: worldState, in: worldRoot)
+        WorldDecorationRenderer.render(worldState, in: worldRoot, mapper: mapper)
         landmarkRenderer.buildLandmarks(from: worldState, into: worldRoot, mapper: mapper)
         BuildingObjectRenderer.render(worldState.buildingObjects, in: worldRoot, cellSize: mapper.cellSize, isWorld: true)
     }
@@ -59,6 +60,7 @@ final class WorldRenderer {
         }
 
         rebuildBoundaries(from: worldState, in: worldRoot)
+        WorldDecorationRenderer.render(worldState, in: worldRoot, mapper: mapper)
         landmarkRenderer.applyLandmarks(from: worldState, into: worldRoot, mapper: mapper)
         BuildingObjectRenderer.render(worldState.buildingObjects, in: worldRoot, cellSize: mapper.cellSize, isWorld: true)
     }
