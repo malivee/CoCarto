@@ -54,23 +54,10 @@ final class CellNode: SKNode {
     }
 
     private func addMicroBiomeDebugGrid(_ microBiomeGrid: MicroBiomeGrid, cellSize: CGFloat) {
-        let microSize = cellSize / CGFloat(MicroBiomeGrid.dimension)
-        let topLeft = CGPoint(x: -cellSize / 2 + microSize / 2, y: cellSize / 2 - microSize / 2)
-
-        for microCell in microBiomeGrid.cells() {
-            let node = MicroBiomeDebugNode.make(
-                biome: microCell.biome,
-                split: microBiomeGrid.split(at: microCell.localPosition),
-                size: microSize
-            )
-            node.position = CGPoint(
-                x: topLeft.x + CGFloat(microCell.localPosition.x) * microSize,
-                y: topLeft.y - CGFloat(microCell.localPosition.y) * microSize
-            )
-            node.alpha = 0.92
-            node.zPosition = 0.5
-            addChild(node)
-        }
+        let tile = TileAssetResolver.node(for: microBiomeGrid, size: cellSize)
+        tile.alpha = 0.92
+        tile.zPosition = 0.5
+        addChild(tile)
 
         // World units combine 2×2 map squares while preserving the biome artwork.
         let gridPath = CGMutablePath()
@@ -137,7 +124,6 @@ final class CellNode: SKNode {
         nil
     }
 }
-
 private extension PieceRole {
     var debugName: String {
         switch self {
@@ -173,13 +159,5 @@ private extension PieceRole {
         case .s1:
             return SKColor(red: 0.58, green: 0.48, blue: 0.30, alpha: 1)
         }
-    }
-}
-
-
-// Shared by the map and world views so both show the same diagonal halves.
-enum MicroBiomeDebugNode {
-    static func make(biome: BiomeType?, split: MicroBiomeSplit?, size: CGFloat) -> SKNode {
-        TileAssetResolver.node(biome: biome, split: split, size: size)
     }
 }

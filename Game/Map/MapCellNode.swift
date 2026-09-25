@@ -40,23 +40,29 @@ final class MapCellNode: SKSpriteNode {
     }
 
     private func addMicroBiomeDebugGrid(_ microBiomeGrid: MicroBiomeGrid, cellSize: CGFloat) {
-        let microSize = cellSize / CGFloat(MicroBiomeGrid.dimension)
-        let topLeft = CGPoint(x: -cellSize / 2 + microSize / 2, y: cellSize / 2 - microSize / 2)
+        let tile = TileAssetResolver.node(for: microBiomeGrid, size: cellSize)
+        tile.alpha = 0.92
+        tile.zPosition = 0.5
+        addChild(tile)
+        addGridLines(dimension: MicroBiomeGrid.dimension, cellSize: cellSize)
+    }
 
-        for microCell in microBiomeGrid.cells() {
-            let node = MicroBiomeDebugNode.make(
-                biome: microCell.biome,
-                split: microBiomeGrid.split(at: microCell.localPosition),
-                size: microSize - 1
-            )
-            node.position = CGPoint(
-                x: topLeft.x + CGFloat(microCell.localPosition.x) * microSize,
-                y: topLeft.y - CGFloat(microCell.localPosition.y) * microSize
-            )
-            node.alpha = 0.92
-            node.zPosition = 0.5
-            addChild(node)
+    private func addGridLines(dimension: Int, cellSize: CGFloat) {
+        let path = CGMutablePath()
+        let half = cellSize / 2
+        let step = cellSize / CGFloat(dimension)
+        for index in 1..<dimension {
+            let offset = -half + CGFloat(index) * step
+            path.move(to: CGPoint(x: offset, y: -half))
+            path.addLine(to: CGPoint(x: offset, y: half))
+            path.move(to: CGPoint(x: -half, y: offset))
+            path.addLine(to: CGPoint(x: half, y: offset))
         }
+        let lines = SKShapeNode(path: path)
+        lines.strokeColor = SKColor.gray.withAlphaComponent(0.5)
+        lines.lineWidth = 1
+        lines.zPosition = 0.6
+        addChild(lines)
     }
 
     private func addEdgeDebugLabels(edges: CellEdges, cellSize: CGFloat) {
