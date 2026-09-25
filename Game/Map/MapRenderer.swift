@@ -8,7 +8,7 @@ final class MapRenderer {
     private(set) var selectedInventoryIndex = 0
     private(set) var contentScale: CGFloat = 1
     private var lastRenderedSelectionID: UUID?
-    private let inventoryTitles = ["House", "Workshop", "Farm", "Market", "Bridge", "Tower"]
+    private let inventoryTitles = BuildingObjectKind.allCases.map { BuildingObjectCatalog.definition(for: $0).title }
     private let mapCellSize: CGFloat
     private let worldCellSize: CGFloat
 
@@ -25,7 +25,9 @@ final class MapRenderer {
         preview: PiecePlacementPreview?,
         contentOffset: CGPoint,
         puzzleStatusText: String = "Goal: shape Village Soil",
-        footprintRectangle: GlobalMicroRectangle? = nil
+        footprintRectangle: GlobalMicroRectangle? = nil,
+        selectedObjectKind: BuildingObjectKind? = nil,
+        objectPreview: BuildingObject? = nil
     ) {
         mapRoot.removeAllChildren()
         mapper = makeMapper(sceneSize: sceneSize)
@@ -50,6 +52,12 @@ final class MapRenderer {
             contentRoot.addChild(MapPieceNode(piece: renderedPiece, mapper: mapper, interactionState: state))
         }
 
+        BuildingObjectRenderer.render(worldState.buildingObjects, in: contentRoot, cellSize: mapCellSize, isWorld: false)
+        if let objectPreview {
+            let result = BuildingPlacementValidator().validate(objectPreview, in: worldState)
+            contentRoot.addChild(BuildingObjectRenderer.makeNode(objectPreview, cellSize: mapCellSize, isWorld: false, result: result))
+        }
+
         if let footprintRectangle {
             contentRoot.addChild(makeFootprintOverlay(for: footprintRectangle))
         }
@@ -68,7 +76,10 @@ final class MapRenderer {
             inventoryExpanded: inventoryExpanded,
             inventoryScrollOffset: inventoryScrollOffset,
             inventorySelectionTitle: inventoryTitles[selectedInventoryIndex],
-            animateSelection: shouldAnimateSelection
+            animateSelection: shouldAnimateSelection,
+            selectedObjectKind: selectedObjectKind,
+            objectPreview: objectPreview,
+            objectResult: objectPreview.map { BuildingPlacementValidator().validate($0, in: worldState) }
         )
         lastRenderedSelectionID = preview?.pieceID
         mapRoot.addChild(hud)
@@ -79,7 +90,7 @@ final class MapRenderer {
     }
 
     func scrollInventory(by delta: CGFloat) {
-        let contentHeight: CGFloat = 6 * 58
+        let contentHeight = CGFloat(inventoryTitles.count) * 58
         let viewportHeight: CGFloat = 356
         let maximumOffset = max(0, contentHeight - viewportHeight + 12)
         inventoryScrollOffset = min(max(inventoryScrollOffset + delta, 0), maximumOffset)

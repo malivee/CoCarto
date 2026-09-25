@@ -25,6 +25,13 @@ final class GameScene: SKScene {
     private var footprintDebugTarget: VillageSoilFootprintDebugTarget?
     private var lastMapDragScreenPosition: CGPoint?
     private var inventoryLastTouchY: CGFloat?
+    private var inventoryTouchStartPosition: CGPoint?
+    private var inventoryTouchIndex: Int?
+    private var inventoryDidScroll = false
+    private var isDraggingObjectFromInventory = false
+    private var selectedObjectKind: BuildingObjectKind?
+    private var objectPreview: BuildingObject?
+    private var objectRotation: GridRotation = .degrees0
     private var rotationInputLocked = false
     private weak var mapPinchGesture: UIPinchGestureRecognizer?
     private var pinchStartContentScale: CGFloat = 1
@@ -232,6 +239,10 @@ final class GameScene: SKScene {
                stack.contains(where: {
                    $0.name == MapNodeName.inventoryPanel.rawValue || $0.name == MapNodeName.inventoryItem.rawValue
                }) {
+                inventoryTouchIndex = stack.compactMap { $0.userData?["inventoryIndex"] as? Int }.first
+                inventoryTouchStartPosition = location
+                inventoryDidScroll = false
+                isDraggingObjectFromInventory = false
                 inventoryLastTouchY = location.y
                 return
             }
@@ -250,9 +261,28 @@ final class GameScene: SKScene {
 
         let location = touch.location(in: self)
         if let lastY = inventoryLastTouchY {
+            if let start = inventoryTouchStartPosition,
+               let index = inventoryTouchIndex,
+               BuildingObjectKind.allCases.indices.contains(index),
+               location.x - start.x > 12,
+               abs(location.x - start.x) > abs(location.y - start.y) {
+                isDraggingObjectFromInventory = true
+                inventoryLastTouchY = nil
+                mapController.cancel()
+                selectedObjectKind = BuildingObjectKind.allCases[index]
+                objectRotation = .degrees0
+                mapRenderer.selectInventoryItem(at: index)
+                updateObjectPreview(at: location)
+                return
+            }
+            if abs(location.y - lastY) > 2 { inventoryDidScroll = true }
             mapRenderer.scrollInventory(by: location.y - lastY)
             inventoryLastTouchY = location.y
             rebuildMapView()
+            return
+        }
+        if isDraggingObjectFromInventory {
+            updateObjectPreview(at: location)
             return
         }
         switch gameMode {
@@ -272,8 +302,27 @@ final class GameScene: SKScene {
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if isDraggingObjectFromInventory {
+            finishObjectDrop()
+            inventoryTouchIndex = nil
+            inventoryTouchStartPosition = nil
+            isDraggingObjectFromInventory = false
+            return
+        }
         if inventoryLastTouchY != nil {
             inventoryLastTouchY = nil
+            if !inventoryDidScroll, let index = inventoryTouchIndex,
+               BuildingObjectKind.allCases.indices.contains(index) {
+                mapController.cancel()
+                selectedObjectKind = BuildingObjectKind.allCases[index]
+                objectPreview = nil
+                objectRotation = .degrees0
+                gameMode = .mapIdle
+                mapRenderer.selectInventoryItem(at: index)
+                rebuildMapView()
+            }
+            inventoryTouchIndex = nil
+            inventoryTouchStartPosition = nil
             return
         }
         switch gameMode {
@@ -292,6 +341,18 @@ final class GameScene: SKScene {
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if isDraggingObjectFromInventory {
+            selectedObjectKind = nil
+            objectPreview = nil
+            isDraggingObjectFromInventory = false
+            inventoryLastTouchY = nil
+            inventoryTouchStartPosition = nil
+            inventoryTouchIndex = nil
+            rebuildMapView()
+            return
+        }
+        inventoryTouchIndex = nil
+        inventoryTouchStartPosition = nil
         touchesEnded(touches, with: event)
     }
 
@@ -338,7 +399,9 @@ final class GameScene: SKScene {
             preview: mapController.preview,
             contentOffset: mapViewport.contentOffset,
             puzzleStatusText: puzzleStatusText(),
-            footprintRectangle: currentFootprintRectangle()
+            footprintRectangle: currentFootprintRectangle(),
+            selectedObjectKind: selectedObjectKind,
+            objectPreview: objectPreview
         )
     }
 
@@ -364,6 +427,8 @@ final class GameScene: SKScene {
         }
 
         gameMode = .exitingMap
+        selectedObjectKind = nil
+        objectPreview = nil
         mapController.cancel()
         playerController.updateWorldState(worldState)
         worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
@@ -447,27 +512,51 @@ final class GameScene: SKScene {
         }
 
         if stack.contains(where: { $0.name == MapNodeName.rotateLeftButton.rawValue }) {
+            if selectedObjectKind != nil { rotateObject(clockwise: false); return }
             rotateSelectedPiece(clockwise: false)
             return
         }
 
         if stack.contains(where: { $0.name == MapNodeName.rotateRightButton.rawValue }) {
+            if selectedObjectKind != nil { rotateObject(clockwise: true); return }
             rotateSelectedPiece(clockwise: true)
             return
         }
 
         if stack.contains(where: { $0.name == MapNodeName.cancelButton.rawValue }) {
+            if selectedObjectKind != nil {
+                selectedObjectKind = nil
+                objectPreview = nil
+                rebuildMapView()
+                return
+            }
             cancelMapPreview()
             return
         }
 
         if stack.contains(where: { $0.name == MapNodeName.confirmButton.rawValue }) {
+            if selectedObjectKind != nil {
+                if let objectPreview, worldState.placeBuildingObject(objectPreview) == .valid {
+                    self.objectPreview = nil
+                    selectedObjectKind = nil
+                    worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+                    autosave(reason: "building placed")
+                }
+                rebuildMapView()
+                return
+            }
             confirmMapPreview()
             return
         }
 
         if stack.contains(where: { $0.name == MapNodeName.exitButton.rawValue }) {
             exitMapView()
+            return
+        }
+
+        if let kind = selectedObjectKind {
+            guard !stack.contains(where: { $0.name == MapNodeName.hud.rawValue }) else { return }
+            updateObjectPreview(at: location, kind: kind)
             return
         }
 
@@ -501,6 +590,47 @@ final class GameScene: SKScene {
            let piece = worldState.piece(id: preview.pieceID) {
             mapRenderer.updatePreviewNode(piece: piece, preview: preview, in: mapRoot)
         }
+    }
+
+    private func rotateObject(clockwise: Bool) {
+        objectRotation = clockwise ? objectRotation.nextQuarterTurn : objectRotation.previousQuarterTurn
+        if let previous = objectPreview {
+            objectPreview = BuildingObject(kind: previous.kind, origin: previous.origin, rotation: objectRotation)
+        }
+        rebuildMapView()
+    }
+
+    private func updateObjectPreview(at screenPosition: CGPoint, kind: BuildingObjectKind? = nil) {
+        guard let kind = kind ?? selectedObjectKind else { return }
+        let content = mapRenderer.screenPointToContent(
+            screenPosition,
+            contentOffset: mapViewport.contentOffset
+        )
+        let microSize = mapRenderer.mapper.cellSize / CGFloat(MicroBiomeGrid.dimension)
+        let template = BuildingObject(kind: kind, origin: .zero, rotation: objectRotation)
+        let dimensions = template.mapDimensions
+        let origin = GridPosition(
+            x: Int(floor((content.x + mapRenderer.mapper.cellSize / 2) / microSize)) - dimensions.width / 2,
+            y: Int(floor((content.y + mapRenderer.mapper.cellSize / 2) / microSize)) - dimensions.height / 2
+        )
+        objectPreview = BuildingObject(kind: kind, origin: origin, rotation: objectRotation)
+        rebuildMapView()
+    }
+
+    private func finishObjectDrop() {
+        guard let preview = objectPreview,
+              BuildingPlacementValidator().validate(preview, in: worldState) == .valid else {
+            selectedObjectKind = nil
+            objectPreview = nil
+            rebuildMapView()
+            return
+        }
+        _ = worldState.placeBuildingObject(preview)
+        selectedObjectKind = nil
+        objectPreview = nil
+        worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+        autosave(reason: "building dropped")
+        rebuildMapView()
     }
 
     private func rotateSelectedPiece(clockwise: Bool) {
@@ -767,6 +897,8 @@ final class GameScene: SKScene {
         mapController.cancel()
         pendingPresentationEvents.removeAll()
         pendingLoadedPlayerSpatialState = nil
+        selectedObjectKind = nil
+        objectPreview = nil
         worldState = .buildingPuzzleBiomePrototype
         puzzleManager.reset()
         worldEventManager.reset()
@@ -877,6 +1009,8 @@ final class GameScene: SKScene {
             return
         }
 
+        selectedObjectKind = nil
+        objectPreview = nil
         worldState = saveData.worldState
         puzzleManager.restore(runtimeStates: saveData.progressState.puzzles)
         worldEventManager.restore(progressState: saveData.progressState)

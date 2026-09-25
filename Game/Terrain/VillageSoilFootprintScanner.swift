@@ -128,7 +128,9 @@ struct VillageSoilFootprintScanner: Sendable {
 
     func biomeStatistics(in worldState: WorldState) -> [BiomeType: Int] {
         worldState.microTerrainMap().values.reduce(into: [:]) { counts, cell in
-            counts[cell.biome, default: 0] += 1
+            if let biome = cell.biome {
+                counts[biome, default: 0] += 1
+            }
         }
     }
 }

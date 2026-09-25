@@ -44,9 +44,10 @@ final class MapCellNode: SKSpriteNode {
         let topLeft = CGPoint(x: -cellSize / 2 + microSize / 2, y: cellSize / 2 - microSize / 2)
 
         for microCell in microBiomeGrid.cells() {
-            let node = SKSpriteNode(
-                color: microCell.biome.debugColor,
-                size: CGSize(width: microSize - 1, height: microSize - 1)
+            let node = MicroBiomeDebugNode.make(
+                biome: microCell.biome,
+                split: microBiomeGrid.split(at: microCell.localPosition),
+                size: microSize - 1
             )
             node.position = CGPoint(
                 x: topLeft.x + CGFloat(microCell.localPosition.x) * microSize,

@@ -52,8 +52,8 @@ struct WorldCellDefinition: Codable, Hashable, Sendable {
             self.biomeEdges = biomeEdges
             self.customMicroBiomeGrid = try container.decodeIfPresent(MicroBiomeGrid.self, forKey: .microBiomeGrid)
         } else if let oldGrid = try container.decodeIfPresent(MicroBiomeGrid.self, forKey: .microBiomeGrid),
-                  let firstCell = oldGrid.cells().first {
-            self.biomeEdges = .uniform(firstCell.biome)
+                  let biome = oldGrid.cells().compactMap(\.biome).first {
+            self.biomeEdges = .uniform(biome)
             self.customMicroBiomeGrid = oldGrid
         } else {
             self.biomeEdges = .uniform(.naturalGrass)

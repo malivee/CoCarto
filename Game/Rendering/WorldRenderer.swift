@@ -32,6 +32,7 @@ final class WorldRenderer {
 
         rebuildBoundaries(from: worldState, in: worldRoot)
         landmarkRenderer.buildLandmarks(from: worldState, into: worldRoot, mapper: mapper)
+        BuildingObjectRenderer.render(worldState.buildingObjects, in: worldRoot, cellSize: mapper.cellSize, isWorld: true)
     }
 
     func applyWorldState(_ worldState: WorldState, in worldRoot: SKNode, showsDebugLabels: Bool) {
@@ -59,6 +60,7 @@ final class WorldRenderer {
 
         rebuildBoundaries(from: worldState, in: worldRoot)
         landmarkRenderer.applyLandmarks(from: worldState, into: worldRoot, mapper: mapper)
+        BuildingObjectRenderer.render(worldState.buildingObjects, in: worldRoot, cellSize: mapper.cellSize, isWorld: true)
     }
 
     func animateLandmarkActivation(_ landmarkID: LandmarkID) {

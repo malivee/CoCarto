@@ -46,7 +46,7 @@ struct WorldGridDebugRenderer: Sendable {
             return lhs.globalPosition.y < rhs.globalPosition.y
         }
         let lines = cells.prefix(limit).map { cell in
-            "(\(cell.globalPosition.x),\(cell.globalPosition.y)) \(cell.biome.debugSymbol)"
+            "(\(cell.globalPosition.x),\(cell.globalPosition.y)) \(cell.biome?.debugSymbol ?? "·")"
         }
         let suffix = cells.count > limit ? "\n... \(cells.count - limit) more" : ""
         return lines.joined(separator: "\n") + suffix

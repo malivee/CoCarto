@@ -58,9 +58,10 @@ final class CellNode: SKNode {
         let topLeft = CGPoint(x: -cellSize / 2 + microSize / 2, y: cellSize / 2 - microSize / 2)
 
         for microCell in microBiomeGrid.cells() {
-            let node = SKSpriteNode(
-                color: microCell.biome.debugColor,
-                size: CGSize(width: microSize - 1, height: microSize - 1)
+            let node = MicroBiomeDebugNode.make(
+                biome: microCell.biome,
+                split: microBiomeGrid.split(at: microCell.localPosition),
+                size: microSize
             )
             node.position = CGPoint(
                 x: topLeft.x + CGFloat(microCell.localPosition.x) * microSize,
@@ -70,6 +71,23 @@ final class CellNode: SKNode {
             node.zPosition = 0.5
             addChild(node)
         }
+
+        // World units combine 2×2 map squares while preserving the biome artwork.
+        let gridPath = CGMutablePath()
+        let half = cellSize / 2
+        let worldUnit = cellSize / CGFloat(WorldVisualSubcell.dimension)
+        for index in 1..<WorldVisualSubcell.dimension {
+            let offset = -half + CGFloat(index) * worldUnit
+            gridPath.move(to: CGPoint(x: offset, y: -half))
+            gridPath.addLine(to: CGPoint(x: offset, y: half))
+            gridPath.move(to: CGPoint(x: -half, y: offset))
+            gridPath.addLine(to: CGPoint(x: half, y: offset))
+        }
+        let gridLines = SKShapeNode(path: gridPath)
+        gridLines.strokeColor = SKColor.gray.withAlphaComponent(0.6)
+        gridLines.lineWidth = 1
+        gridLines.zPosition = 0.6
+        addChild(gridLines)
     }
 
     private func addEdgeDebugLabels(edges: CellEdges, cellSize: CGFloat) {
@@ -155,5 +173,37 @@ private extension PieceRole {
         case .s1:
             return SKColor(red: 0.58, green: 0.48, blue: 0.30, alpha: 1)
         }
+    }
+}
+
+
+// Shared by the map and world views so both show the same diagonal halves.
+enum MicroBiomeDebugNode {
+    static func make(biome: BiomeType?, split: MicroBiomeSplit?, size: CGFloat) -> SKNode {
+        guard let split else {
+            return SKSpriteNode(color: biome?.debugColor ?? .clear, size: CGSize(width: size, height: size))
+        }
+        let node = SKNode()
+        let half = size / 2
+        let corners = [
+            CGPoint(x: -half, y: half), CGPoint(x: half, y: half),
+            CGPoint(x: half, y: -half), CGPoint(x: -half, y: -half)
+        ]
+        let primary = split.primaryCorner.rawValue
+        let secondary = (primary + 2) % 4
+        for (corner, biome) in [(primary, split.primaryBiome), (secondary, split.secondaryBiome)] {
+            let path = CGMutablePath()
+            path.move(to: corners[corner])
+            path.addLine(to: corners[(corner + 1) % 4])
+            path.addLine(to: corners[(corner + 3) % 4])
+            path.closeSubpath()
+            let triangle = SKShapeNode(path: path)
+            triangle.fillColor = biome.debugColor
+            triangle.strokeColor = .clear
+            triangle.lineWidth = 0
+            triangle.isAntialiased = false
+            node.addChild(triangle)
+        }
+        return node
     }
 }

@@ -31,8 +31,11 @@ final class MapHUDNode: SKNode {
     private let inventoryContent = SKNode()
     private let selectionTray = SKShapeNode()
     private let selectionControls = SKNode()
+    private let objectStatus = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+    private let placeObjectButton = MapButtonNode(title: "Pasang", name: MapNodeName.confirmButton.rawValue)
+    private let cancelObjectButton = MapButtonNode(title: "Batal", name: MapNodeName.cancelButton.rawValue)
 
-    private let inventoryItems = ["House", "Workshop", "Farm", "Market", "Bridge", "Tower"]
+    private let inventoryItems = BuildingObjectKind.allCases.map { BuildingObjectCatalog.definition(for: $0).title }
     private let itemHeight: CGFloat = 58
     private let panelSize = CGSize(width: 166, height: 356)
 
@@ -53,7 +56,10 @@ final class MapHUDNode: SKNode {
         inventoryExpanded: Bool,
         inventoryScrollOffset: CGFloat,
         inventorySelectionTitle: String,
-        animateSelection: Bool
+        animateSelection: Bool,
+        selectedObjectKind: BuildingObjectKind? = nil,
+        objectPreview: BuildingObject? = nil,
+        objectResult: BuildingPlacementResult? = nil
     ) {
         let cameraScale: CGFloat = 1.35
         let halfWidth = sceneSize.width * cameraScale / 2
@@ -77,7 +83,18 @@ final class MapHUDNode: SKNode {
             transform: nil
         )
         selectionTray.position = CGPoint(x: cameraCenter.x, y: trayY)
-        selectionTray.isHidden = preview == nil
+        selectionTray.isHidden = preview == nil && selectedObjectKind == nil
+        selectionControls.position.y = selectedObjectKind == nil ? 44 : 20
+        selectionControls.setScale(selectedObjectKind == nil ? 1 : 0.75)
+        objectStatus.isHidden = selectedObjectKind == nil
+        objectStatus.preferredMaxLayoutWidth = halfWidth * 2 - 30
+        placeObjectButton.isHidden = selectedObjectKind == nil
+        cancelObjectButton.isHidden = selectedObjectKind == nil
+        placeObjectButton.setEnabled(objectResult == .valid)
+        if let selectedObjectKind {
+            let definition = BuildingObjectCatalog.definition(for: selectedObjectKind)
+            objectStatus.text = "\(definition.title) \(objectPreview?.mapDimensions.width ?? definition.mapWidth)×\(objectPreview?.mapDimensions.height ?? definition.mapHeight) · \(objectResult?.message ?? "Seret ke village soil")"
+        }
         if animateSelection, preview != nil {
             selectionTray.position.y = trayY - trayHeight
             let reveal = SKAction.moveTo(y: trayY, duration: 0.11)
@@ -143,21 +160,20 @@ final class MapHUDNode: SKNode {
         let label = SKLabelNode(fontNamed: "AvenirNext-Medium")
         label.text = title
         label.fontSize = 14
-        label.fontColor = index == 0 ? .systemGreen : SKColor.white.withAlphaComponent(0.58)
+        label.fontColor = .white
         label.horizontalAlignmentMode = .left
         label.verticalAlignmentMode = .center
         label.position.x = -20
         root.addChild(label)
 
-        if index > 0 {
-            let soon = SKLabelNode(fontNamed: "AvenirNext-Regular")
-            soon.text = "soon"
-            soon.fontSize = 9
-            soon.fontColor = SKColor.white.withAlphaComponent(0.28)
-            soon.horizontalAlignmentMode = .right
-            soon.position = CGPoint(x: 55, y: -15)
-            root.addChild(soon)
-        }
+        let definition = BuildingObjectCatalog.definition(for: BuildingObjectKind.allCases[index])
+        let dimensions = SKLabelNode(fontNamed: "AvenirNext-Regular")
+        dimensions.text = "\(definition.mapWidth)×\(definition.mapHeight)"
+        dimensions.fontSize = 10
+        dimensions.fontColor = .lightGray
+        dimensions.horizontalAlignmentMode = .left
+        dimensions.position = CGPoint(x: -20, y: -20)
+        root.addChild(dimensions)
         return root
     }
 
@@ -175,6 +191,15 @@ final class MapHUDNode: SKNode {
         rotateRightButton.position = CGPoint(x: 92, y: 0)
         selectionControls.addChild(rotateLeftButton)
         selectionControls.addChild(rotateRightButton)
+        objectStatus.fontSize = 12
+        objectStatus.numberOfLines = 2
+        objectStatus.verticalAlignmentMode = .top
+        objectStatus.position.y = 94
+        selectionTray.addChild(objectStatus)
+        placeObjectButton.position = CGPoint(x: 66, y: -65)
+        cancelObjectButton.position = CGPoint(x: -66, y: -65)
+        selectionTray.addChild(placeObjectButton)
+        selectionTray.addChild(cancelObjectButton)
     }
 
     @available(*, unavailable)

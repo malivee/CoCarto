@@ -232,16 +232,20 @@ private extension BuildingPuzzleBiomeFixture {
     }
 
     static func villageSoilWithTopRockSaltTriangle() -> MicroBiomeGrid {
-        let center = MicroBiomeGrid.dimension / 2
-        let triangleHeight = center
-        let matrix = (0..<MicroBiomeGrid.dimension).map { y in
-            (0..<MicroBiomeGrid.dimension).map { x in
-                let distanceFromCenter = min(abs(x - center), abs(x - (center - 1)))
-                return y < triangleHeight && distanceFromCenter < triangleHeight - y
-                    ? BiomeType.rocksalt : .villageSoil
+        var grid = MicroBiomeGrid.uniform(.villageSoil)
+        let last = MicroBiomeGrid.dimension - 1
+        for position in MicroGridPosition.allPositions where position.y < MicroBiomeGrid.dimension / 2 {
+            if position.x > position.y && position.x < last - position.y {
+                grid.setBiome(.rocksalt, at: position)
+            } else if position.x == position.y || position.x == last - position.y {
+                grid.setSplit(MicroBiomeSplit(
+                    primaryBiome: .rocksalt,
+                    secondaryBiome: .villageSoil,
+                    primaryCorner: position.x == position.y ? .topRight : .topLeft
+                ), at: position)
             }
         }
-        return try! MicroBiomeGrid(matrix: matrix)
+        return grid
     }
 
     static func diagonalGrid(
@@ -249,14 +253,11 @@ private extension BuildingPuzzleBiomeFixture {
         lowerBiome: BiomeType,
         slopesDownRight: Bool
     ) -> MicroBiomeGrid {
-        let maxIndex = MicroBiomeGrid.dimension - 1
-        let matrix = (0..<MicroBiomeGrid.dimension).map { y in
-            (0..<MicroBiomeGrid.dimension).map { x in
-                let boundary = slopesDownRight ? x : maxIndex - x
-                return y < boundary ? upperBiome : lowerBiome
-            }
-        }
-        return try! MicroBiomeGrid(matrix: matrix)
+        .diagonal(
+            primaryBiome: upperBiome,
+            secondaryBiome: lowerBiome,
+            primaryCorner: slopesDownRight ? .topRight : .topLeft
+        )
     }
 
     static func villageSoilWithRockSaltDiagonalCut() -> MicroBiomeGrid {
@@ -267,25 +268,24 @@ private extension BuildingPuzzleBiomeFixture {
     }
 
     static func villageSoilWithRightRockSaltTriangle() -> MicroBiomeGrid {
-        let center = MicroBiomeGrid.dimension / 2
-        let matrix = (0..<MicroBiomeGrid.dimension).map { y in
-            (0..<MicroBiomeGrid.dimension).map { x in
-                let distanceFromCenter = min(abs(y - center), abs(y - (center - 1)))
-                return distanceFromCenter <= x - center ? BiomeType.rocksalt : BiomeType.villageSoil
-            }
-        }
-        return try! MicroBiomeGrid(matrix: matrix)
+        diagonalFromBottomLeftToTopRight(
+            upperLeftBiome: .villageSoil,
+            lowerRightBiome: .rocksalt
+        )
     }
 
     static func villageSoilWithBottomRockSaltTriangle() -> MicroBiomeGrid {
-        let center = MicroBiomeGrid.dimension / 2
-        let matrix = (0..<MicroBiomeGrid.dimension).map { y in
-            (0..<MicroBiomeGrid.dimension).map { x in
-                let distanceFromCenter = min(abs(x - center), abs(x - (center - 1)))
-                return distanceFromCenter <= y - center ? BiomeType.rocksalt : BiomeType.villageSoil
-            }
-        }
-        return try! MicroBiomeGrid(matrix: matrix)
+        diagonalFromBottomLeftToTopRight(
+            upperLeftBiome: .villageSoil,
+            lowerRightBiome: .rocksalt
+        )
+    }
+
+    static func diagonalFromBottomLeftToTopRight(
+        upperLeftBiome: BiomeType,
+        lowerRightBiome: BiomeType
+    ) -> MicroBiomeGrid {
+        .diagonal(primaryBiome: upperLeftBiome, secondaryBiome: lowerRightBiome, primaryCorner: .topLeft)
     }
 
     static func makePiece(

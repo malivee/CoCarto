@@ -3,10 +3,30 @@ import Foundation
 struct WorldState: Codable, Equatable, Sendable {
     private(set) var pieces: [WorldPiece]
     private(set) var landmarks: [WorldLandmark]
+    private(set) var buildingObjects: [BuildingObject]
 
-    init(pieces: [WorldPiece], landmarks: [WorldLandmark] = Self.initialLandmarks) {
+    init(pieces: [WorldPiece], landmarks: [WorldLandmark] = Self.initialLandmarks, buildingObjects: [BuildingObject] = []) {
         self.pieces = pieces
         self.landmarks = landmarks
+        self.buildingObjects = buildingObjects
+    }
+
+    private enum CodingKeys: String, CodingKey { case pieces, landmarks, buildingObjects }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        pieces = try container.decode([WorldPiece].self, forKey: .pieces)
+        landmarks = try container.decode([WorldLandmark].self, forKey: .landmarks)
+        buildingObjects = try container.decodeIfPresent([BuildingObject].self, forKey: .buildingObjects) ?? []
+    }
+
+    @discardableResult
+    mutating func placeBuildingObject(_ object: BuildingObject) -> BuildingPlacementResult {
+        let result = BuildingPlacementValidator().validate(object, in: self)
+        guard result == .valid else { return result }
+        guard !buildingObjects.contains(where: { $0.id == object.id }) else { return .overlapsObject }
+        buildingObjects.append(object)
+        return .valid
     }
 
     var occupancy: GridOccupancy {

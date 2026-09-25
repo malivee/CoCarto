@@ -42,7 +42,9 @@ struct PlacementValidator: Sendable {
             }
         }
 
-        return true
+        return BuildingPlacementValidator().supportsExistingObjects(
+            in: worldState.previewingPiece(id: pieceID, at: position, rotation: rotation)
+        )
     }
 
     private func microBiomeSidesMatch(
@@ -50,11 +52,17 @@ struct PlacementValidator: Sendable {
         toward direction: Direction,
         _ second: ResolvedWorldCell
     ) -> Bool {
-        edgeBiomes(of: first.microBiomeGrid, toward: direction)
-            == edgeBiomes(of: second.microBiomeGrid, toward: direction.opposite)
+        let solidPairs = zip(
+            edgeBiomes(of: first.microBiomeGrid, toward: direction),
+            edgeBiomes(of: second.microBiomeGrid, toward: direction.opposite)
+        ).compactMap { first, second -> (BiomeType, BiomeType)? in
+            guard let first, let second else { return nil }
+            return (first, second)
+        }
+        return !solidPairs.isEmpty && solidPairs.allSatisfy { $0.0 == $0.1 }
     }
 
-    private func edgeBiomes(of grid: MicroBiomeGrid, toward direction: Direction) -> [BiomeType] {
+    private func edgeBiomes(of grid: MicroBiomeGrid, toward direction: Direction) -> [BiomeType?] {
         let last = MicroBiomeGrid.dimension - 1
         switch direction {
         case .north:
