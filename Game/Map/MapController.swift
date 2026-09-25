@@ -31,7 +31,7 @@ final class MapController {
         guard let piece = worldState.piece(id: pieceID), piece.isMovable else {
             return false
         }
-        guard !worldState.hasBuildingObject(onPieceID: pieceID) else {
+        guard worldState.canMovePieceWithBuildings(pieceID: pieceID) else {
             return false
         }
 

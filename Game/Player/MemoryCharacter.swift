@@ -86,11 +86,24 @@ public final class MemoryCharacter: SKNode {
         let sprite = SKSpriteNode(imageNamed: assetName)
         sprite.name = "CharacterAsset"
         sprite.size = size
-        // Character art contains a little transparent padding below the feet.
-        // Lower it so the visible feet meet the ground shadow.
-        sprite.position = CGPoint(x: 0, y: size.height / 2 - 6)
+        // Each authored asset has different transparent padding below its feet.
+        // Compensate per asset so the first visible foot pixel sits on y = 0.
+        let bottomInset = size.height * Self.bottomTransparentInsetRatio(for: assetName)
+        sprite.position = CGPoint(x: 0, y: size.height / 2 - bottomInset)
         characterBodyNode.addChild(sprite)
         nameTagNode?.position.y = size.height + 7
+    }
+
+    private static func bottomTransparentInsetRatio(for assetName: String) -> CGFloat {
+        switch assetName {
+        case "kakekArthur": return 203.0 / 1448.0
+        case "buMara": return 114.0 / 2064.0
+        case "kenneth": return 156.0 / 1448.0
+        case "roland": return 173.0 / 1448.0
+        case "ibuAnneth": return 118.0 / 1448.0
+        case "penambangRocksalt": return 135.0 / 1448.0
+        default: return 0
+        }
     }
 
     // Membangun ilustrasi karakter bertumpuk bergaya paper-cutout Carto
@@ -550,6 +563,7 @@ public final class MemoryCharacter: SKNode {
             if isSleeping { wakeUp() }
             isWalking = true
             walkPhase += dt * 14
+            visualRoot.yScale = 1
 
             // Arah hadap kiri / kanan (flip visualRoot.xScale)
             if dx > 0.3 {
@@ -565,9 +579,11 @@ public final class MemoryCharacter: SKNode {
         } else {
             isWalking = false
             idlePhase += dt * 3
-            // Animasi bernapas santai saat diam
-            characterBodyNode.position.y = sin(idlePhase) * 0.6
+            // Keep the feet pinned to the shadow while breathing. Scaling from
+            // the ground origin gives life without making the NPC hover.
+            characterBodyNode.position.y = 0
             characterBodyNode.zRotation = 0
+            visualRoot.yScale = 1 + sin(idlePhase) * 0.008
             shadowNode.setScale(1.0)
         }
         updateDepth()

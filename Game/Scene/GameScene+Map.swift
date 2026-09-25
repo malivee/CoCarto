@@ -22,28 +22,17 @@ extension GameScene {
                 return
             }
 
+            let startingPosition = self.cameraNode.position
             let startingScale = self.cameraController.currentScale
             self.prepareMapForTransition()
             self.cameraController.beginTransitionToMap()
-            self.cameraController.applyTransitionFrame(
-                position: self.mapRenderer.cameraCenter,
-                scale: startingScale
+            let didStart = self.transitionController.beginWorldToMap(
+                from: startingPosition,
+                cameraScale: startingScale,
+                to: self.mapRenderer.cameraCenter
             )
-
-            self.worldRoot.alpha = 0.08
-            self.worldDebugRoot.alpha = 0
-            self.mapRoot.alpha = 1
-            self.mapDebugRoot.alpha = 1
-            self.playerNode?.alpha = 0
-            self.enterMapButton.alpha = 0
-            self.resetButton.alpha = 0
-            self.saveButton.alpha = 0
-            self.loadButton.alpha = 0
-
-            let zoomOut = SKAction.scale(to: 1.35, duration: 0.72)
-            zoomOut.timingMode = .easeInEaseOut
-            self.cameraNode.run(zoomOut) { [weak self] in
-                guard let self, self.gameMode == .enteringMap else { return }
+            if !didStart {
+                self.transitionController.presentMapImmediately(at: self.mapRenderer.cameraCenter)
                 self.finishWorldToMapTransition()
             }
         }
@@ -217,6 +206,11 @@ extension GameScene {
 
     func updateViewTransition(deltaTime: TimeInterval) {
         guard let frame = transitionController.update(deltaTime: deltaTime) else {
+            if transitionController.state == .idleMap, gameMode == .enteringMap {
+                finishWorldToMapTransition()
+            } else if transitionController.state == .idleWorld, gameMode == .exitingMap {
+                finishMapToWorldTransition()
+            }
             return
         }
 

@@ -102,7 +102,22 @@ final class MapRenderer {
             }
         }
 
-        BuildingObjectRenderer.render(worldState.buildingObjects, in: contentRoot, cellSize: mapCellSize, isWorld: false)
+        let displayedWorldState: WorldState
+        if let preview {
+            displayedWorldState = worldState.previewingPiece(
+                id: preview.pieceID,
+                at: preview.proposedPosition,
+                rotation: preview.proposedRotation
+            )
+        } else {
+            displayedWorldState = worldState
+        }
+        BuildingObjectRenderer.render(
+            displayedWorldState.buildingObjects,
+            in: contentRoot,
+            cellSize: mapCellSize,
+            isWorld: false
+        )
         if let objectPreview {
             let result = BuildingPlacementValidator().validate(objectPreview, in: worldState)
             let previewNode = BuildingObjectRenderer.makeNode(
@@ -255,6 +270,9 @@ final class MapRenderer {
             clockwise: clockwise,
             mismatchedEdgesByLocalCell: mismatchedEdges
         )
+        if let worldState {
+            updateBuildingPreview(preview, in: mapRoot, worldState: worldState)
+        }
     }
 
     func animatePreviewSnap(pieceID: UUID, to position: CGPoint, in mapRoot: SKNode, completion: @escaping () -> Void) {
@@ -348,11 +366,39 @@ final class MapRenderer {
             return .playerConnected
         }
 
-        if !piece.isMovable || worldState.hasBuildingObject(onPieceID: piece.id) {
+        if !piece.isMovable || !worldState.canMovePieceWithBuildings(pieceID: piece.id) {
             return .fixed
         }
 
         return .movable
+    }
+
+    private func updateBuildingPreview(
+        _ preview: PiecePlacementPreview,
+        in mapRoot: SKNode,
+        worldState: WorldState
+    ) {
+        guard let contentRoot = contentRoot(in: mapRoot),
+              let buildingRoot = contentRoot.childNode(withName: BuildingObjectRenderer.rootName) else {
+            return
+        }
+
+        let displayedWorld = worldState.previewingPiece(
+            id: preview.pieceID,
+            at: preview.proposedPosition,
+            rotation: preview.proposedRotation
+        )
+        let attachedObjectIDs = Set(
+            worldState.buildingObjectsSupported(byPieceID: preview.pieceID).map(\.id)
+        )
+        for object in displayedWorld.buildingObjects where attachedObjectIDs.contains(object.id) {
+            buildingRoot.children.first(where: {
+                $0.userData?[BuildingObjectRenderer.objectIDKey] as? String == object.id.uuidString
+            })?.removeFromParent()
+            buildingRoot.addChild(
+                BuildingObjectRenderer.makeNode(object, cellSize: mapCellSize, isWorld: false)
+            )
+        }
     }
 
     private func playerConnectedPieceIDs(

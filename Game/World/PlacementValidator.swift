@@ -10,6 +10,9 @@ struct PlacementValidator: Sendable {
         guard let piece = worldState.piece(id: pieceID), piece.isMovable else {
             return false
         }
+        guard worldState.canMovePieceWithBuildings(pieceID: pieceID) else {
+            return false
+        }
 
         let proposedCells = piece.occupiedCells(at: position, rotation: rotation)
         guard proposedCells.count == 4 else {
@@ -42,9 +45,19 @@ struct PlacementValidator: Sendable {
             }
         }
 
-        return BuildingPlacementValidator().supportsExistingObjects(
-            in: worldState.previewingPiece(id: pieceID, at: position, rotation: rotation)
-        )
+        let previewWorld = worldState.previewingPiece(id: pieceID, at: position, rotation: rotation)
+        let buildingValidator = BuildingPlacementValidator()
+        guard buildingValidator.supportsExistingObjects(in: previewWorld) else {
+            return false
+        }
+        var occupiedBuildingPositions = Set<GridPosition>()
+        for object in previewWorld.buildingObjects {
+            guard object.occupiedPositions.isDisjoint(with: occupiedBuildingPositions) else {
+                return false
+            }
+            occupiedBuildingPositions.formUnion(object.occupiedPositions)
+        }
+        return true
     }
 
     func mismatchedEdgeDirections(

@@ -113,7 +113,8 @@ extension GameScene {
     @discardableResult
     func synchronizeQuestProgressionUnlocks() -> Bool {
         var didChangePieces = worldState.synchronizePuzzlePieces(allowing: questUnlockedPieceRoles())
-        if worldState.setPieceMovable(quest3Controller.isCompleted, for: .z1) {
+        let hasFinishedMapTutorial = quest1Controller.hasCollectedWater || quest1Controller.isCompleted
+        if worldState.setPieceMovable(hasFinishedMapTutorial, for: .z1) {
             didChangePieces = true
         }
         if didChangePieces {
