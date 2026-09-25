@@ -102,10 +102,10 @@ enum BuildingPuzzleBiomeFixture {
         .f: mixed(north: .villageSoil, east: .rocksalt, south: .villageSoil, west: .villageSoil),
         .g: mixed(north: .rocksalt, east: .villageSoil, south: .villageSoil, west: .rocksalt),
         .h: mixed(north: .villageSoil, east: .villageSoil, south: .rocksalt, west: .villageSoil),
-        .i: mixed(north: .villageSoil, east: .villageSoil, south: .villageSoil, west: .naturalGrass),
-        .j: mixed(north: .villageSoil, east: .villageSoil, south: .naturalGrass, west: .villageSoil),
-        .k: mixed(north: .naturalGrass, east: .villageSoil, south: .villageSoil, west: .villageSoil),
-        .l: mixed(north: .villageSoil, east: .naturalGrass, south: .villageSoil, west: .villageSoil),
+        .i: CellBiomeEdges(north: .villageSoil, east: .villageSoil, south: .rocksalt, west: .villageSoil),
+        .j: CellBiomeEdges(north: .darkGreenForest, east: .darkGreenForest, south: .villageSoil, west: .villageSoil),
+        .k: CellBiomeEdges(north: .villageSoil, east: .darkGreenForest, south: .darkGreenForest, west: .villageSoil),
+        .l: CellBiomeEdges(north: .villageSoil, east: .villageSoil, south: .darkGreenForest, west: .darkGreenForest),
         .m: mixed(north: .villageSoil, east: .naturalGrass, south: .naturalGrass, west: .villageSoil),
         .n: mixed(north: .villageSoil, east: .naturalGrass, south: .naturalGrass, west: .villageSoil),
         .o: mixed(north: .naturalGrass, east: .villageSoil, south: .villageSoil, west: .naturalGrass),
@@ -215,12 +215,48 @@ private extension BuildingPuzzleBiomeFixture {
         case .c, .g:
             return villageSoilWithRockSaltDiagonalCut()
         case .f:
-            return villageSoilWithRightRockSaltTip()
+            return villageSoilWithRightRockSaltTriangle()
         case .h:
-            return villageSoilWithBottomRockSaltTip()
-        case .a, .b, .d, .e, .i, .j, .k, .l, .m, .n, .o, .p, .q, .r, .s, .t:
+            return villageSoilWithBottomRockSaltTriangle()
+        case .i:
+            return villageSoilWithTopRockSaltTriangle().rotated(by: .degrees180)
+        case .j:
+            return diagonalGrid(upperBiome: .darkGreenForest, lowerBiome: .villageSoil, slopesDownRight: true)
+        case .k:
+            return diagonalGrid(upperBiome: .villageSoil, lowerBiome: .darkGreenForest, slopesDownRight: false)
+        case .l:
+            return diagonalGrid(upperBiome: .villageSoil, lowerBiome: .darkGreenForest, slopesDownRight: true)
+        case .a, .b, .d, .e, .m, .n, .o, .p, .q, .r, .s, .t:
             return nil
         }
+    }
+
+    static func villageSoilWithTopRockSaltTriangle() -> MicroBiomeGrid {
+        let center = MicroBiomeGrid.dimension / 2
+        let triangleHeight = center
+        let matrix = (0..<MicroBiomeGrid.dimension).map { y in
+            (0..<MicroBiomeGrid.dimension).map { x in
+                let distanceFromCenter = min(abs(x - center), abs(x - (center - 1)))
+                return y < triangleHeight && distanceFromCenter < triangleHeight - y
+                    ? BiomeType.rocksalt : .villageSoil
+            }
+        }
+        return try! MicroBiomeGrid(matrix: matrix)
+    }
+
+    static func diagonalGrid(
+        upperBiome: BiomeType,
+        lowerBiome: BiomeType,
+        slopesDownRight: Bool
+    ) -> MicroBiomeGrid {
+        let maxIndex = MicroBiomeGrid.dimension - 1
+        let matrix = (0..<MicroBiomeGrid.dimension).map { y in
+            (0..<MicroBiomeGrid.dimension).map { x in
+                let boundary = slopesDownRight ? x : maxIndex - x
+                return y < boundary ? upperBiome : lowerBiome
+            }
+        }
+        return try! MicroBiomeGrid(matrix: matrix)
     }
 
     static func villageSoilWithRockSaltDiagonalCut() -> MicroBiomeGrid {
@@ -230,23 +266,23 @@ private extension BuildingPuzzleBiomeFixture {
         )
     }
 
-    static func villageSoilWithRightRockSaltTip() -> MicroBiomeGrid {
-        let maxIndex = MicroBiomeGrid.dimension - 1
-        let triangleSize = 3
+    static func villageSoilWithRightRockSaltTriangle() -> MicroBiomeGrid {
+        let center = MicroBiomeGrid.dimension / 2
         let matrix = (0..<MicroBiomeGrid.dimension).map { y in
             (0..<MicroBiomeGrid.dimension).map { x in
-                (maxIndex - x) + (maxIndex - y) < triangleSize ? BiomeType.rocksalt : BiomeType.villageSoil
+                let distanceFromCenter = min(abs(y - center), abs(y - (center - 1)))
+                return distanceFromCenter <= x - center ? BiomeType.rocksalt : BiomeType.villageSoil
             }
         }
         return try! MicroBiomeGrid(matrix: matrix)
     }
 
-    static func villageSoilWithBottomRockSaltTip() -> MicroBiomeGrid {
-        let maxIndex = MicroBiomeGrid.dimension - 1
-        let triangleSize = 3
+    static func villageSoilWithBottomRockSaltTriangle() -> MicroBiomeGrid {
+        let center = MicroBiomeGrid.dimension / 2
         let matrix = (0..<MicroBiomeGrid.dimension).map { y in
             (0..<MicroBiomeGrid.dimension).map { x in
-                x + (maxIndex - y) < triangleSize ? BiomeType.rocksalt : BiomeType.villageSoil
+                let distanceFromCenter = min(abs(x - center), abs(x - (center - 1)))
+                return distanceFromCenter <= y - center ? BiomeType.rocksalt : BiomeType.villageSoil
             }
         }
         return try! MicroBiomeGrid(matrix: matrix)

@@ -36,10 +36,10 @@ enum TetrominoType: String, CaseIterable, Codable, Sendable {
             ]
         case .l:
             return [
-                GridPosition(x: 0, y: 0),
-                GridPosition(x: 0, y: 1),
-                GridPosition(x: 0, y: 2),
-                GridPosition(x: 1, y: 2)
+                GridPosition(x: 1, y: 0),
+                GridPosition(x: 1, y: 1),
+                GridPosition(x: 1, y: 2),
+                GridPosition(x: 0, y: 2)
             ]
         case .s:
             return [

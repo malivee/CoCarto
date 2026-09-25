@@ -188,8 +188,10 @@ extension BiomeType {
             return SKColor(red: 0.96, green: 0.76, blue: 0.20, alpha: 1)
         case .naturalGrass:
             return SKColor(red: 0.20, green: 0.76, blue: 0.38, alpha: 1)
-        case .rocksalt, .darkGreenForest:
+        case .rocksalt:
             return SKColor(red: 0.18, green: 0.52, blue: 0.95, alpha: 1)
+        case .darkGreenForest:
+            return SKColor(red: 0.10, green: 0.43, blue: 0.25, alpha: 1)
         }
     }
 }
