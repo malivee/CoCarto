@@ -19,6 +19,7 @@ final class LandmarkNode: SKNode {
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
         label.position = CGPoint(x: 0, y: -58)
+        label.isHidden = true
         addChild(label)
 
         apply(landmark: landmark, position: position)

@@ -64,6 +64,6 @@ final class CameraController {
 
     func returnToPlayerFollow() {
         mode = .followPlayer
-        cameraNode.setScale(1.0)
+        cameraNode.setScale(0.09)
     }
 }

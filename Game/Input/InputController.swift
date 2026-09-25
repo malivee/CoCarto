@@ -2,39 +2,45 @@ import CoreGraphics
 
 final class InputController {
     private let deadZone: CGFloat
-    private var targetWorldPosition: CGPoint?
+    private let maximumDistance: CGFloat
+    private var touchOrigin: CGPoint?
+    private var touchPosition: CGPoint?
 
-    init(deadZone: CGFloat = 18) {
+    init(deadZone: CGFloat = 10, maximumDistance: CGFloat = 72) {
         self.deadZone = deadZone
+        self.maximumDistance = maximumDistance
     }
 
     var movementVector: CGVector {
-        guard let playerPosition, let targetWorldPosition else {
+        guard let touchOrigin, let touchPosition else {
             return .zero
         }
 
-        let dx = targetWorldPosition.x - playerPosition.x
-        let dy = targetWorldPosition.y - playerPosition.y
+        let dx = touchPosition.x - touchOrigin.x
+        let dy = touchPosition.y - touchOrigin.y
         let distance = hypot(dx, dy)
 
         guard distance > deadZone else {
             return .zero
         }
 
-        return CGVector(dx: dx / distance, dy: dy / distance)
+        let strength = min(1, (distance - deadZone) / (maximumDistance - deadZone))
+        return CGVector(dx: dx / distance * strength, dy: dy / distance * strength)
     }
 
     var playerPosition: CGPoint?
 
-    func beginTouch(at worldPosition: CGPoint) {
-        targetWorldPosition = worldPosition
+    func beginTouch(at controlPosition: CGPoint) {
+        touchOrigin = controlPosition
+        touchPosition = controlPosition
     }
 
-    func moveTouch(to worldPosition: CGPoint) {
-        targetWorldPosition = worldPosition
+    func moveTouch(to controlPosition: CGPoint) {
+        touchPosition = controlPosition
     }
 
     func endTouch() {
-        targetWorldPosition = nil
+        touchOrigin = nil
+        touchPosition = nil
     }
 }

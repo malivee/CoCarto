@@ -124,6 +124,7 @@ enum MapPieceInteractionState: Equatable {
     case fixed
     case lockedByPlayer
     case movable
+    case playerConnected
     case selected(isValid: Bool)
 
     var cellAlpha: CGFloat {
@@ -132,7 +133,7 @@ enum MapPieceInteractionState: Equatable {
             return 0.46
         case .lockedByPlayer:
             return 0.62
-        case .movable:
+        case .movable, .playerConnected:
             return 0.88
         case .selected(let isValid):
             return isValid ? 1.0 : 0.52
@@ -147,6 +148,8 @@ enum MapPieceInteractionState: Equatable {
             return .cyan
         case .movable:
             return .black
+        case .playerConnected:
+            return .systemGreen
         case .selected(let isValid):
             return isValid ? .systemGreen : .systemRed
         }
@@ -154,7 +157,7 @@ enum MapPieceInteractionState: Equatable {
 
     var borderWidth: CGFloat {
         switch self {
-        case .fixed, .lockedByPlayer:
+        case .fixed, .lockedByPlayer, .playerConnected:
             return 4
         case .movable:
             return 2
@@ -236,7 +239,7 @@ private extension PieceRole {
             return base.withAlphaComponent(0.65)
         case .lockedByPlayer:
             return base.withAlphaComponent(0.8)
-        case .movable, .selected:
+        case .movable, .playerConnected, .selected:
             return base
         }
     }

@@ -9,7 +9,7 @@ final class PlayerController {
 
     private(set) var state = PlayerState(currentPieceID: nil, currentCell: nil, localPosition: .zero)
 
-    init(mapper: WorldGridMapper, worldState: WorldState, movementSpeed: CGFloat = 360) {
+    init(mapper: WorldGridMapper, worldState: WorldState, movementSpeed: CGFloat = 90) {
         self.mapper = mapper
         self.worldState = worldState
         self.movementSpeed = movementSpeed
