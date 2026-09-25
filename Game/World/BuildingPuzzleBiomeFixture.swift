@@ -251,6 +251,15 @@ extension WorldState {
             rotation: .degrees0
         )
     ], landmarks: [])
+
+    static func buildingPuzzleBiomePrototype(allowing roles: Set<PieceRole>) -> WorldState {
+        WorldState(
+            pieces: buildingPuzzleBiomePrototype.pieces.filter { roles.contains($0.role) },
+            landmarks: [],
+            buildingObjects: []
+        )
+    }
+
 }
 
 private extension BuildingPuzzleBiomeFixture {

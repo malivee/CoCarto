@@ -59,7 +59,6 @@ final class CellNode: SKNode {
             tile.alpha = 0.92
             tile.zPosition = 0.5
             addChild(tile)
-            addWorldUnitGridLines(cellSize: cellSize)
             return
         }
 
@@ -83,26 +82,6 @@ final class CellNode: SKNode {
             }
         }
 
-        addWorldUnitGridLines(cellSize: cellSize)
-    }
-
-    private func addWorldUnitGridLines(cellSize: CGFloat) {
-        // World units combine 2x2 map squares while preserving the biome artwork.
-        let gridPath = CGMutablePath()
-        let half = cellSize / 2
-        let worldUnit = cellSize / CGFloat(WorldVisualSubcell.dimension)
-        for index in 1..<WorldVisualSubcell.dimension {
-            let offset = -half + CGFloat(index) * worldUnit
-            gridPath.move(to: CGPoint(x: offset, y: -half))
-            gridPath.addLine(to: CGPoint(x: offset, y: half))
-            gridPath.move(to: CGPoint(x: -half, y: offset))
-            gridPath.addLine(to: CGPoint(x: half, y: offset))
-        }
-        let gridLines = SKShapeNode(path: gridPath)
-        gridLines.strokeColor = SKColor.gray.withAlphaComponent(0.6)
-        gridLines.lineWidth = 1
-        gridLines.zPosition = 0.6
-        addChild(gridLines)
     }
 
     private func addMicroBiomeSplit(_ split: MicroBiomeSplit, rect: CGRect) {

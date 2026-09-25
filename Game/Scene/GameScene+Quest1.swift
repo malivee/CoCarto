@@ -5,15 +5,32 @@ extension GameScene {
         let hasArthurHome = worldState.buildingObjects.contains { $0.kind == .arthurHouse }
         let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
         let hasMaraHome = worldState.buildingObjects.contains { $0.kind == .buMaraHouse }
-        var items = [
-            MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: hasArthurHome),
-            MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: hasWell)
-        ]
-        if quest1Controller.hasCollectedWater || quest2Controller.isActive || quest2Controller.isCompleted {
+        let hasBarn = worldState.buildingObjects.contains { $0.kind == .barn }
+
+        if !hasArthurHome {
+            return [MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: false)]
+        }
+        if quest1Controller.isWellUnlocked && !hasWell {
+            return [MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: false)]
+        }
+        if quest1Controller.hasCollectedWater && !quest2Controller.isCompleted && !hasMaraHome {
+            return [MapQuestItem(category: "Quest 2", title: "Place Mrs. Mara Home", isCompleted: false)]
+        }
+        if quest1Controller.isCompleted && quest2Controller.isCompleted && !hasBarn {
+            return [MapQuestItem(category: "Quest 3", title: VillageQuest3Catalog.mapObjective, isCompleted: false)]
+        }
+
+        var items: [MapQuestItem] = []
+        if hasArthurHome {
+            items.append(MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: true))
+        }
+        if quest1Controller.isWellUnlocked || hasWell {
+            items.append(MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: hasWell))
+        }
+        if quest1Controller.hasCollectedWater || quest2Controller.isActive || quest2Controller.isCompleted || hasMaraHome {
             items.append(MapQuestItem(category: "Quest 2", title: "Place Mrs. Mara Home", isCompleted: hasMaraHome))
         }
         if quest1Controller.isCompleted && quest2Controller.isCompleted {
-            let hasBarn = worldState.buildingObjects.contains { $0.kind == .barn }
             items.append(MapQuestItem(
                 category: "Quest 3",
                 title: VillageQuest3Catalog.mapObjective,
@@ -23,11 +40,38 @@ extension GameScene {
         return items
     }
 
-    func quest1UnlockedObjectKinds() -> Set<BuildingObjectKind> {
-        var unlocked: Set<BuildingObjectKind> = [.arthurHouse, .well]
-        if quest1Controller.hasCollectedWater { unlocked.insert(.buMaraHouse) }
-        if quest1Controller.isCompleted { unlocked.formUnion(BuildingObjectKind.allCases) }
+    func questUnlockedObjectKinds() -> Set<BuildingObjectKind> {
+        var unlocked: Set<BuildingObjectKind> = [.arthurHouse]
+        if quest1Controller.isWellUnlocked { unlocked.insert(.well) }
+        if quest1Controller.hasCollectedWater || quest2Controller.isActive || quest2Controller.isCompleted {
+            unlocked.insert(.buMaraHouse)
+        }
+        if quest1Controller.isCompleted && quest2Controller.isCompleted {
+            unlocked.insert(.barn)
+        }
         return unlocked
+    }
+
+    func questUnlockedPieceRoles() -> Set<PieceRole> {
+        var unlocked: Set<PieceRole> = [.z1]
+        if quest1Controller.hasCollectedWater || quest2Controller.isActive || quest2Controller.isCompleted || quest1Controller.isCompleted {
+            unlocked.insert(.z2)
+        }
+        if quest1Controller.isCompleted && quest2Controller.isCompleted {
+            unlocked.insert(.l1)
+        }
+        return unlocked
+    }
+
+    @discardableResult
+    func synchronizeQuestProgressionUnlocks() -> Bool {
+        let didUnlockPiece = worldState.unlockPuzzlePieces(allowing: questUnlockedPieceRoles())
+        if didUnlockPiece {
+            playerController.updateWorldState(worldState)
+            worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
+            syncVillageNPCs()
+        }
+        return didUnlockPiece
     }
 
     // Placement only updates the UI. Quest 2 completes through Bu Mara's interaction and minigame.
@@ -44,25 +88,44 @@ extension GameScene {
 
     func updateWorldQuestLabel() {
         var items: [MapQuestItem] = []
+        let hasArthurHome = worldState.buildingObjects.contains { $0.kind == .arthurHouse }
+        let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
+        let hasMaraHome = worldState.buildingObjects.contains { $0.kind == .buMaraHouse }
+        let hasBarn = worldState.buildingObjects.contains { $0.kind == .barn }
+
         if !quest1Controller.isCompleted {
-            let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
-            items.append(MapQuestItem(
-                category: "Quest 1",
-                title: VillageQuestCatalog.Quest1.mapObjectives[1],
-                isCompleted: hasWell
-            ))
-            items.append(MapQuestItem(
-                category: "Quest 1",
-                title: quest1Controller.hasCollectedWater
-                    ? "Return the water to Grandpa after helping Mrs. Mara."
-                    : VillageQuestCatalog.Quest1.worldObjective,
-                isCompleted: false
-            ))
+            if !hasArthurHome {
+                items.append(MapQuestItem(
+                    category: "Quest 1",
+                    title: VillageQuestCatalog.Quest1.mapObjectives[0],
+                    isCompleted: false
+                ))
+            } else if !quest1Controller.isWellUnlocked {
+                items.append(MapQuestItem(
+                    category: "Quest 1",
+                    title: "Talk to Grandpa at Arthur Home.",
+                    isCompleted: false
+                ))
+            } else if !hasWell {
+                items.append(MapQuestItem(
+                    category: "Quest 1",
+                    title: VillageQuestCatalog.Quest1.mapObjectives[1],
+                    isCompleted: false
+                ))
+            } else {
+                items.append(MapQuestItem(
+                    category: "Quest 1",
+                    title: quest1Controller.hasCollectedWater
+                        ? "Return the water to Grandpa after helping Mrs. Mara."
+                        : VillageQuestCatalog.Quest1.worldObjective,
+                    isCompleted: false
+                ))
+            }
         }
         if quest1Controller.hasCollectedWater && !quest2Controller.isCompleted {
             items.append(MapQuestItem(
                 category: "Quest 2",
-                title: VillageQuestCatalog.Quest2.mapObjective,
+                title: hasMaraHome ? VillageQuestCatalog.Quest2.mapObjective : "Place Mrs. Mara Home",
                 isCompleted: false
             ))
         }
@@ -70,7 +133,7 @@ extension GameScene {
             let quest3Progress = VillageQuest3Progress.load()
             items.append(MapQuestItem(
                 category: "Quest 3",
-                title: VillageQuest3Catalog.worldObjective,
+                title: hasBarn ? VillageQuest3Catalog.worldObjective : VillageQuest3Catalog.mapObjective,
                 isCompleted: quest3Progress.sortedSeeds
             ))
         }
@@ -119,19 +182,22 @@ extension GameScene {
             npcCharacter(named: "Grandpa")?.wave()
         case .started(let lines):
             showQuestDialogue(lines)
-            showProgressionFeedback("QUEST 1 STARTED")
+            showProgressionFeedback("WELL UNLOCKED")
             npcCharacter(named: "Grandpa")?.wave()
+            synchronizeQuestProgressionUnlocks()
             syncVillageNPCs()
         case .waterCollected(let lines):
             showQuestDialogue(lines)
-            showProgressionFeedback("QUEST 2 UNLOCKED")
+            showProgressionFeedback("MRS. MARA HOME UNLOCKED")
             playerNode?.celebrate()
+            synchronizeQuestProgressionUnlocks()
             syncVillageNPCs()
         case .completed(let lines):
             showQuestDialogue(lines)
-            showProgressionFeedback("QUEST 1 COMPLETE")
+            showProgressionFeedback("BARN UNLOCKED")
             playerNode?.celebrate()
             npcCharacter(named: "Grandpa")?.celebrate()
+            synchronizeQuestProgressionUnlocks()
             syncVillageNPCs()
         case .alreadyCompleted:
             showQuestDialogue([.init(speaker: "Grandpa", text: "Thank you again, Arthur.")])
@@ -151,6 +217,8 @@ extension GameScene {
         case .completed(let lines):
             showQuestDialogue(lines)
             showProgressionFeedback("QUEST 2 COMPLETE")
+            synchronizeQuestProgressionUnlocks()
+            syncVillageNPCs()
         case .alreadyCompleted:
             showQuestDialogue([.init(speaker: "Mrs. Mara", text: "Please bring the water back to Grandpa.")])
         }

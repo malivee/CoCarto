@@ -6,19 +6,6 @@ import UIKit
 extension GameScene {
 
     func handleQuest3Interaction(object: BuildingObject) {
-        guard let playerNode,
-              let objectNode = children.first(where: { $0.name == BuildingObjectRenderer.nodeName }) ??
-                worldRoot.children.first(where: { $0.name == BuildingObjectRenderer.nodeName }) else {
-            return
-        }
-
-        let objectPosition = objectNode.convert(CGPoint.zero, to: self)
-        let distance = hypot(playerNode.position.x - objectPosition.x, playerNode.position.y - objectPosition.y)
-        guard distance <= 240 else {
-            showProgressionFeedback("MOVE CLOSER TO BARN")
-            return
-        }
-
         let result = quest3Controller.interactWithKenneth(in: worldState)
         switch result {
         case .unavailable(let lines):

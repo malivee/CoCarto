@@ -91,6 +91,19 @@ struct WorldState: Codable, Equatable, Sendable {
         previewWorld.pieces[index].rotation = rotation
         return previewWorld
     }
+
+    @discardableResult
+    mutating func unlockPuzzlePieces(allowing roles: Set<PieceRole>, from prototype: WorldState = .buildingPuzzleBiomePrototype) -> Bool {
+        var didChange = false
+        for prototypePiece in prototype.pieces where roles.contains(prototypePiece.role) {
+            guard !pieces.contains(where: { $0.id == prototypePiece.id }) else {
+                continue
+            }
+            pieces.append(prototypePiece)
+            didChange = true
+        }
+        return didChange
+    }
 }
 
 extension WorldState {

@@ -86,7 +86,7 @@ extension GameScene {
             footprintRectangle: currentFootprintRectangle(),
             selectedObjectKind: selectedObjectKind,
             objectPreview: objectPreview,
-            unlockedObjectKinds: quest1UnlockedObjectKinds(),
+            unlockedObjectKinds: questUnlockedObjectKinds(),
             questItems: mapQuestItems()
         )
     }

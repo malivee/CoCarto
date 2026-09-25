@@ -62,6 +62,12 @@ final class VillageQuest3Controller {
             ])
         }
 
+        guard isUnlocked else {
+            return .unavailable([
+                VillageQuestDialogueLine(speaker: "Quest", text: "Finish Grandpa and Mrs. Mara's quests first.")
+            ])
+        }
+
         // Cek syarat pemasangan lumbung
         guard isBarnPlaced(in: worldState) else {
             return .unavailable([

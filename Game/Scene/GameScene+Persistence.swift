@@ -66,7 +66,7 @@ extension GameScene {
         pendingLoadedPlayerSpatialState = nil
         selectedObjectKind = nil
         objectPreview = nil
-        worldState = .buildingPuzzleBiomePrototype
+        worldState = .buildingPuzzleBiomePrototype(allowing: [.z1])
         quest1Controller.reset()
         quest2Controller.reset()
         quest3Controller.reset()

@@ -26,7 +26,7 @@ enum BuildingObjectCatalog {
         .arthurHouse: .init(kind: .arthurHouse, title: "Rumah Arthur", mapWidth: 6, mapHeight: 4),
         .well: .init(kind: .well, title: "Sumur", mapWidth: 4, mapHeight: 4),
         .buMaraHouse: .init(kind: .buMaraHouse, title: "Rumah Bu Mara", mapWidth: 8, mapHeight: 4),
-        .barn: .init(kind: .barn, title: "Lumbung", mapWidth: 6, mapHeight: 4),
+        .barn: .init(kind: .barn, title: "Lumbung", mapWidth: 6, mapHeight: 8),
         .animalPen: .init(kind: .animalPen, title: "Kandang", mapWidth: 8, mapHeight: 10),
         .annethHouse: .init(kind: .annethHouse, title: "Rumah Anneth", mapWidth: 8, mapHeight: 6),
         .rockSalt: .init(kind: .rockSalt, title: "Rock Salt", mapWidth: 4, mapHeight: 5)

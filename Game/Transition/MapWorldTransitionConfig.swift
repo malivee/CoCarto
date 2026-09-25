@@ -13,7 +13,7 @@ struct MapWorldTransitionConfig: Equatable, Sendable {
     static let standard = MapWorldTransitionConfig(
         enterDuration: 0.65,
         exitDuration: 0.62,
-        worldCameraScale: 0.09,
+        worldCameraScale: 0.28,
         mapCameraScale: 1.35,
         mapFadeStart: 0.20,
         worldFadeStart: 0.38,
