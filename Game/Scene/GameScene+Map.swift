@@ -527,6 +527,18 @@ extension GameScene {
             return
         }
 
+        if mapController.shouldReturnSelectedPieceToBag(in: worldState) {
+            let originalPosition = mapRenderer.mapper.mapPosition(for: preview.originalPlacement.gridPosition)
+            mapRenderer.animatePreviewSnap(pieceID: pieceID, to: originalPosition, in: mapRoot) { [weak self] in
+                guard let self else { return }
+                self.mapController.cancel()
+                self.gameMode = .mapIdle
+                self.rebuildMapView()
+                self.showProgressionFeedback("PIECE RETURNED TO BAG")
+            }
+            return
+        }
+
         AudioService.shared.playSFX("PaperMap")
         gameMode = .mapPieceSelected(pieceID)
         mapRenderer.animatePreviewSnap(pieceID: pieceID, to: preview.visualPosition, in: mapRoot) { [weak self] in

@@ -183,6 +183,34 @@ final class MapController {
         return preview
     }
 
+    /// A moved piece that no longer touches the puzzle belongs back in the bag.
+    /// The world state is still unchanged during preview, so cancelling restores
+    /// its last confirmed placement without another mutation.
+    func shouldReturnSelectedPieceToBag(in worldState: WorldState) -> Bool {
+        guard let preview,
+              let piece = worldState.piece(id: preview.pieceID),
+              preview.proposedPosition != preview.originalPlacement.gridPosition ||
+                preview.proposedRotation != preview.originalPlacement.rotation else {
+            return false
+        }
+
+        let proposedCells = piece.occupiedCells(
+            at: preview.proposedPosition,
+            rotation: preview.proposedRotation
+        )
+        let otherCells = worldState.pieces
+            .filter { $0.id != preview.pieceID }
+            .reduce(into: Set<GridPosition>()) { result, other in
+                result.formUnion(other.occupiedCells())
+            }
+
+        return !proposedCells.contains { cell in
+            Direction.allCases.contains { direction in
+                otherCells.contains(cell + direction.gridOffset)
+            }
+        }
+    }
+
     func rotateSelected(
         clockwise: Bool = true,
         in worldState: WorldState,
