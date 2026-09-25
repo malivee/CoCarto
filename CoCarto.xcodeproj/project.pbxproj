@@ -11,6 +11,7 @@
 		2361970D30662A6B00C66ECB /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		236197FF30666E4700C66ECB /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		23619C643066C1E900C66ECB /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
+		23619ECA3066E38600C66ECB /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA3EAAD230664B8000BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA3EAE503066571400BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA3EB30E3066687A00BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
@@ -73,6 +74,9 @@
 				AA3EBCE9306672FC00BCF5E3 /* CoCarto.xcodeproj */,
 				AA3EB6EE30666C9500BCF5E3 /* CoCarto.xcodeproj */,
 				AA3ECFA03066B14700BCF5E3 /* CoCarto.xcodeproj */,
+				AA3EE0A03066DD1700BCF5E3 /* CoCarto.xcodeproj */,
+				AA3ED6543066D07E00BCF5E3 /* CoCarto.xcodeproj */,
+				23619C643066C1E900C66ECB /* CoCarto.xcodeproj */,
 			);
 			name = "Recovered References";
 			sourceTree = "<group>";
@@ -88,6 +92,11 @@
 			sourceTree = "<group>";
 		};
 		23619C6A3066C1E900C66ECB /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23619ED03066E38600C66ECB /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -256,6 +265,10 @@
 					ProjectRef = AA3ECFA03066B14700BCF5E3 /* CoCarto.xcodeproj */;
 				},
 				{
+					ProductGroup = 23619ED03066E38600C66ECB /* Products */;
+					ProjectRef = 23619ECA3066E38600C66ECB /* CoCarto.xcodeproj */;
+				},
+				{
 					ProductGroup = AA3EAAD830664B8000BCF5E3 /* Products */;
 					ProjectRef = AA3EAAD230664B8000BCF5E3 /* CoCarto.xcodeproj */;
 				},
@@ -295,7 +308,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DTTY9ZX5T4;
+				DEVELOPMENT_TEAM = WB3D823668;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -328,7 +341,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DTTY9ZX5T4;
+				DEVELOPMENT_TEAM = WB3D823668;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

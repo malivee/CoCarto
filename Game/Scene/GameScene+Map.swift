@@ -115,6 +115,9 @@ extension GameScene {
         }
 
         gameMode = .exitingMap
+        if isDraggingPlacedObject {
+            restoreOriginalDraggedBuilding()
+        }
         selectedObjectKind = nil
         objectPreview = nil
         mapController.cancel()
@@ -238,6 +241,9 @@ extension GameScene {
             if selectedObjectKind != nil {
                 selectedObjectKind = nil
                 objectPreview = nil
+                if isDraggingPlacedObject {
+                    restoreOriginalDraggedBuilding()
+                }
                 rebuildMapView()
                 return
             }
@@ -250,6 +256,8 @@ extension GameScene {
                 if let objectPreview, worldState.placeBuildingObject(objectPreview) == .valid {
                     self.objectPreview = nil
                     selectedObjectKind = nil
+                    isDraggingPlacedObject = false
+                    originalDraggedBuilding = nil
                     syncQuest2PlacementProgress()
                     worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
                     autosave(reason: "building placed")
@@ -267,7 +275,7 @@ extension GameScene {
         }
 
         if let kind = selectedObjectKind {
-            guard !stack.contains(where: { $0.name == MapNodeName.hud.rawValue }) else { return }
+            isDraggingObjectFromInventory = true
             updateObjectPreview(at: location, kind: kind)
             return
         }
@@ -343,6 +351,7 @@ extension GameScene {
     func beginPlacedObjectDrag(id: UUID, at location: CGPoint) {
         guard let object = worldState.removeBuildingObject(id: id) else { return }
         mapController.cancel()
+        originalDraggedBuilding = object
         selectedObjectKind = object.kind
         objectRotation = object.rotation
         objectPreview = object
@@ -352,14 +361,26 @@ extension GameScene {
     }
 
     func finishObjectDrop() {
-        guard let preview = objectPreview,
-              BuildingPlacementValidator().validate(preview, in: worldState) == .valid else {
+        guard let preview = objectPreview else {
             selectedObjectKind = nil
-            objectPreview = nil
-            if isDraggingPlacedObject {
+            rebuildMapView()
+            return
+        }
+
+        let validator = BuildingPlacementValidator()
+        guard validator.validate(preview, in: worldState) == .valid else {
+            if !validator.overlapsWorldTiles(preview, in: worldState) {
+                selectedObjectKind = nil
+                objectPreview = nil
+                originalDraggedBuilding = nil
                 isDraggingPlacedObject = false
                 worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
                 autosave(reason: "building returned to inventory")
+            } else if isDraggingPlacedObject {
+                selectedObjectKind = nil
+                objectPreview = nil
+                restoreOriginalDraggedBuilding()
+                worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
             }
             rebuildMapView()
             return
@@ -369,9 +390,19 @@ extension GameScene {
         selectedObjectKind = nil
         objectPreview = nil
         isDraggingPlacedObject = false
+        originalDraggedBuilding = nil
         worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
         autosave(reason: "building dropped")
         rebuildMapView()
+    }
+
+    func restoreOriginalDraggedBuilding() {
+        if let originalDraggedBuilding {
+            _ = worldState.placeBuildingObject(originalDraggedBuilding)
+        }
+        originalDraggedBuilding = nil
+        isDraggingPlacedObject = false
+        autosave(reason: "building restored after invalid move")
     }
 
     func rotateSelectedPiece(clockwise: Bool) {
