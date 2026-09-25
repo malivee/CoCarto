@@ -180,30 +180,6 @@ private extension PieceRole {
 // Shared by the map and world views so both show the same diagonal halves.
 enum MicroBiomeDebugNode {
     static func make(biome: BiomeType?, split: MicroBiomeSplit?, size: CGFloat) -> SKNode {
-        guard let split else {
-            return SKSpriteNode(color: biome?.debugColor ?? .clear, size: CGSize(width: size, height: size))
-        }
-        let node = SKNode()
-        let half = size / 2
-        let corners = [
-            CGPoint(x: -half, y: half), CGPoint(x: half, y: half),
-            CGPoint(x: half, y: -half), CGPoint(x: -half, y: -half)
-        ]
-        let primary = split.primaryCorner.rawValue
-        let secondary = (primary + 2) % 4
-        for (corner, biome) in [(primary, split.primaryBiome), (secondary, split.secondaryBiome)] {
-            let path = CGMutablePath()
-            path.move(to: corners[corner])
-            path.addLine(to: corners[(corner + 1) % 4])
-            path.addLine(to: corners[(corner + 3) % 4])
-            path.closeSubpath()
-            let triangle = SKShapeNode(path: path)
-            triangle.fillColor = biome.debugColor
-            triangle.strokeColor = .clear
-            triangle.lineWidth = 0
-            triangle.isAntialiased = false
-            node.addChild(triangle)
-        }
-        return node
+        TileAssetResolver.node(biome: biome, split: split, size: size)
     }
 }
