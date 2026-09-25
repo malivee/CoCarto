@@ -48,8 +48,11 @@ final class GameScene: SKScene {
     let worldEventManager = WorldEventManager()
     let landmarkInteractionResolver = LandmarkInteractionResolver()
     let transitionController = MapWorldTransitionController()
+    let quest1Controller = VillageQuest1Controller()
     let saveService = try? SaveGameService()
     let puzzleFeedbackLabel = SKLabelNode(fontNamed: "Menlo-Bold")
+    let worldQuestLabel = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+    let worldQuestTracker = QuestTrackerNode()
     let transitionFog = SKEffectNode()
     let joystickBase = SKShapeNode(circleOfRadius: 72)
     let joystickKnob = SKShapeNode(circleOfRadius: 28)
@@ -61,6 +64,8 @@ final class GameScene: SKScene {
     var pendingPresentationEvents: [GameDomainEvent] = []
     var pendingLoadedPlayerSpatialState: PlayerSpatialState?
     var lastSaveStatus = "none"
+    var questDialogueLines: [VillageQuestDialogueLine] = []
+    weak var activeQuestDialogue: SpeechBubbleNode?
 
     override func didMove(to view: SKView) {
         backgroundColor = SKColor(red: 0.08, green: 0.09, blue: 0.10, alpha: 1)
@@ -82,6 +87,7 @@ final class GameScene: SKScene {
         enterMapButton.zPosition = 1_000
         resetButton.zPosition = 1_000
         configurePuzzleFeedback()
+        configureWorldQuestLabel()
         configureTransitionFog()
         configureJoystick()
         puzzleManager.onPuzzleCompleted = { [weak self] puzzleID in
@@ -109,6 +115,8 @@ final class GameScene: SKScene {
         addChild(loadButton)
         addChild(puzzleFeedbackLabel)
         addChild(cameraNode)
+        cameraNode.addChild(worldQuestLabel)
+        cameraNode.addChild(worldQuestTracker)
         cameraNode.addChild(enterMapButton)
         cameraNode.addChild(transitionFog)
         cameraNode.addChild(joystickBase)
@@ -119,6 +127,7 @@ final class GameScene: SKScene {
         spawnPlayer()
         puzzleManager.evaluate(worldState: worldState)
         presentInitialMapOverview()
+        updateWorldQuestLabel()
 
         let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handleMapPinch(_:)))
         pinch.cancelsTouchesInView = true
@@ -239,8 +248,14 @@ final class GameScene: SKScene {
 
         switch gameMode {
         case .exploring:
+            if activeQuestDialogue != nil {
+                advanceQuestDialogue()
+                return
+            }
             if nodeStack(at: location).contains(where: { $0.name == MapNodeName.enterButton.rawValue }) {
                 enterMapView()
+            } else if let objectID = buildingObjectID(in: stack) {
+                interactWithQuestObject(id: objectID, in: stack)
             } else {
                 let controlPosition = touch.location(in: cameraNode)
                 inputController.beginTouch(at: controlPosition)

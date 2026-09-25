@@ -86,6 +86,7 @@ extension GameScene {
             footprintRectangle: currentFootprintRectangle(),
             selectedObjectKind: selectedObjectKind,
             objectPreview: objectPreview,
+<<<<<<< HEAD
             questItems: mapQuestItems(),
             unlockedInventoryKinds: unlockedBuildingObjectKinds()
         )
@@ -146,7 +147,16 @@ extension GameScene {
         progress.save()
     }
 
+=======
+            unlockedObjectKinds: quest1UnlockedObjectKinds(),
+            questItems: mapQuestItems()
+        )
+    }
+
+>>>>>>> Bur
     func prepareMapForTransition() {
+        worldQuestLabel.isHidden = true
+        worldQuestTracker.isHidden = true
         let focusPoint = mapRenderer.focusPoint(for: playerController.state, worldState: worldState, preview: nil)
         mapViewport.reset(contentBounds: mapRenderer.contentBounds(for: worldState), sceneSize: size, focusPoint: focusPoint)
         rebuildMapView()
@@ -261,6 +271,7 @@ extension GameScene {
         mapRoot.isHidden = true
         mapDebugRoot.isHidden = true
         gameMode = .exploring
+        updateWorldQuestLabel()
         flushPendingPresentationEvents()
     }
 

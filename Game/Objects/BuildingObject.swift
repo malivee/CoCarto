@@ -16,12 +16,12 @@ struct BuildingObjectDefinition: Sendable {
     let mapHeight: Int
 
     var worldSize: BuildingObjectSize {
-        BuildingObjectSize(width: Double(mapWidth) / 2, height: Double(mapHeight) / 2)
+        BuildingObjectSize(width: Double(mapWidth) / 4, height: Double(mapHeight) / 4)
     }
 }
 
 enum BuildingObjectCatalog {
-    // Map units are microgrid squares; one World unit equals two Map units.
+    // Map units are microgrid squares; ingame visuals use one quarter of the map dimensions.
     static let definitions: [BuildingObjectKind: BuildingObjectDefinition] = [
         .arthurHouse: .init(kind: .arthurHouse, title: "Rumah Arthur", mapWidth: 6, mapHeight: 4),
         .well: .init(kind: .well, title: "Sumur", mapWidth: 4, mapHeight: 4),

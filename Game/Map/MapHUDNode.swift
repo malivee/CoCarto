@@ -23,12 +23,7 @@ final class MapHUDNode: SKNode {
 
     )
 
-    private let questPanel = SKShapeNode(
-        rectOf: CGSize(width: 252, height: 112),
-        cornerRadius: 18
-    )
-
-    private let questLabels = [SKLabelNode(), SKLabelNode()]
+    private let questPanel = QuestTrackerNode()
 
     private let rotateLeftButton = RotationButtonNode(
 
@@ -145,7 +140,7 @@ final class MapHUDNode: SKNode {
             y: topY - 22
         )
 
-        updateQuestTracker(with: Array(questItems.prefix(2)))
+        questPanel.update(with: Array(questItems.prefix(2)))
 
 
         let trayHeight: CGFloat = 216
@@ -193,44 +188,8 @@ final class MapHUDNode: SKNode {
     }
 
     private func configureQuestTracker() {
-        questPanel.fillColor = SKColor.black.withAlphaComponent(0.34)
-        questPanel.strokeColor = SKColor.white.withAlphaComponent(0.10)
-        questPanel.lineWidth = 1
         questPanel.zPosition = 12
         addChild(questPanel)
-
-        for (index, label) in questLabels.enumerated() {
-            label.fontName = "AvenirNext-Medium"
-            label.fontSize = 13
-            label.horizontalAlignmentMode = .left
-            label.verticalAlignmentMode = .center
-            label.position = CGPoint(x: -108, y: index == 0 ? 25 : -25)
-            label.zPosition = 1
-            questPanel.addChild(label)
-        }
-    }
-
-    private func updateQuestTracker(with items: [MapQuestItem]) {
-        for (index, label) in questLabels.enumerated() {
-            guard items.indices.contains(index) else {
-                label.attributedText = nil
-                label.text = nil
-                continue
-            }
-
-            let item = items[index]
-            let marker = item.isCompleted ? "✓" : "○"
-            let text = "\(marker)  \(item.category.uppercased()) · \(item.title)"
-            let attributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont(name: "AvenirNext-Medium", size: 13) ?? UIFont.systemFont(ofSize: 13),
-                .foregroundColor: item.isCompleted
-                    ? UIColor.white.withAlphaComponent(0.38)
-                    : UIColor.white.withAlphaComponent(0.90),
-                .strikethroughStyle: item.isCompleted ? NSUnderlineStyle.single.rawValue : 0,
-                .strikethroughColor: UIColor.white.withAlphaComponent(0.48)
-            ]
-            label.attributedText = NSAttributedString(string: text, attributes: attributes)
-        }
     }
 
 

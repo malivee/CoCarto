@@ -28,15 +28,17 @@ final class MapRenderer {
         footprintRectangle: GlobalMicroRectangle? = nil,
         selectedObjectKind: BuildingObjectKind? = nil,
         objectPreview: BuildingObject? = nil,
-        questItems: [MapQuestItem] = [],
-        unlockedInventoryKinds: [BuildingObjectKind] = BuildingObjectKind.allCases
+        unlockedObjectKinds: Set<BuildingObjectKind> = Set(BuildingObjectKind.allCases),
+        questItems: [MapQuestItem] = []
     ) {
         mapRoot.removeAllChildren()
         var unavailableKinds = Set(worldState.buildingObjects.map(\.kind))
         if let selectedObjectKind {
             unavailableKinds.insert(selectedObjectKind)
         }
-        availableInventoryKinds = unlockedInventoryKinds.filter { !unavailableKinds.contains($0) }
+        availableInventoryKinds = BuildingObjectKind.allCases.filter {
+            unlockedObjectKinds.contains($0) && !unavailableKinds.contains($0)
+        }
         if availableInventoryKinds.isEmpty {
             selectedInventoryIndex = 0
         } else {
