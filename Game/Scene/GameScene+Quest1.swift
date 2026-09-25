@@ -284,26 +284,12 @@ extension GameScene {
             } else {
                 handleQuest5Interaction()
             }
-        default:
-            return
+        case .rockSalt:
+            handleQuest6Result(quest6Controller.collectRockSalt(from: object.id, in: worldState))
+            worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
         }
         updateWorldQuestLabel()
         updateWorldTutorialBanner()
-    }
-
-    func interactWithQuest6Pickup(in stack: [SKNode]) {
-        guard let playerNode,
-              let pickup = stack.first(where: { $0.name == BuildingObjectRenderer.quest6PickupName }),
-              let mineIDString = stack.compactMap({ $0.userData?[BuildingObjectRenderer.quest6MineIDKey] as? String }).first,
-              let mineID = UUID(uuidString: mineIDString) else { return }
-        let pickupPosition = pickup.convert(CGPoint.zero, to: self)
-        guard hypot(playerNode.position.x - pickupPosition.x, playerNode.position.y - pickupPosition.y) <= 220 else {
-            showProgressionFeedback("MOVE CLOSER")
-            return
-        }
-        handleQuest6Result(quest6Controller.collectRockSalt(from: mineID, in: worldState))
-        worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
-        updateWorldQuestLabel()
     }
 
     func handleQuest6Result(_ result: VillageQuest6InteractionResult) {

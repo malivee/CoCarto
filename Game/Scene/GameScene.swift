@@ -278,8 +278,6 @@ final class GameScene: SKScene {
             }
             if nodeStack(at: location).contains(where: { $0.name == MapNodeName.enterButton.rawValue }) {
                 enterMapView()
-            } else if stack.contains(where: { $0.name == BuildingObjectRenderer.quest6PickupName }) {
-                interactWithQuest6Pickup(in: stack)
             } else if let objectID = buildingObjectID(in: stack) {
                 interactWithQuestObject(id: objectID, in: stack)
             } else {
