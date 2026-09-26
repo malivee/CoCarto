@@ -24,18 +24,18 @@
 		AA3EF6103066FC8400BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA3EF9AC306704F500BCF5E3 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		AA68272430670A6C005E5C79 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
-		AAD4F6B730661F4600F88A5D /* CoCarto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoCarto.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AAD4F6B730661F4600F88A5D /* The World Between Pieces.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "The World Between Pieces.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE15C2DA3066F1DE0000F592 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		EE15C545306704A60000F592 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		AAD4F6CC30661F4700F88A5D /* Exceptions for "CoCarto" folder in "CoCarto" target */ = {
+		AAD4F6CC30661F4700F88A5D /* Exceptions for "CoCarto" folder in "The World Between Pieces" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = AAD4F6B630661F4600F88A5D /* CoCarto */;
+			target = AAD4F6B630661F4600F88A5D /* The World Between Pieces */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -43,7 +43,7 @@
 		AAD4F6B930661F4600F88A5D /* CoCarto */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				AAD4F6CC30661F4700F88A5D /* Exceptions for "CoCarto" folder in "CoCarto" target */,
+				AAD4F6CC30661F4700F88A5D /* Exceptions for "CoCarto" folder in "The World Between Pieces" target */,
 			);
 			name = CoCarto;
 			sourceTree = "<group>";
@@ -175,7 +175,7 @@
 		AAD4F6B830661F4600F88A5D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AAD4F6B730661F4600F88A5D /* CoCarto.app */,
+				AAD4F6B730661F4600F88A5D /* The World Between Pieces.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -193,9 +193,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		AAD4F6B630661F4600F88A5D /* CoCarto */ = {
+		AAD4F6B630661F4600F88A5D /* The World Between Pieces */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AAD4F6CD30661F4700F88A5D /* Build configuration list for PBXNativeTarget "CoCarto" */;
+			buildConfigurationList = AAD4F6CD30661F4700F88A5D /* Build configuration list for PBXNativeTarget "The World Between Pieces" */;
 			buildPhases = (
 				AAD4F6B330661F4600F88A5D /* Sources */,
 				AAD4F6B430661F4600F88A5D /* Frameworks */,
@@ -208,11 +208,11 @@
 			fileSystemSynchronizedGroups = (
 				AAD4F6B930661F4600F88A5D /* CoCarto */,
 			);
-			name = CoCarto;
+			name = "The World Between Pieces";
 			packageProductDependencies = (
 			);
 			productName = CoCarto;
-			productReference = AAD4F6B730661F4600F88A5D /* CoCarto.app */;
+			productReference = AAD4F6B730661F4600F88A5D /* The World Between Pieces.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -322,7 +322,7 @@
 			);
 			projectRoot = "";
 			targets = (
-				AAD4F6B630661F4600F88A5D /* CoCarto */,
+				AAD4F6B630661F4600F88A5D /* The World Between Pieces */,
 			);
 		};
 /* End PBXProject section */
@@ -547,7 +547,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		AAD4F6CD30661F4700F88A5D /* Build configuration list for PBXNativeTarget "CoCarto" */ = {
+		AAD4F6CD30661F4700F88A5D /* Build configuration list for PBXNativeTarget "The World Between Pieces" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AAD4F6CE30661F4700F88A5D /* Debug */,
