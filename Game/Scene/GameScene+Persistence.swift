@@ -4,10 +4,19 @@ import CoreImage
 
 extension GameScene {
     func layoutEnterMapButton() {
-        enterMapButton.position = CGPoint(
-            x: -size.width * 0.5 + 70,
-            y: size.height * 0.5 - 82
+        let safeInsets = view?.safeAreaInsets ?? .zero
+        let hudScale: CGFloat = 0.82
+        worldMinimap.setScale(hudScale)
+        worldMinimap.position = CGPoint(
+            x: -size.width / 2 + safeInsets.left + 16 + 92 * hudScale,
+            y: size.height / 2 - safeInsets.top - 16 - 87 * hudScale
         )
+        layoutWorldObjectiveCards()
+        worldMinimap.isHidden = gameMode != .exploring
+        if !worldMinimap.isHidden {
+            worldMinimap.update(worldState: worldState, playerState: playerController.state,
+                                playerPosition: playerNode?.position ?? .zero, mapper: mapper)
+        }
         resetButton.position = CGPoint(
             x: cameraNode.position.x - size.width * 0.40,
             y: cameraNode.position.y - size.height * 0.36
@@ -28,6 +37,19 @@ extension GameScene {
             x: cameraNode.position.x,
             y: cameraNode.position.y + size.height * 0.30
         )
+    }
+
+    func layoutWorldObjectiveCards() {
+        let insets = view?.safeAreaInsets ?? .zero
+        let rightEdge = size.width / 2 - insets.right - 16
+        let minimapRight = worldMinimap.position.x + 92 * worldMinimap.xScale
+        let cardWidth = min(size.width - 56, 410)
+        let besideMinimap = rightEdge - minimapRight - 16 >= cardWidth
+        let top = worldMinimap.position.y + 87 * worldMinimap.yScale
+        let cardTop = besideMinimap ? top : worldMinimap.position.y - 87 * worldMinimap.yScale - 12
+        let centerX = besideMinimap ? rightEdge - cardWidth / 2 : 0
+        worldTutorialBanner.position = CGPoint(x: centerX, y: cardTop - 29)
+        worldQuestTracker.position = CGPoint(x: besideMinimap ? rightEdge - 126 : 0, y: cardTop - 56)
     }
 
     func puzzleStatusText() -> String {
@@ -246,4 +268,126 @@ extension GameScene {
         )
     }
 
+}
+
+/// Camera HUD: geometry is rebuilt only after the world or connected area changes.
+final class WorldMinimapNode: SKNode {
+    private let terrain = SKNode()
+    private let marker = SKShapeNode(circleOfRadius: 3.5)
+    private var cachedPieces: [WorldPiece] = []
+    private var cachedBuildings: [BuildingObject] = []
+    private var cachedCell: GridPosition?
+    private var visibleCells = Set<GridPosition>()
+    private var minimapBounds = CGRect.zero
+    private var mapScale: CGFloat = 1
+
+    override init() {
+        super.init()
+        name = MapNodeName.enterButton.rawValue
+        zPosition = 1_000
+        let shadow = SKShapeNode(rectOf: CGSize(width: 184, height: 174), cornerRadius: 18)
+        shadow.fillColor = SKColor.black.withAlphaComponent(0.2)
+        shadow.strokeColor = .clear
+        shadow.position.y = -3
+        addChild(shadow)
+        let panel = SKShapeNode(rectOf: CGSize(width: 184, height: 174), cornerRadius: 18)
+        panel.fillColor = SKColor(red: 0.04, green: 0.12, blue: 0.16, alpha: 0.94)
+        panel.strokeColor = SKColor.white.withAlphaComponent(0.3)
+        panel.lineWidth = 1
+        addChild(panel)
+        let heading = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        heading.text = "YOUR SURROUNDINGS"
+        heading.fontSize = 9
+        heading.fontColor = SKColor(red: 0.87, green: 0.83, blue: 0.68, alpha: 1)
+        heading.position = CGPoint(x: -76, y: 69)
+        heading.horizontalAlignmentMode = .left
+        addChild(heading)
+        let north = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        north.text = "N ↑"
+        north.fontSize = 9
+        north.fontColor = .white
+        north.position = CGPoint(x: 76, y: 69)
+        north.horizontalAlignmentMode = .right
+        addChild(north)
+        let separator = SKShapeNode(rectOf: CGSize(width: 152, height: 1))
+        separator.fillColor = SKColor.white.withAlphaComponent(0.12)
+        separator.strokeColor = .clear
+        separator.position.y = -28
+        addChild(separator)
+        terrain.position.y = 20
+        addChild(terrain)
+        marker.fillColor = .white
+        marker.strokeColor = .systemBlue
+        marker.lineWidth = 2
+        marker.zPosition = 10
+        terrain.addChild(marker)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func update(worldState: WorldState, playerState: PlayerState, playerPosition: CGPoint, mapper: WorldGridMapper) {
+        let changed = cachedPieces != worldState.pieces || cachedBuildings != worldState.buildingObjects
+        if changed || cachedCell != playerState.currentCell {
+            let cells = ConnectedComponentResolver().reachableCells(from: playerState, in: worldState)
+            if changed || cells != visibleCells {
+                visibleCells = cells
+                rebuild(worldState: worldState, mapper: mapper)
+            }
+            cachedPieces = worldState.pieces
+            cachedBuildings = worldState.buildingObjects
+            cachedCell = playerState.currentCell
+        }
+        marker.isHidden = visibleCells.isEmpty
+        marker.position = point(playerPosition)
+    }
+
+    private func point(_ position: CGPoint) -> CGPoint {
+        CGPoint(x: (position.x - minimapBounds.midX) * mapScale, y: (position.y - minimapBounds.midY) * mapScale)
+    }
+
+    private func rebuild(worldState: WorldState, mapper: WorldGridMapper) {
+        terrain.children.filter { $0 !== marker }.forEach { $0.removeFromParent() }
+        guard !visibleCells.isEmpty else { return }
+        minimapBounds = visibleCells.reduce(CGRect.null) { $0.union(mapper.frame(for: $1)) }
+        mapScale = min(148 / minimapBounds.width, 80 / minimapBounds.height)
+        let miniatureMapper = WorldGridMapper(cellSize: mapper.cellSize * mapScale)
+        for piece in worldState.pieces {
+            let resolvedCells = Dictionary(uniqueKeysWithValues: piece.resolvedCells().map { ($0.gridID, $0) })
+            for cell in piece.cellDefinitions {
+                guard let resolved = resolvedCells[cell.id],
+                      visibleCells.contains(resolved.globalPosition) else { continue }
+                // Reuse the world tile renderer for assets, biome splits and mirroring.
+                let tile = CellNode(
+                    gridID: cell.id, localCell: .init(x: 0, y: 0),
+                    globalCell: resolved.globalPosition, biomeEdges: cell.biomeEdges,
+                    microBiomeGrid: cell.microBiomeGrid, piece: piece,
+                    mapper: miniatureMapper, showsDebugLabels: false
+                )
+                tile.position = point(mapper.worldPosition(for: resolved.globalPosition))
+                tile.zRotation = piece.rotation.radians
+                terrain.addChild(tile)
+            }
+        }
+        let microSize = mapper.cellSize / CGFloat(MicroBiomeGrid.dimension)
+        for building in worldState.buildingObjects {
+            let dimensions = building.mapDimensions
+            let center = CGPoint(x: (CGFloat(building.origin.x) + CGFloat(dimensions.width) / 2) * microSize - mapper.halfCellSize,
+                                 y: (CGFloat(building.origin.y) + CGFloat(dimensions.height) / 2) * microSize - mapper.halfCellSize)
+            guard visibleCells.contains(mapper.gridPosition(containing: center)) else { continue }
+            let icon: SKSpriteNode
+            if let asset = BuildingObjectRenderer.assetName(for: building.kind) {
+                icon = SKSpriteNode(imageNamed: asset)
+            } else {
+                icon = SKSpriteNode(color: .systemOrange, size: CGSize(width: 10, height: 10))
+            }
+            let width = max(8, CGFloat(dimensions.width) * microSize * mapScale)
+            let height = max(8, CGFloat(dimensions.height) * microSize * mapScale)
+            let quarterTurn = building.rotation == .degrees90 || building.rotation == .degrees270
+            icon.size = quarterTurn ? CGSize(width: height, height: width) : CGSize(width: width, height: height)
+            icon.zRotation = building.rotation.radians
+            icon.position = point(center)
+            icon.zPosition = 2
+            terrain.addChild(icon)
+        }
+    }
 }

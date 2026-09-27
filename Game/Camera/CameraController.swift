@@ -64,6 +64,6 @@ final class CameraController {
 
     func returnToPlayerFollow() {
         mode = .followPlayer
-        cameraNode.setScale(0.28)
+        cameraNode.setScale(MapWorldTransitionConfig.standard.worldCameraScale)
     }
 }

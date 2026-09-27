@@ -901,10 +901,10 @@ final class MapButtonNode: SKNode {
 
         let isEnterMapButton = name == MapNodeName.enterButton.rawValue
 
-        let displayTitle = isEnterMapButton ? "MAP" : title
+        let displayTitle = title
 
         let resolvedSize = isEnterMapButton
-            ? CGSize(width: 112, height: 50)
+            ? CGSize(width: 160, height: 44)
             : size ?? CGSize(width: max(CGFloat(title.count) * 12 + 28, 64), height: 48)
 
 
@@ -969,7 +969,7 @@ final class MapButtonNode: SKNode {
 
                 icon.size = CGSize(width: 22, height: 22)
 
-                icon.position = CGPoint(x: -27, y: 0)
+                icon.position = CGPoint(x: -62, y: 0)
 
                 icon.zPosition = 1
 
@@ -997,7 +997,7 @@ final class MapButtonNode: SKNode {
 
         label.text = displayTitle
 
-        label.fontSize = isEnterMapButton ? 16 : (title.count == 1 ? 34 : fontSize)
+        label.fontSize = isEnterMapButton ? 13 : (title.count == 1 ? 34 : fontSize)
 
         label.fontColor = isEnterMapButton
             ? SKColor(red: 0.24, green: 0.19, blue: 0.15, alpha: 1)

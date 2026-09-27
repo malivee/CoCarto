@@ -16,11 +16,12 @@ final class GameScene: SKScene {
     let mapDebugRoot = SKNode()
     let cameraNode = SKCameraNode()
     let enterMapButton = MapButtonNode(
-        title: "‹ BACK",
+        title: "Back to Map",
         name: MapNodeName.enterButton.rawValue,
         size: CGSize(width: 104, height: 52),
         fontSize: 16
     )
+    let worldMinimap = WorldMinimapNode()
     let resetButton = MapButtonNode(title: "RESET", name: MapNodeName.resetButton.rawValue)
     let saveButton = MapButtonNode(title: "SAVE", name: MapNodeName.saveButton.rawValue)
     let loadButton = MapButtonNode(title: "LOAD", name: MapNodeName.loadButton.rawValue)
@@ -141,7 +142,9 @@ final class GameScene: SKScene {
         cameraNode.addChild(worldQuestTracker)
         cameraNode.addChild(worldTutorialBanner)
         worldTutorialBanner.isHidden = true
-        cameraNode.addChild(enterMapButton)
+        worldMinimap.addChild(enterMapButton)
+        enterMapButton.position = CGPoint(x: 0, y: -56)
+        cameraNode.addChild(worldMinimap)
         cameraNode.addChild(transitionFog)
         cameraNode.addChild(joystickBase)
         camera = cameraNode

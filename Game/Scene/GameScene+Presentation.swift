@@ -343,7 +343,7 @@ extension GameScene {
         worldTutorialBanner.isHidden = false
         let bannerWidth = min(size.width - 56, 410)
         // Keep the in-world tutorial below the top HUD and dialogue area.
-        worldTutorialBanner.position = CGPoint(x: 0, y: size.height * 0.5 - 148)
+        layoutWorldObjectiveCards()
         joystickBase.glowWidth = !hasMovedArthurInTutorial ? 5 : 0
         joystickBase.strokeColor = !hasMovedArthurInTutorial
             ? SKColor(red: 1.0, green: 0.80, blue: 0.24, alpha: 1.0)
