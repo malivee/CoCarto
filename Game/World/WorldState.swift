@@ -263,7 +263,7 @@ extension WorldState {
             id: PieceIDs.forestWest,
             type: .s,
             role: .forestWest,
-            gridPosition: GridPosition(x: -4, y: -3),
+            gridPosition: GridPosition(x: -3, y: -2),
             rotation: .degrees0,
             isMovable: true,
             cellDefinitions: EdgeProfiles.openS
@@ -272,7 +272,7 @@ extension WorldState {
             id: PieceIDs.forestEast,
             type: .z,
             role: .forestEast,
-            gridPosition: GridPosition(x: 4, y: -4),
+            gridPosition: GridPosition(x: 3, y: -2),
             rotation: .degrees0,
             isMovable: true,
             cellDefinitions: EdgeProfiles.openZ
@@ -281,7 +281,7 @@ extension WorldState {
             id: PieceIDs.forestPass,
             type: .l,
             role: .forestPass,
-            gridPosition: GridPosition(x: 0, y: -4),
+            gridPosition: GridPosition(x: 0, y: -3),
             rotation: .degrees0,
             isMovable: true,
             cellDefinitions: EdgeProfiles.openL

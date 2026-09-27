@@ -346,6 +346,14 @@ final class MapRenderer {
         return CGRect(x: minX - half, y: minY - half, width: maxX - minX + mapCellSize, height: maxY - minY + mapCellSize)
     }
 
+    /// Chooses a scale that fits the complete puzzle in the first map view.
+    func setInitialPuzzleScale(for bounds: CGRect, sceneSize: CGSize) {
+        guard bounds.width > 0, bounds.height > 0 else { return }
+        let availableWidth = sceneSize.width * 0.86
+        let availableHeight = sceneSize.height * 0.68
+        contentScale = min(1, max(0.55, min(availableWidth / bounds.width, availableHeight / bounds.height)))
+    }
+
     func focusPoint(for playerState: PlayerState, worldState: WorldState, preview: PiecePlacementPreview?) -> CGPoint {
         if let spatialState = playerState.spatialState,
            let markerPosition = mapMarkerPosition(for: spatialState, worldState: worldState, preview: preview) {

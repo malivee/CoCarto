@@ -140,6 +140,7 @@ extension GameScene {
         // tetromino is visible when the map scene opens.
         let puzzleBounds = mapRenderer.contentBounds(for: worldState)
         let focusPoint = CGPoint(x: puzzleBounds.midX, y: puzzleBounds.midY)
+        mapRenderer.setInitialPuzzleScale(for: puzzleBounds, sceneSize: size)
         mapViewport.reset(contentBounds: puzzleBounds, sceneSize: size, focusPoint: focusPoint)
         rebuildMapView()
         worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
