@@ -82,6 +82,7 @@ final class MapRenderer {
             playerState: playerState,
             preview: preview
         )
+        let shouldHighlightVillageSoil = selectedObjectKind != nil || objectPreview != nil
         for piece in worldState.pieces {
             var renderedPiece = piece
             if let preview, preview.pieceID == piece.id {
@@ -109,6 +110,9 @@ final class MapRenderer {
                 mismatchedEdgesByLocalCell: mismatchedEdges
             )
             contentRoot.addChild(pieceNode)
+            if shouldHighlightVillageSoil {
+                addVillageSoilMicrogridOverlay(to: pieceNode, piece: renderedPiece)
+            }
             if tutorialStep == .selectTile, piece.isMovable {
                 addTutorialGlow(around: pieceNode, in: contentRoot)
             }
@@ -137,6 +141,7 @@ final class MapRenderer {
             cellSize: mapCellSize,
             isWorld: false
         )
+
         if let objectPreview {
             let result = BuildingPlacementValidator().validate(objectPreview, in: worldState)
             let previewNode = BuildingObjectRenderer.makeNode(
@@ -492,30 +497,79 @@ final class MapRenderer {
         return node
     }
 
+    private func addVillageSoilMicrogridOverlay(to pieceNode: SKNode, piece: WorldPiece) {
+        let root = SKNode()
+        root.name = "VillageSoilMicrogridOverlay"
+        root.zPosition = 35
+        let microSize = mapCellSize / CGFloat(MicroBiomeGrid.dimension)
+        let halfCellSize = mapCellSize / 2
+
+        for cell in piece.cellDefinitions {
+            let microBiomeGrid = BuildingPuzzleCellID(rawValue: cell.id.rawValue)
+                .map { BuildingPuzzleBiomeFixture.grid(for: $0) }
+                ?? cell.microBiomeGrid
+            let cellOrigin = mapper.offset(for: cell.localPosition)
+            for position in MicroGridPosition.allPositions where microBiomeGrid.biome(at: position) == .villageSoil {
+                let node = SKShapeNode(rectOf: CGSize(width: microSize - 1.5, height: microSize - 1.5), cornerRadius: 1.5)
+                node.position = CGPoint(
+                    x: cellOrigin.x - halfCellSize + CGFloat(position.x) * microSize + microSize / 2,
+                    y: cellOrigin.y + halfCellSize - CGFloat(position.y) * microSize - microSize / 2
+                )
+                node.fillColor = SKColor.systemGreen.withAlphaComponent(0.10)
+                node.strokeColor = SKColor.systemGreen.withAlphaComponent(0.92)
+                node.lineWidth = 1.2
+                node.glowWidth = 1.8
+                root.addChild(node)
+            }
+        }
+
+        guard !root.children.isEmpty else { return }
+        root.run(.repeatForever(.sequence([
+            .fadeAlpha(to: 0.42, duration: 0.55),
+            .fadeAlpha(to: 0.86, duration: 0.55)
+        ])))
+        pieceNode.addChild(root)
+    }
+
     private func makeFootprintOverlay(for rectangle: GlobalMicroRectangle) -> SKNode {
         let root = SKNode()
         root.zPosition = 240
         let microSize = mapCellSize / CGFloat(MicroBiomeGrid.dimension)
         for position in rectangle.positions() {
-            let largeCell = GridPosition(
-                x: Int(floor(Double(position.x) / Double(MicroBiomeGrid.dimension))),
-                y: Int(floor(Double(position.y) / Double(MicroBiomeGrid.dimension)))
-            )
-            let localX = position.x - largeCell.x * MicroBiomeGrid.dimension
-            let localY = position.y - largeCell.y * MicroBiomeGrid.dimension
-            let cellCenter = mapper.mapPosition(for: largeCell)
-            let topLeft = CGPoint(x: cellCenter.x - mapCellSize / 2 + microSize / 2, y: cellCenter.y + mapCellSize / 2 - microSize / 2)
             let node = SKSpriteNode(
                 color: SKColor.systemYellow.withAlphaComponent(0.72),
                 size: CGSize(width: microSize - 1, height: microSize - 1)
             )
-            node.position = CGPoint(
-                x: topLeft.x + CGFloat(localX) * microSize,
-                y: topLeft.y - CGFloat(localY) * microSize
-            )
+            node.position = microgridMapPosition(for: position, microSize: microSize)
             root.addChild(node)
         }
         return root
+    }
+
+    private func microgridMapPosition(for position: GridPosition, microSize: CGFloat) -> CGPoint {
+        microgridMapPosition(x: position.x, y: position.y, microSize: microSize)
+    }
+
+    private func microgridMapPosition(for position: GlobalMicroPosition, microSize: CGFloat) -> CGPoint {
+        microgridMapPosition(x: position.x, y: position.y, microSize: microSize)
+    }
+
+    private func microgridMapPosition(x: Int, y: Int, microSize: CGFloat) -> CGPoint {
+        let largeCell = GridPosition(
+            x: Int(floor(Double(x) / Double(MicroBiomeGrid.dimension))),
+            y: Int(floor(Double(y) / Double(MicroBiomeGrid.dimension)))
+        )
+        let localX = x - largeCell.x * MicroBiomeGrid.dimension
+        let localY = y - largeCell.y * MicroBiomeGrid.dimension
+        let cellCenter = mapper.mapPosition(for: largeCell)
+        let topLeft = CGPoint(
+            x: cellCenter.x - mapCellSize / 2 + microSize / 2,
+            y: cellCenter.y + mapCellSize / 2 - microSize / 2
+        )
+        return CGPoint(
+            x: topLeft.x + CGFloat(localX) * microSize,
+            y: topLeft.y - CGFloat(localY) * microSize
+        )
     }
 
     private func makePlayerMarker(at position: CGPoint) -> SKNode {
