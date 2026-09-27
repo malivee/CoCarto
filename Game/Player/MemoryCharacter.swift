@@ -3,7 +3,6 @@
 // Menampilkan tubuh tegak (billboard), bayangan tanah, pakaian khas, animasi melangkah (bobbing), dan arah hadap kiri/kanan.
 
 import SpriteKit
-import UIKit
 
 public final class MemoryCharacter: SKNode {
     public let title: String
@@ -424,62 +423,44 @@ public final class MemoryCharacter: SKNode {
     }
 
     // Menampilkan lencana status mengambang di atas karakter
-    public func setStatusBadge(symbolName: String, text: String, color: SKColor) {
+    public func setStatusBadge(text: String) {
         statusBadgeNode?.removeFromParent()
         statusBadgeNode = nil
 
-        let badge = Self.makeStatusBadge(symbolName: symbolName, text: text, color: color)
-        badge.position = CGPoint(x: 0, y: 56)
+        let badge = Self.makeStatusBadge(text: text)
+        let nameLabelY = nameTagNode?.position.y ?? 44
+        badge.position = CGPoint(x: 0, y: nameLabelY + 28)
 
         addChild(badge)
         statusBadgeNode = badge
     }
 
-    public static func makeStatusBadge(symbolName: String, text: String, color: SKColor) -> SKNode {
+    public static func makeStatusBadge(text: String) -> SKNode {
         let badge = SKNode()
         badge.name = "InteractionBadge"
         badge.zPosition = 25
 
-        let width = min(132, max(88, CGFloat(text.count) * 6.4 + 44))
-        let background = SKShapeNode(rectOf: CGSize(width: width, height: 28), cornerRadius: 10)
+        let width = min(104, max(64, CGFloat(text.count) * 7 + 24))
+        let background = SKShapeNode(rectOf: CGSize(width: width, height: 24), cornerRadius: 8)
         background.name = "InteractionBadge"
-        background.fillColor = SKColor(red: 0.10, green: 0.11, blue: 0.10, alpha: 0.96)
-        background.strokeColor = SKColor.white.withAlphaComponent(0.26)
-        background.lineWidth = 1
+        background.fillColor = SKColor(red: 0.94, green: 0.88, blue: 0.72, alpha: 0.97)
+        background.strokeColor = SKColor(red: 0.36, green: 0.27, blue: 0.18, alpha: 0.90)
+        background.lineWidth = 1.25
         badge.addChild(background)
-
-        let accent = SKShapeNode(rectOf: CGSize(width: 3, height: 16), cornerRadius: 1.5)
-        accent.position.x = -width / 2 + 8
-        accent.fillColor = color
-        accent.strokeColor = .clear
-        background.addChild(accent)
-
-        if let symbol = UIImage(
-            systemName: symbolName,
-            withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold)
-        )?.withTintColor(color, renderingMode: .alwaysOriginal) {
-            let icon = SKSpriteNode(texture: SKTexture(image: symbol))
-            icon.name = "InteractionBadge"
-            icon.size = CGSize(width: 15, height: 15)
-            icon.position.x = -width / 2 + 23
-            icon.zPosition = 1
-            background.addChild(icon)
-        }
 
         let label = SKLabelNode(text: text.uppercased())
         label.name = "InteractionBadge"
-        label.fontName = "AvenirNext-Bold"
-        label.fontSize = 10
-        label.fontColor = SKColor.white.withAlphaComponent(0.92)
-        label.horizontalAlignmentMode = .left
+        label.fontName = "AvenirNext-DemiBold"
+        label.fontSize = 11.5
+        label.fontColor = SKColor(red: 0.25, green: 0.18, blue: 0.12, alpha: 1)
+        label.horizontalAlignmentMode = .center
         label.verticalAlignmentMode = .center
-        label.position.x = -width / 2 + 35
         label.position.y = -1
         background.addChild(label)
 
         badge.run(SKAction.repeatForever(SKAction.sequence([
-            SKAction.moveBy(x: 0, y: 3, duration: 0.9),
-            SKAction.moveBy(x: 0, y: -3, duration: 0.9)
+            SKAction.moveBy(x: 0, y: 1.5, duration: 1.2),
+            SKAction.moveBy(x: 0, y: -1.5, duration: 1.2)
         ])))
         return badge
     }

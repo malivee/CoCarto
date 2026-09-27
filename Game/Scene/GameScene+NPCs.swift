@@ -94,11 +94,12 @@ extension GameScene {
                 npc.name = "npc-rocksalt-miner"
                 npc.useSpriteAsset(named: "penambangRocksalt", size: CGSize(width: 46, height: 60))
                 offset = CGPoint(x: 22, y: -24)
+                updateOldMinerBadge(npc)
 
             case .well:
                 if isQuest1TutorialActive && quest1Controller.isWellUnlocked && !quest1Controller.hasCollectedWater {
                     let wellBadge = makeWellInteractionBadge(objectID: object.id)
-                    wellBadge.position = CGPoint(x: buildingPos.x, y: buildingPos.y + 44)
+                    wellBadge.position = CGPoint(x: buildingPos.x, y: buildingPos.y + 62)
                     root.addChild(wellBadge)
                 }
                 continue
@@ -198,11 +199,11 @@ extension GameScene {
         if quest1Controller.isCompleted {
             npc.clearStatusBadge()
         } else if quest1Controller.hasCollectedWater {
-            npc.setStatusBadge(symbolName: "drop.fill", text: "Well Water", color: .systemCyan)
+            npc.setStatusBadge(text: "Talk")
         } else if quest1Controller.isActive {
-            npc.setStatusBadge(symbolName: "ellipsis.bubble.fill", text: "Talk", color: .systemYellow)
+            npc.setStatusBadge(text: "Talk")
         } else if quest1Controller.canStart(in: worldState) {
-            npc.setStatusBadge(symbolName: "ellipsis.bubble.fill", text: "Talk", color: .systemYellow)
+            npc.setStatusBadge(text: "Talk")
         } else {
             npc.clearStatusBadge()
         }
@@ -211,7 +212,7 @@ extension GameScene {
     private func updateBuMaraBadge(_ npc: MemoryCharacter) {
         let placedBuildings = Set(worldState.buildingObjects.map { VillageQuestCatalog.buildingID(for: $0.kind) })
         if placedBuildings.contains(VillageQuestCatalog.BuildingID.buMaraHouse) {
-            npc.setStatusBadge(symbolName: "paintpalette.fill", text: "Pottery", color: .systemOrange)
+            npc.setStatusBadge(text: "Talk")
         } else {
             npc.clearStatusBadge()
         }
@@ -221,9 +222,9 @@ extension GameScene {
         if quest3Controller.isCompleted {
             npc.clearStatusBadge()
         } else if quest3Controller.isWaitingForMinigame {
-            npc.setStatusBadge(symbolName: "leaf.fill", text: "Seeds", color: .systemGreen)
+            npc.setStatusBadge(text: "Talk")
         } else if quest3Controller.canStart(in: worldState) {
-            npc.setStatusBadge(symbolName: "basket.fill", text: "Basket", color: .systemYellow)
+            npc.setStatusBadge(text: "Talk")
         } else {
             npc.clearStatusBadge()
         }
@@ -233,7 +234,7 @@ extension GameScene {
         if quest4Controller.isCompleted {
             npc.clearStatusBadge()
         } else if quest4Controller.canStart(in: worldState) {
-            npc.setStatusBadge(symbolName: "ellipsis.bubble.fill", text: "Talk", color: .systemYellow)
+            npc.setStatusBadge(text: "Talk")
         } else {
             npc.clearStatusBadge()
         }
@@ -243,14 +244,18 @@ extension GameScene {
         if quest5Controller.isCompleted {
             npc.clearStatusBadge()
         } else if quest5Controller.canStart(in: worldState) {
-            npc.setStatusBadge(symbolName: "ellipsis.bubble.fill", text: "Talk", color: .systemYellow)
+            npc.setStatusBadge(text: "Talk")
         } else {
             npc.clearStatusBadge()
         }
     }
 
+    private func updateOldMinerBadge(_ npc: MemoryCharacter) {
+        npc.setStatusBadge(text: "Talk")
+    }
+
     private func makeWellInteractionBadge(objectID: UUID) -> SKNode {
-        let badge = MemoryCharacter.makeStatusBadge(symbolName: "drop.fill", text: "Use Well", color: .systemCyan)
+        let badge = MemoryCharacter.makeStatusBadge(text: "Use Well")
         badge.name = "WellInteractionBadge"
         badge.zPosition = 60
         badge.userData = [BuildingObjectRenderer.objectIDKey: objectID.uuidString]
