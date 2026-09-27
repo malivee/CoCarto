@@ -38,7 +38,7 @@ extension GameScene {
                 )
                 npc.name = "npc-grandpa"
                 npc.useSpriteAsset(named: "kakekArthur", size: CGSize(width: 44, height: 58))
-                offset = CGPoint(x: 22, y: -24)
+                offset = CGPoint(x: 32, y: -68)
                 updateGrandpaBadge(npc)
                 if isQuest1TutorialActive,
                    hasMovedArthurInTutorial,
@@ -53,7 +53,7 @@ extension GameScene {
                 )
                 npc.name = "npc-bumara"
                 npc.useSpriteAsset(named: "buMara", size: CGSize(width: 64, height: 48))
-                offset = CGPoint(x: 26, y: -20)
+                offset = CGPoint(x: 34, y: -68)
                 updateBuMaraBadge(npc)
 
             case .barn:
@@ -63,7 +63,7 @@ extension GameScene {
                 )
                 npc.name = "npc-kenneth"
                 npc.useSpriteAsset(named: "kenneth", size: CGSize(width: 44, height: 58))
-                offset = CGPoint(x: 18, y: -24)
+                offset = CGPoint(x: 28, y: -126)
                 updateKennethBadge(npc)
 
             case .animalPen:
@@ -73,7 +73,7 @@ extension GameScene {
                 )
                 npc.name = "npc-roland"
                 npc.useSpriteAsset(named: "roland", size: CGSize(width: 46, height: 60))
-                offset = CGPoint(x: 28, y: -26)
+                offset = CGPoint(x: 40, y: -154)
                 updateRolandBadge(npc)
 
             case .annethHouse:
@@ -83,7 +83,7 @@ extension GameScene {
                 )
                 npc.name = "npc-anneth"
                 npc.useSpriteAsset(named: "ibuAnneth", size: CGSize(width: 44, height: 58))
-                offset = CGPoint(x: 24, y: -22)
+                offset = CGPoint(x: 34, y: -98)
                 updateAnnethBadge(npc)
 
             case .rockSalt:
@@ -93,7 +93,7 @@ extension GameScene {
                 )
                 npc.name = "npc-rocksalt-miner"
                 npc.useSpriteAsset(named: "penambangRocksalt", size: CGSize(width: 46, height: 60))
-                offset = CGPoint(x: 22, y: -24)
+                offset = CGPoint(x: 22, y: -82)
                 updateOldMinerBadge(npc)
 
             case .well:
@@ -180,18 +180,52 @@ extension GameScene {
         buildingPosition: CGPoint,
         preferredOffset: CGPoint
     ) -> CGPoint {
-        let dimensions = object.mapDimensions
         let microSize = mapper.cellSize / CGFloat(MicroBiomeGrid.dimension)
-        let halfWidth = CGFloat(dimensions.width) * microSize / 2
-        let halfHeight = CGFloat(dimensions.height) * microSize / 2
-        let groundInset = microSize * 0.5
-        let safeOffset = CGPoint(
-            x: min(max(preferredOffset.x, -halfWidth + groundInset), halfWidth - groundInset),
-            y: min(max(preferredOffset.y, -halfHeight + groundInset), halfHeight - groundInset)
+        let validator = BuildingPlacementValidator()
+        let allGround = validator.tilePositions(in: worldState)
+        let otherBuildingGround = worldState.buildingObjects
+            .filter { $0.id != object.id }
+            .reduce(into: Set<GridPosition>()) {
+            $0.formUnion($1.occupiedPositions)
+        }
+        let availableGround = allGround.subtracting(otherBuildingGround)
+
+        let definition = BuildingObjectCatalog.definition(for: object.kind)
+        let isQuarterTurn = object.rotation == .degrees90 || object.rotation == .degrees270
+        let visualHeightUnits = isQuarterTurn
+            ? definition.worldSize.width
+            : definition.worldSize.height
+        let visualHeight = CGFloat(visualHeightUnits)
+            * mapper.cellSize / CGFloat(WorldVisualSubcell.dimension)
+            * 1.35
+        let lowestSafeFootY = buildingPosition.y - visualHeight / 2 - 2
+        let preferredPosition = CGPoint(
+            x: buildingPosition.x + preferredOffset.x,
+            y: buildingPosition.y + preferredOffset.y
         )
-        return CGPoint(
-            x: buildingPosition.x + safeOffset.x,
-            y: buildingPosition.y + safeOffset.y
+
+        let frontGround = availableGround.filter {
+            worldPositionForMicroGrid($0, microSize: microSize).y <= lowestSafeFootY
+        }
+        let chosenGround = frontGround.min {
+            let left = worldPositionForMicroGrid($0, microSize: microSize)
+            let right = worldPositionForMicroGrid($1, microSize: microSize)
+            let leftDistance = hypot(left.x - preferredPosition.x, left.y - preferredPosition.y)
+            let rightDistance = hypot(right.x - preferredPosition.x, right.y - preferredPosition.y)
+            if leftDistance == rightDistance {
+                return $0.x < $1.x
+            }
+            return leftDistance < rightDistance
+        }
+
+        return chosenGround.map { worldPositionForMicroGrid($0, microSize: microSize) }
+            ?? preferredPosition
+    }
+
+    private func worldPositionForMicroGrid(_ position: GridPosition, microSize: CGFloat) -> CGPoint {
+        CGPoint(
+            x: (CGFloat(position.x) + 0.5) * microSize - mapper.cellSize / 2,
+            y: (CGFloat(position.y) + 0.5) * microSize - mapper.cellSize / 2
         )
     }
 
