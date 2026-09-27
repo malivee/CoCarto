@@ -78,6 +78,9 @@ final class GameScene: SKScene {
     var hasRotatedPieceInTutorial = false
     var hasTriedMismatchedTileInTutorial = false
     var tutorialInvalidBuildingKinds: Set<BuildingObjectKind> = []
+    var pendingWorldInteractionNPC: MemoryCharacter?
+    var pendingWorldInteractionBuildingID: UUID?
+    var pendingWorldTouchStartPosition: CGPoint?
 
     var playerNode: PlayerNode?
     var showsDebugOverlay = false
@@ -296,11 +299,18 @@ final class GameScene: SKScene {
             if nodeStack(at: location).contains(where: { $0.name == MapNodeName.enterButton.rawValue }) {
                 enterMapView()
             } else if let npc = villageNPC(in: stack) {
-                interactWithQuestNPC(npc)
+                pendingWorldInteractionNPC = npc
+                pendingWorldInteractionBuildingID = nil
+                pendingWorldTouchStartPosition = location
             } else if let objectID = buildingObjectID(in: stack),
                       worldState.buildingObject(id: objectID)?.kind == .well {
-                interactWithQuestBuildingWithoutNPC(id: objectID, in: stack)
+                pendingWorldInteractionNPC = nil
+                pendingWorldInteractionBuildingID = objectID
+                pendingWorldTouchStartPosition = location
             } else {
+                pendingWorldInteractionNPC = nil
+                pendingWorldInteractionBuildingID = nil
+                pendingWorldTouchStartPosition = nil
                 let controlPosition = touch.location(in: cameraNode)
                 inputController.beginTouch(at: controlPosition)
                 showJoystick(at: controlPosition)
@@ -412,6 +422,20 @@ final class GameScene: SKScene {
         switch gameMode {
         case .exploring:
             let controlPosition = touch.location(in: cameraNode)
+            if let startPosition = pendingWorldTouchStartPosition {
+                let distance = hypot(location.x - startPosition.x, location.y - startPosition.y)
+                guard distance >= 10 else { return }
+
+                // A slide wins over a pending tap interaction. Start the
+                // joystick at the original touch so dragging from an NPC or
+                // building sprite behaves like dragging from open ground.
+                pendingWorldInteractionNPC = nil
+                pendingWorldInteractionBuildingID = nil
+                pendingWorldTouchStartPosition = nil
+                let controlOrigin = cameraNode.convert(startPosition, from: self)
+                inputController.beginTouch(at: controlOrigin)
+                showJoystick(at: controlOrigin)
+            }
             inputController.moveTouch(to: controlPosition)
             updateJoystick(to: controlPosition)
         case .mapDragging(let pieceID):
@@ -473,6 +497,21 @@ final class GameScene: SKScene {
         }
         switch gameMode {
         case .exploring:
+            if let npc = pendingWorldInteractionNPC {
+                pendingWorldInteractionNPC = nil
+                pendingWorldInteractionBuildingID = nil
+                pendingWorldTouchStartPosition = nil
+                interactWithQuestNPC(npc)
+                return
+            }
+            if let objectID = pendingWorldInteractionBuildingID {
+                pendingWorldInteractionNPC = nil
+                pendingWorldInteractionBuildingID = nil
+                pendingWorldTouchStartPosition = nil
+                interactWithQuestBuildingWithoutNPC(id: objectID, in: [])
+                return
+            }
+            pendingWorldTouchStartPosition = nil
             inputController.endTouch()
             hideJoystick()
             if let playerNode {
@@ -488,6 +527,9 @@ final class GameScene: SKScene {
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        pendingWorldInteractionNPC = nil
+        pendingWorldInteractionBuildingID = nil
+        pendingWorldTouchStartPosition = nil
         if isDraggingObjectFromInventory {
             selectedObjectKind = nil
             objectPreview = nil

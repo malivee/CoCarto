@@ -36,7 +36,8 @@ extension GameScene {
         minigame.onComplete = { [weak self] succeeded in
             guard let self, succeeded else { return }
             self.quest5Controller.completeTubersMinigame()
-            self.showProgressionFeedback("QUEST 5 COMPLETE")
+            self.mapRenderer.announceNewBuilding(.rockSalt)
+            self.showUnlockFeedback("ROCK SALT MINES UNLOCKED")
             self.playerNode?.celebrate()
             self.npcCharacter(named: "Anneth")?.celebrate()
             self.syncVillageNPCs()

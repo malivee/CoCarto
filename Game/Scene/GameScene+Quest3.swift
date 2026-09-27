@@ -27,8 +27,9 @@ extension GameScene {
         case .completed(let lines):
             quest4Controller.handleChapter3Completed()
             synchronizeQuestProgressionUnlocks()
+            mapRenderer.announceNewBuilding(.animalPen)
             showQuestDialogue(lines) { [weak self] in
-                self?.showProgressionFeedback("ANIMAL PEN & TILE UNLOCKED")
+                self?.showUnlockFeedback("ANIMAL PEN + TILE UNLOCKED")
                 self?.playerNode?.celebrate()
                 self?.npcCharacter(named: "Kenneth")?.celebrate()
                 self?.syncVillageNPCs()
@@ -95,8 +96,9 @@ extension GameScene {
                     self.quest3Controller.markSeedsSorted()
                     self.quest4Controller.handleChapter3Completed()
                     self.synchronizeQuestProgressionUnlocks()
+                    self.mapRenderer.announceNewBuilding(.animalPen)
                     self.showQuestDialogue(VillageQuest3Catalog.postMinigameDialogue) { [weak self] in
-                        self?.showProgressionFeedback("ANIMAL PEN & TILE UNLOCKED")
+                        self?.showUnlockFeedback("ANIMAL PEN + TILE UNLOCKED")
                         self?.playerNode?.celebrate()
                         self?.npcCharacter(named: "Kenneth")?.celebrate()
                         self?.syncVillageNPCs()

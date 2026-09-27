@@ -306,7 +306,11 @@ extension GameScene {
     }
 
     func showProgressionFeedback(_ text: String) {
+        let isMultiline = text.contains("\n")
         puzzleFeedbackLabel.text = text
+        puzzleFeedbackLabel.numberOfLines = isMultiline ? 2 : 1
+        puzzleFeedbackLabel.fontSize = isMultiline ? 24 : 42
+        puzzleFeedbackLabel.preferredMaxLayoutWidth = max(size.width - 48, 240)
         puzzleFeedbackLabel.removeAllActions()
         puzzleFeedbackLabel.setScale(0.8)
         puzzleFeedbackLabel.alpha = 0
@@ -315,9 +319,27 @@ extension GameScene {
             .scale(to: 1.08, duration: 0.18)
         ])
         let settle = SKAction.scale(to: 1.0, duration: 0.12)
-        let wait = SKAction.wait(forDuration: 1.8)
+        let wait = SKAction.wait(forDuration: isMultiline ? 3.0 : 1.8)
         let hide = SKAction.fadeOut(withDuration: 0.5)
         puzzleFeedbackLabel.run(.sequence([show, settle, wait, hide]))
+    }
+
+    func showUnlockFeedback(
+        _ title: String,
+        instruction: String = "OPEN MAP TO PLACE",
+        highlightMapButton: Bool = true
+    ) {
+        showProgressionFeedback("\(title)\n\(instruction)")
+
+        guard highlightMapButton else { return }
+
+        enterMapButton.removeAction(forKey: "buildingUnlockPulse")
+        enterMapButton.setScale(1)
+        let pulse = SKAction.sequence([
+            .scale(to: 1.10, duration: 0.22),
+            .scale(to: 1.0, duration: 0.22)
+        ])
+        enterMapButton.run(.repeat(pulse, count: 4), withKey: "buildingUnlockPulse")
     }
 
     func spawnPlayer() {

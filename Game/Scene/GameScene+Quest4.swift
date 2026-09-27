@@ -14,7 +14,8 @@ extension GameScene {
                 guard let self else { return }
                 self.quest4Controller.completeAfterDialogue()
                 self.quest5Controller.handleChapter4Completed()
-                self.showProgressionFeedback("QUEST 4 COMPLETE")
+                self.mapRenderer.announceNewBuilding(.annethHouse)
+                self.showUnlockFeedback("ANNETH'S HOUSE UNLOCKED")
                 self.playerNode?.celebrate()
                 self.npcCharacter(named: "Roland")?.celebrate()
                 self.syncVillageNPCs()

@@ -399,8 +399,9 @@ extension GameScene {
         case .unavailable(let lines), .alreadyCompleted(let lines):
             showQuestDialogue(lines)
         case .activated(let lines):
-            showQuestDialogue(lines)
-            showProgressionFeedback("ROCK SALT MINES UNLOCKED")
+            showQuestDialogue(lines) { [weak self] in
+                self?.showUnlockFeedback("ROCK SALT MINES UNLOCKED")
+            }
         case .rockSaltCollected(let lines):
             showQuestDialogue(lines)
             showProgressionFeedback("ROCK SALT COLLECTED")
@@ -409,7 +410,7 @@ extension GameScene {
             showQuestDialogue(lines) { [weak self] in
                 self?.presentToBeContinuedScreen()
             }
-            showProgressionFeedback("QUEST 6 COMPLETE")
+            showProgressionFeedback("STORY COMPLETE")
             autosave(reason: "quest 6 completed")
         }
     }
@@ -428,8 +429,9 @@ extension GameScene {
             showQuestDialogue(lines)
             npcCharacter(named: "Grandpa")?.wave()
         case .started(let lines):
-            showQuestDialogue(lines)
-            showProgressionFeedback("WELL UNLOCKED")
+            showQuestDialogue(lines) { [weak self] in
+                self?.showUnlockFeedback("WELL UNLOCKED")
+            }
             npcCharacter(named: "Grandpa")?.wave()
             synchronizeQuestProgressionUnlocks()
             syncVillageNPCs()
@@ -438,16 +440,27 @@ extension GameScene {
             mapRenderer.announceNewBuilding(.buMaraHouse)
             showQuestDialogue(lines) { [weak self] in
                 guard let self else { return }
+                self.showUnlockFeedback(
+                    "MRS. MARA HOME UNLOCKED",
+                    instruction: "PLACE IT ON THE MAP",
+                    highlightMapButton: false
+                )
                 self.autosave(reason: "water collected and building unlocked")
-                self.enterMapView(allowDuringQuestTutorial: true)
+                self.run(.sequence([
+                    .wait(forDuration: 1.2),
+                    .run { [weak self] in
+                        self?.enterMapView(allowDuringQuestTutorial: true)
+                    }
+                ]))
             }
-            showProgressionFeedback("MRS. MARA HOME UNLOCKED")
             playerNode?.celebrate()
             synchronizeQuestProgressionUnlocks()
             syncVillageNPCs()
         case .completed(let lines):
-            showQuestDialogue(lines)
-            showProgressionFeedback("BARN UNLOCKED")
+            mapRenderer.announceNewBuilding(.barn)
+            showQuestDialogue(lines) { [weak self] in
+                self?.showUnlockFeedback("BARN UNLOCKED")
+            }
             playerNode?.celebrate()
             npcCharacter(named: "Grandpa")?.celebrate()
             synchronizeQuestProgressionUnlocks()
