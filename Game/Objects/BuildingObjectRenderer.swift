@@ -139,19 +139,28 @@ enum BuildingObjectRenderer {
 
         switch kind {
         case .arthurHouse:
-            body = doorwayCollision(width: 0.72, upperHeight: 0.54, entranceWidth: 0.42, size: size)
+            // Grandpa now stands on open ground in front of the house, so the
+            // doorway no longer needs to be walkable. Keep the full house
+            // solid to prevent the player from walking onto its walls/roof.
+            body = rectangularCollision(
+                width: 0.80,
+                height: 0.84,
+                yOffset: 0.06,
+                size: size
+            )
         case .well:
             // Keep the physical rim inside the one-subgrid interaction radius,
             // so the player can stand close enough to tap the well itself.
             body = SKPhysicsBody(circleOfRadius: min(size.width, size.height) * 0.22)
         case .buMaraHouse:
-            // Mrs. Mara's long porch should remain walkable. Block only the
-            // solid inner structure and bias it right to match the artwork.
+            // Mrs. Mara is now placed outside the artwork. Cover the main
+            // house and roof while leaving the painted ground at the bottom
+            // free for approaching and interacting with her.
             body = rectangularCollision(
-                width: 0.62,
-                height: 0.32,
-                yOffset: 0.06,
-                xOffset: 0.08,
+                width: 0.78,
+                height: 0.52,
+                yOffset: 0.10,
+                xOffset: 0.01,
                 size: size
             )
         case .barn:
@@ -188,21 +197,15 @@ enum BuildingObjectRenderer {
     }
 
     private static func barnCollision(size: CGSize) -> SKPhysicsBody {
-        // Keep the lower structure narrow so Kenneth remains approachable,
-        // while a separate wider strip prevents walking onto the roof.
-        let structure = rectangularCollision(
-            width: 0.42,
-            height: 0.30,
-            yOffset: 0.04,
+        // Kenneth is positioned outside the barn now, so the complete main
+        // structure can be solid. Stop the body above the lowest post ends so
+        // the open ground in front of him remains reachable.
+        rectangularCollision(
+            width: 0.86,
+            height: 0.78,
+            yOffset: 0.10,
             size: size
         )
-        let roof = rectangularCollision(
-            width: 0.76,
-            height: 0.30,
-            yOffset: 0.30,
-            size: size
-        )
-        return SKPhysicsBody(bodies: [structure, roof])
     }
 
     private static func animalPenCollision(size: CGSize) -> SKPhysicsBody {
