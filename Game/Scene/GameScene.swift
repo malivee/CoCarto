@@ -10,6 +10,7 @@ enum InventoryGestureMode {
 }
 
 final class GameScene: SKScene {
+    var startsNewChapter = false
     let worldRoot = SKNode()
     let mapRoot = SKNode()
     let worldDebugRoot = SKNode()
@@ -106,6 +107,7 @@ final class GameScene: SKScene {
     var lastSaveStatus = "none"
     var questDialogueLines: [VillageQuestDialogueLine] = []
     weak var activeQuestDialogue: SpeechBubbleNode?
+    var isAdvancingQuestDialogue = false
     weak var activeQuestMinigame: SKNode?
     weak var activeRockSaltMinigameController: UIViewController?
     var isRockSaltMinigamePresented = false
@@ -170,7 +172,12 @@ final class GameScene: SKScene {
         cameraNode.addChild(joystickBase)
         camera = cameraNode
 
-        restoreSavedGameIfAvailable()
+        if startsNewChapter {
+            UserDefaults.standard.set(true, forKey: "tutorial.v1.replayWithoutTutorial")
+            resetChapterProgress()
+        } else {
+            restoreSavedGameIfAvailable()
+        }
         synchronizeQuestProgressionUnlocks()
         rebuildWorldFromState()
         spawnPlayer()
@@ -178,6 +185,9 @@ final class GameScene: SKScene {
         presentInitialMapOverview()
         updateWorldQuestLabel()
         updateAreaAudio()
+        if startsNewChapter {
+            autosave(reason: "chapter replay started")
+        }
 
         let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handleMapPinch(_:)))
         pinch.cancelsTouchesInView = true

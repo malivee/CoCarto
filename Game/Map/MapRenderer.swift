@@ -82,7 +82,10 @@ final class MapRenderer {
             playerState: playerState,
             preview: preview
         )
-        let shouldHighlightVillageSoil = selectedObjectKind != nil || objectPreview != nil
+        let placementKind = objectPreview?.kind ?? selectedObjectKind
+        let highlightedBiome: BiomeType? = placementKind.map {
+            $0 == .rockSalt ? .rocksalt : .villageSoil
+        }
         for piece in worldState.pieces {
             var renderedPiece = piece
             if let preview, preview.pieceID == piece.id {
@@ -110,8 +113,8 @@ final class MapRenderer {
                 mismatchedEdgesByLocalCell: mismatchedEdges
             )
             contentRoot.addChild(pieceNode)
-            if shouldHighlightVillageSoil {
-                addVillageSoilMicrogridOverlay(to: pieceNode, piece: renderedPiece)
+            if let highlightedBiome {
+                addPlacementMicrogridOverlay(to: pieceNode, piece: renderedPiece, biome: highlightedBiome)
             }
             if tutorialStep == .selectTile, piece.isMovable {
                 addTutorialGlow(around: pieceNode, in: contentRoot)
@@ -150,6 +153,7 @@ final class MapRenderer {
                 isWorld: false,
                 result: result
             )
+            previewNode.zPosition = 300
             contentRoot.addChild(previewNode)
             if tutorialStep?.isBuildingPlacementStep == true {
                 addTutorialGlow(around: previewNode, in: contentRoot, color: result == .valid ? .systemGreen : .systemYellow)
@@ -497,10 +501,10 @@ final class MapRenderer {
         return node
     }
 
-    private func addVillageSoilMicrogridOverlay(to pieceNode: SKNode, piece: WorldPiece) {
+    private func addPlacementMicrogridOverlay(to pieceNode: SKNode, piece: WorldPiece, biome: BiomeType) {
         let root = SKNode()
-        root.name = "VillageSoilMicrogridOverlay"
-        root.zPosition = 35
+        root.name = "PlacementMicrogridOverlay"
+        root.zPosition = 10
         let microSize = mapCellSize / CGFloat(MicroBiomeGrid.dimension)
         let halfCellSize = mapCellSize / 2
 
@@ -509,25 +513,21 @@ final class MapRenderer {
                 .map { BuildingPuzzleBiomeFixture.grid(for: $0) }
                 ?? cell.microBiomeGrid
             let cellOrigin = mapper.offset(for: cell.localPosition)
-            for position in MicroGridPosition.allPositions where microBiomeGrid.biome(at: position) == .villageSoil {
+            for position in MicroGridPosition.allPositions where microBiomeGrid.biome(at: position) == biome {
                 let node = SKShapeNode(rectOf: CGSize(width: microSize - 1.5, height: microSize - 1.5), cornerRadius: 1.5)
                 node.position = CGPoint(
                     x: cellOrigin.x - halfCellSize + CGFloat(position.x) * microSize + microSize / 2,
                     y: cellOrigin.y + halfCellSize - CGFloat(position.y) * microSize - microSize / 2
                 )
-                node.fillColor = SKColor.systemGreen.withAlphaComponent(0.10)
-                node.strokeColor = SKColor.systemGreen.withAlphaComponent(0.92)
-                node.lineWidth = 1.2
-                node.glowWidth = 1.8
+                node.fillColor = .clear
+                node.strokeColor = SKColor.systemGreen.withAlphaComponent(0.48)
+                node.lineWidth = 0.6
+                node.glowWidth = 0
                 root.addChild(node)
             }
         }
 
         guard !root.children.isEmpty else { return }
-        root.run(.repeatForever(.sequence([
-            .fadeAlpha(to: 0.42, duration: 0.55),
-            .fadeAlpha(to: 0.86, duration: 0.55)
-        ])))
         pieceNode.addChild(root)
     }
 

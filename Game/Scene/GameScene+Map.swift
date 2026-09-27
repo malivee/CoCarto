@@ -10,6 +10,7 @@ extension GameScene {
         }
 
         gameMode = .enteringMap
+        dismissQuestDialogue()
         inputController.endTouch()
         hideJoystick()
         if let playerNode {
@@ -74,6 +75,8 @@ extension GameScene {
     }
 
     func currentMapTutorialStep() -> MapTutorialStep? {
+        // Replaying resets chapter gameplay, but never reintroduces onboarding.
+        guard !UserDefaults.standard.bool(forKey: "tutorial.v1.replayWithoutTutorial") else { return nil }
         if quest1Controller.hasCollectedWater,
            !worldState.buildingObjects.contains(where: { $0.kind == .buMaraHouse }),
            mapRenderer.hasUnseenBuilding(.buMaraHouse) {

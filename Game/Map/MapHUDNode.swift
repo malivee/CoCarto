@@ -232,7 +232,7 @@ final class MapHUDNode: SKNode {
 
     private let inventoryToggle = MapButtonNode(
 
-        title: "BUILD  +",
+        title: "BUILDINGS  ▼",
 
         name: MapNodeName.inventoryToggle.rawValue,
 
@@ -286,7 +286,7 @@ final class MapHUDNode: SKNode {
     private let placeObjectButton = MapButtonNode(title: "PLACE", name: MapNodeName.confirmButton.rawValue)
     private let cancelObjectButton = MapButtonNode(title: "CANCEL", name: MapNodeName.cancelButton.rawValue)
     private let enterWorldButton = MapButtonNode(
-        title: "ENTER WORLD  ▶",
+        title: "ENTER WORLD",
         name: MapNodeName.enterWorldButton.rawValue,
         size: CGSize(width: 218, height: 58),
         fontSize: 18
@@ -365,7 +365,7 @@ final class MapHUDNode: SKNode {
 
         inventoryToggle.position = CGPoint(x: cameraCenter.x - halfWidth + sideInset + panelSize.width / 2, y: topY)
 
-        inventoryToggle.setTitle(inventoryExpanded ? "CLOSE  ×" : "BUILD  +")
+        inventoryToggle.setTitle(inventoryExpanded ? "CLOSE  ▲" : "BUILDINGS  ▼")
 
         inventoryPanel.position = CGPoint(
 
@@ -461,15 +461,16 @@ final class MapHUDNode: SKNode {
             objectStatus.numberOfLines = 2
             // TILE PIECES: ROTATION ACTIVE!
             selectionControls.isHidden = false
-            selectionControls.position.y = 44
+            selectionControls.position.y = 20
             selectionControls.setScale(1.0)
 
             objectStatus.isHidden = false
             let isValid = preview?.isValid == true
             let alignText = isValid ? "● Position Valid" : "○ Edges Do Not Match"
-            objectStatus.text = "Map Tile · \(alignText) · Rotate with ⟲ / ⟳"
+            objectStatus.text = "Map Tile · \(alignText)\nRotate with ⟲ / ⟳"
             objectStatus.fontColor = isValid ? SKColor(red: 0.4, green: 0.95, blue: 0.5, alpha: 1.0) : SKColor(red: 0.98, green: 0.75, blue: 0.35, alpha: 1.0)
-            objectStatus.position.y = 94
+            objectStatus.preferredMaxLayoutWidth = 250
+            objectStatus.position.y = 98
 
             placeObjectButton.position = CGPoint(x: 66, y: -65)
             cancelObjectButton.position = CGPoint(x: -66, y: -65)
@@ -991,6 +992,7 @@ final class MapButtonNode: SKNode {
     init(title: String, name: String, size: CGSize? = nil, borderless: Bool = false, fontSize: CGFloat = 16) {
 
         let isEnterMapButton = name == MapNodeName.enterButton.rawValue
+        let isInventoryButton = name == MapNodeName.inventoryToggle.rawValue
 
         let displayTitle = title
 
@@ -1061,6 +1063,7 @@ final class MapButtonNode: SKNode {
                 icon.size = CGSize(width: 22, height: 22)
 
                 icon.position = CGPoint(x: -62, y: 0)
+                icon.isHidden = true
 
                 icon.zPosition = 1
 
@@ -1077,6 +1080,18 @@ final class MapButtonNode: SKNode {
             background.strokeColor = borderless ? .clear : .white
 
             background.lineWidth = borderless ? 0 : 2
+
+            if isInventoryButton {
+                let configuration = UIImage.SymbolConfiguration(pointSize: 21, weight: .semibold)
+                if let image = UIImage(systemName: "building.2.fill", withConfiguration: configuration)?.withTintColor(.white, renderingMode: .alwaysOriginal) {
+                    let icon = SKSpriteNode(texture: SKTexture(image: image))
+                    icon.name = name
+                    icon.size = CGSize(width: 24, height: 24)
+                    icon.position = CGPoint(x: -78, y: 0)
+                    icon.zPosition = 1
+                    addChild(icon)
+                }
+            }
 
         }
 
@@ -1098,7 +1113,7 @@ final class MapButtonNode: SKNode {
 
         label.horizontalAlignmentMode = .center
 
-        label.position.x = isEnterMapButton ? 12 : 0
+        label.position.x = isInventoryButton ? 14 : 0
 
         label.zPosition = 2
 

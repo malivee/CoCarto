@@ -45,12 +45,10 @@ enum BuildingObjectRenderer {
             ? CGSize(width: size.height, height: size.width)
             : size
         if isWorld, result == nil {
-            // The artwork itself rotates inside an unrotated root node. Keep
-            // physics on a matching child so asymmetric collision shapes (for
-            // example the barn roof) rotate with the visible building.
+            // The footprint follows the tile, while artwork and its collision
+            // stay upright at the transformed footprint's center.
             let collisionNode = SKNode()
             collisionNode.name = "BuildingCollision"
-            collisionNode.zRotation = object.rotation.radians
             collisionNode.physicsBody = makeCollisionBody(for: object.kind, size: orientedAssetSize)
             root.addChild(collisionNode)
         }
@@ -68,7 +66,7 @@ enum BuildingObjectRenderer {
 
         if let assetName {
             if isWorld {
-                root.addChild(makeAssetShadow(size: size, isWorld: true, kind: object.kind))
+                root.addChild(makeAssetShadow(size: orientedAssetSize, isWorld: true, kind: object.kind))
             }
 
             let texture = SKTexture(imageNamed: assetName)
@@ -76,7 +74,7 @@ enum BuildingObjectRenderer {
             sprite.name = "BuildingAsset"
 //            sprite.size = aspectFitSize(textureSize: texture.size(), in: assetSize)
             sprite.size = orientedAssetSize
-            sprite.zRotation = object.rotation.radians
+            sprite.zRotation = 0
             sprite.zPosition = 1
             if isWorld,
                object.kind == .rockSalt,

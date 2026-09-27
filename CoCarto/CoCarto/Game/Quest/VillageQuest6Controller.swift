@@ -80,10 +80,18 @@ final class VillageQuest6Controller {
         guard !progress.completed else {
             return .alreadyCompleted([.init(speaker: "Anneth", text: "Thank you, Arthur. Nothing will go to waste.")])
         }
+        return .completed(Self.deliveryDialogue)
+    }
+
+    /// Commit delivery only after the player finishes Anneth's conversation.
+    @discardableResult
+    func finishDeliveryDialogue() -> Bool {
+        synchronize()
+        guard progress.pickedUpRockSalt, !progress.completed else { return false }
         progress.deliveredRockSalt = true
         progress.completed = true
         progress.save()
-        return .completed(Self.deliveryDialogue)
+        return true
     }
 
     func reset() {

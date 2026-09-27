@@ -103,17 +103,7 @@ extension GameScene {
         pendingLoadedPlayerSpatialState = nil
         selectedObjectKind = nil
         objectPreview = nil
-        // App-level tutorial milestones survive restarting the puzzle.
-        worldState = .buildingPuzzleBiomePrototype(allowing: [.z2, .l1])
-        quest1Controller.reset()
-        quest2Controller.reset()
-        quest3Controller.reset()
-        quest4Controller.reset()
-        quest5Controller.reset()
-        quest6Controller.reset()
-        mapRenderer.resetSeenInventoryKinds()
-        puzzleManager.reset()
-        worldEventManager.reset()
+        resetChapterProgress()
         playerController.updateWorldState(worldState)
         worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
 
@@ -135,6 +125,20 @@ extension GameScene {
 
         enterStableWorldView()
         showProgressionFeedback("RESET")
+    }
+
+    func resetChapterProgress() {
+        // Tutorial completion belongs to the app, not to an individual replay.
+        worldState = .buildingPuzzleBiomePrototype(allowing: [.z2, .l1])
+        quest1Controller.reset()
+        quest2Controller.reset()
+        quest3Controller.reset()
+        quest4Controller.reset()
+        quest5Controller.reset()
+        quest6Controller.reset()
+        mapRenderer.resetSeenInventoryKinds()
+        puzzleManager.reset()
+        worldEventManager.reset()
     }
 
     func restoreSavedGameIfAvailable() {
@@ -416,7 +420,7 @@ final class WorldMinimapNode: SKNode {
             let height = max(8, CGFloat(dimensions.height) * microSize * mapScale)
             let quarterTurn = building.rotation == .degrees90 || building.rotation == .degrees270
             icon.size = quarterTurn ? CGSize(width: height, height: width) : CGSize(width: width, height: height)
-            icon.zRotation = building.rotation.radians
+            icon.zRotation = 0
             icon.position = point(center)
             icon.zPosition = 2
             terrain.addChild(icon)

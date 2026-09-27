@@ -4,6 +4,7 @@ import UIKit
 
 extension GameScene {
     var isQuest1TutorialActive: Bool {
+        if UserDefaults.standard.bool(forKey: "tutorial.v1.replayWithoutTutorial") { return false }
         if UserDefaults.standard.bool(forKey: "tutorial.v1.completed") { return false }
         guard !quest1Controller.isCompleted,
               !quest1Controller.hasCollectedWater,
@@ -410,10 +411,10 @@ extension GameScene {
             autosave(reason: "rock salt collected")
         case .completed(let lines):
             showQuestDialogue(lines) { [weak self] in
-                self?.presentToBeContinuedScreen()
+                guard let self, self.quest6Controller.finishDeliveryDialogue() else { return }
+                self.autosave(reason: "quest 6 delivery dialogue completed")
+                self.presentToBeContinuedScreen()
             }
-            showProgressionFeedback("STORY COMPLETE")
-            autosave(reason: "quest 6 completed")
         }
     }
 
@@ -514,14 +515,33 @@ extension GameScene {
     }
 
     func showQuestDialogue(_ lines: [VillageQuestDialogueLine], onComplete: (() -> Void)? = nil) {
-        activeQuestDialogue?.removeFromParent()
+        dismissQuestDialogue()
         questDialogueLines = lines
         onQuestDialogueFinished = onComplete
         presentNextQuestDialogueLine()
     }
 
     func advanceQuestDialogue() {
-        activeQuestDialogue?.popOut { [weak self] in self?.presentNextQuestDialogueLine() }
+        guard !isAdvancingQuestDialogue, let bubble = activeQuestDialogue else { return }
+        isAdvancingQuestDialogue = true
+        bubble.popOut { [weak self, weak bubble] in
+            guard let self, let bubble, self.activeQuestDialogue === bubble else { return }
+            bubble.removeFromParent()
+            self.activeQuestDialogue = nil
+            self.isAdvancingQuestDialogue = false
+            self.presentNextQuestDialogueLine()
+        }
+    }
+
+    func dismissQuestDialogue() {
+        for bubble in cameraNode.children where bubble.name == "QuestDialogue" {
+            bubble.removeAllActions()
+            bubble.removeFromParent()
+        }
+        activeQuestDialogue = nil
+        isAdvancingQuestDialogue = false
+        questDialogueLines.removeAll()
+        onQuestDialogueFinished = nil
     }
 
     func presentNextQuestDialogueLine() {

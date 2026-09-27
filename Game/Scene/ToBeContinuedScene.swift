@@ -517,9 +517,14 @@ final class ToBeContinuedScene: SKScene {
         let present = SKAction.run { [weak self] in
             guard let self = self else { return }
             
-            // REPLACE THIS WITH YOUR ACTUAL SCENES
-            let scene = SKScene(size: self.size)
-            scene.backgroundColor = self.palette.background
+            let scene: SKScene
+            if isReplay {
+                let game = GameScene(size: self.size)
+                game.startsNewChapter = true
+                scene = game
+            } else {
+                scene = MainMenuScene(size: self.size)
+            }
             scene.scaleMode = .resizeFill
             self.view?.presentScene(scene, transition: .crossFade(withDuration: 0.6))
         }
