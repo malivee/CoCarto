@@ -456,9 +456,9 @@ import SwiftUI
         scene.backgroundColor = SKColor(red: 0.94, green: 0.94, blue: 0.93, alpha: 1.0)
         
         let config = SpeechBubbleConfig(
-            text: "Lihat sketsa ini. Bagaimana kalau kita mencari tahu jalan di luar desa?",
+            text: "Look at this sketch. What if we found a path beyond the village?",
             speaker: "Arthur",
-            pageIndicator: "Ketuk untuk lanjut · 1/4",
+            pageIndicator: "Tap to continue · 1/4",
             fontSize: 18,
             padding: CGSize(width: 32, height: 20),
             maxWidth: 380
@@ -475,7 +475,6 @@ import SwiftUI
     .ignoresSafeArea()
 }
 #endif
-
 
 
 

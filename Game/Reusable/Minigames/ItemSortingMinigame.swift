@@ -476,6 +476,16 @@ public final class ItemSortingMinigameNode: SKNode {
         #if canImport(UIKit)
         HapticsService.shared.playSelection()
         #endif
+
+        let tutorial = MinigameTutorialOverlayNode(
+            title: "Wash the Tubers",
+            steps: [
+                "Drag a dirty tuber into the water basin.",
+                "Scrub it in circles until it is clean.",
+                "Place the clean tuber on the cloth."
+            ]
+        )
+        addChild(tutorial)
     }
     
     #if canImport(UIKit)

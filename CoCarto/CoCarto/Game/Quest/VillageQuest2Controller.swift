@@ -41,7 +41,7 @@ final class VillageQuest2Controller {
         guard worldState.buildingObjects.contains(where: { $0.kind == .arthurHouse }),
               worldState.buildingObjects.contains(where: { $0.kind == .buMaraHouse }) else {
             return .unavailable([
-                .init(speaker: "Quest", text: "Place Arthur Home and Mrs. Mara Home first.")
+                .init(speaker: "Quest", text: "Place Arthur's House and Mrs. Mara's House first.")
             ])
         }
 

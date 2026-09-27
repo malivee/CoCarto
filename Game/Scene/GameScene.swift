@@ -2,6 +2,13 @@ import SpriteKit
 import UIKit
 import CoreImage
 
+enum InventoryGestureMode {
+    case idle
+    case pending
+    case scrolling
+    case cancelled
+}
+
 final class GameScene: SKScene {
     let worldRoot = SKNode()
     let mapRoot = SKNode()
@@ -35,6 +42,7 @@ final class GameScene: SKScene {
     var inventoryTouchIndex: Int?
     var inventoryToggleTouch = false
     var inventoryDidScroll = false
+    var inventoryGestureMode: InventoryGestureMode = .idle
     var isDraggingObjectFromInventory = false
     var isDraggingPlacedObject = false
     var originalDraggedBuilding: BuildingObject?
@@ -77,6 +85,8 @@ final class GameScene: SKScene {
     var questDialogueLines: [VillageQuestDialogueLine] = []
     weak var activeQuestDialogue: SpeechBubbleNode?
     weak var activeQuestMinigame: SKNode?
+    weak var activeRockSaltMinigameController: UIViewController?
+    var isRockSaltMinigamePresented = false
     var onQuestDialogueFinished: (() -> Void)?
 
     override func didMove(to view: SKView) {
@@ -290,15 +300,11 @@ final class GameScene: SKScene {
                 showJoystick(at: controlPosition)
             }
         case .mapIdle, .mapPieceSelected:
-            if touch.tapCount >= 2,
-               let pieceID = pieceID(in: stack) {
-                enterWorldByDoubleTappingTile(at: location, pieceID: pieceID)
-                return
-            }
             if stack.contains(where: { $0.name == MapNodeName.inventoryToggle.rawValue }) {
                 inventoryTouchIndex = mapRenderer.selectedInventoryIndex
                 inventoryTouchStartPosition = location
                 inventoryDidScroll = false
+                inventoryGestureMode = .pending
                 isDraggingObjectFromInventory = false
                 inventoryLastTouchY = location.y
                 inventoryToggleTouch = true
@@ -308,12 +314,18 @@ final class GameScene: SKScene {
                stack.contains(where: {
                    $0.name == MapNodeName.inventoryPanel.rawValue || $0.name == MapNodeName.inventoryItem.rawValue
                }) {
-                inventoryTouchIndex = stack.compactMap { $0.userData?["inventoryIndex"] as? Int }.first
+                inventoryTouchIndex = inventoryItemIndex(in: stack)
                 inventoryTouchStartPosition = location
                 inventoryDidScroll = false
+                inventoryGestureMode = .pending
                 isDraggingObjectFromInventory = false
                 inventoryLastTouchY = location.y
                 inventoryToggleTouch = false
+                return
+            }
+            if touch.tapCount >= 2,
+               let pieceID = pieceID(in: stack) {
+                enterWorldByDoubleTappingTile(at: location, pieceID: pieceID)
                 return
             }
             if selectedObjectKind != nil {
@@ -346,11 +358,18 @@ final class GameScene: SKScene {
 
         let location = touch.location(in: self)
         if let lastY = inventoryLastTouchY {
-            if let start = inventoryTouchStartPosition,
+            guard let start = inventoryTouchStartPosition else { return }
+            let horizontalDistance = location.x - start.x
+            let verticalDistance = location.y - start.y
+
+            if inventoryGestureMode == .pending,
+               !inventoryToggleTouch,
                let index = inventoryTouchIndex,
                let kind = mapRenderer.inventoryKind(at: index),
-               location.x - start.x > 14 {
+               horizontalDistance > 18,
+               abs(horizontalDistance) > abs(verticalDistance) * 1.05 {
                 isDraggingObjectFromInventory = true
+                inventoryGestureMode = .idle
                 inventoryLastTouchY = nil
                 inventoryToggleTouch = false
                 mapController.cancel()
@@ -361,12 +380,23 @@ final class GameScene: SKScene {
                 AudioService.shared.playSFX("PaperMap")
                 return
             }
-            if abs(location.y - lastY) > 2 { inventoryDidScroll = true }
-            if !inventoryToggleTouch {
+
+            if inventoryGestureMode == .pending {
+                if abs(verticalDistance) >= 10, abs(verticalDistance) > abs(horizontalDistance) {
+                    inventoryGestureMode = inventoryToggleTouch ? .cancelled : .scrolling
+                    inventoryDidScroll = true
+                } else if hypot(horizontalDistance, verticalDistance) >= 14,
+                          (inventoryToggleTouch || horizontalDistance < -10) {
+                    inventoryGestureMode = .cancelled
+                    inventoryDidScroll = true
+                }
+            }
+
+            if inventoryGestureMode == .scrolling {
                 mapRenderer.scrollInventory(by: location.y - lastY)
+                rebuildMapView()
             }
             inventoryLastTouchY = location.y
-            rebuildMapView()
             return
         }
         if isDraggingObjectFromInventory {
@@ -397,20 +427,29 @@ final class GameScene: SKScene {
             inventoryTouchIndex = nil
             inventoryTouchStartPosition = nil
             inventoryToggleTouch = false
+            inventoryGestureMode = .idle
             isDraggingObjectFromInventory = false
             return
         }
         if inventoryLastTouchY != nil {
+            if let start = inventoryTouchStartPosition,
+               let end = touches.first?.location(in: self),
+               hypot(end.x - start.x, end.y - start.y) >= 10 {
+                inventoryDidScroll = true
+            }
             inventoryLastTouchY = nil
             if inventoryToggleTouch {
                 inventoryToggleTouch = false
-                if !inventoryDidScroll {
+                if inventoryGestureMode == .pending && !inventoryDidScroll {
                     mapRenderer.toggleInventory()
                     rebuildMapView()
+                    inventoryTouchIndex = nil
+                    inventoryTouchStartPosition = nil
+                    inventoryGestureMode = .idle
                     return
                 }
             }
-            if !inventoryDidScroll, let index = inventoryTouchIndex,
+            if inventoryGestureMode == .pending, !inventoryDidScroll, let index = inventoryTouchIndex,
                let kind = mapRenderer.inventoryKind(at: index) {
                 mapController.cancel()
                 selectedObjectKind = kind
@@ -423,6 +462,7 @@ final class GameScene: SKScene {
             }
             inventoryTouchIndex = nil
             inventoryTouchStartPosition = nil
+            inventoryGestureMode = .idle
             return
         }
         switch gameMode {
@@ -454,13 +494,28 @@ final class GameScene: SKScene {
             inventoryLastTouchY = nil
             inventoryTouchStartPosition = nil
             inventoryTouchIndex = nil
+            inventoryGestureMode = .idle
             rebuildMapView()
             return
         }
         inventoryToggleTouch = false
         inventoryTouchIndex = nil
         inventoryTouchStartPosition = nil
+        inventoryGestureMode = .idle
         touchesEnded(touches, with: event)
+    }
+
+    private func inventoryItemIndex(in stack: [SKNode]) -> Int? {
+        for node in stack {
+            var current: SKNode? = node
+            while let candidate = current {
+                if let index = candidate.userData?["inventoryIndex"] as? Int {
+                    return index
+                }
+                current = candidate.parent
+            }
+        }
+        return nil
     }
 
 }

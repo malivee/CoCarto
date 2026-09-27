@@ -47,6 +47,7 @@ public struct RockSaltCarvingView: View {
     private let maxHits: Int = 7 // 7 hits to completely shatter
     @State private var isShrunk: Bool = false // Shrinks at 5th hit
     @State private var isMountainDestroyed: Bool = false // Destroyed at 7th hit
+    @State private var isShowingTutorial: Bool = true
     
     // Narrative Dialog
     @State private var dialogMessage: String = "Arthur, tap this salt deposit to break it apart!"
@@ -186,6 +187,11 @@ public struct RockSaltCarvingView: View {
                     }
                     .zIndex(5)
                 }
+
+                if isShowingTutorial {
+                    tutorialOverlay
+                        .zIndex(30)
+                }
                 
                 // Victory Modal
                 if isMountainDestroyed {
@@ -208,7 +214,41 @@ public struct RockSaltCarvingView: View {
     }
     
     // MARK: - UI Components
-    
+
+    private var tutorialOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.78).ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 16) {
+                Text("MINE ROCK SALT")
+                    .font(.system(size: 22, weight: .black, design: .rounded))
+                    .foregroundColor(Color(red: 0.75, green: 0.92, blue: 1.0))
+
+                Text("1. Tap the salt deposit to swing the pickaxe.\n2. Keep striking until the deposit shatters.\n3. Complete the mine to collect its rock salt.")
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundColor(.white)
+                    .lineSpacing(7)
+
+                Button("START MINING") {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        isShowingTutorial = false
+                    }
+                }
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundColor(Color(red: 0.04, green: 0.10, blue: 0.14))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color(red: 0.70, green: 0.90, blue: 1.0))
+                .cornerRadius(14)
+            }
+            .padding(26)
+            .background(Color(red: 0.10, green: 0.12, blue: 0.14))
+            .cornerRadius(22)
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.cyan.opacity(0.7), lineWidth: 2))
+            .padding(.horizontal, 28)
+        }
+    }
+
     private var topQuestPanel: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
@@ -631,6 +671,8 @@ public struct CrystalShardShape: Shape {
 
 public typealias RockSaltMiningView = RockSaltCarvingView
 
+#if DEBUG
 #Preview {
     RockSaltCarvingView()
 }
+#endif

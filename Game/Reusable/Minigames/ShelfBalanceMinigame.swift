@@ -5,8 +5,8 @@
 // - Displays Mrs. Mara's narrative dialog using SpeechBubbleNode (artistic crayon style).
 // - Grounded shelf: Left leg on a stone paver, right leg sinking into the mud, and a brick wedge
 //   supporting the right leg exactly at ground level.
-// - Mechanics: When lifted, the shelf STAYS lifted. The player balances it using Gyro,
-//   then performs a Precision Tap on the DBD slider in the green zone to slide the brick wedge in.
+// - Mechanics: The player balances the shelf using device motion, then performs one
+//   precision tap while the moving marker is inside the green zone.
 
 import SpriteKit
 import CoreMotion
@@ -52,14 +52,13 @@ public final class ShelfBalanceMinigameNode: SKNode {
     private var isRunning: Bool = false
     private var isCompleted: Bool = false
     
-    // Physics & Lift State
+    // Physics & Balance State
     private let motionManager = CMMotionManager()
     private var shelfAngle: CGFloat = 0.17 // Initially sinking ~9.8 degrees into the mud
-    private var simulatedTilt: CGFloat = 0.0
-    private var isShelfLifted: Bool = false // Once lifted, stays in the lifted position
     private var isBalanced: Bool = false
     private var isWedgePlaced: Bool = false
-    private var hammerTaps: Int = 0 // 2 hammer taps to lock it tight
+    private var isTutorialVisible = true
+    private var hammerTaps: Int = 0 // Legacy visual state; completion now occurs after one successful QTE.
     
     // DBD Slider State
     private var sliderProgress: CGFloat = 0.0
@@ -1058,6 +1057,17 @@ public final class ShelfBalanceMinigameNode: SKNode {
             motionManager.deviceMotionUpdateInterval = 1.0 / 60.0
             motionManager.startDeviceMotionUpdates()
         }
+
+        let tutorial = MinigameTutorialOverlayNode(
+            title: "Fix Mrs. Mara's Shelf",
+            steps: [
+                "Tilt your device to level the shelf.",
+                "Keep the level bubble in the center.",
+                "Tap when the marker enters the green zone."
+            ]
+        )
+        tutorial.onDismiss = { [weak self] in self?.isTutorialVisible = false }
+        addChild(tutorial)
         
         // Mrs. Mara's opening dialogue with SpeechBubbleNode
         showBuMaraDialog("Arthur! Help me, my pottery shelf is tilting and the pots are about to fall!")
@@ -1073,6 +1083,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
     }
     
     private func updatePhysics(deltaTime: TimeInterval) {
+        guard !isTutorialVisible else { return }
         if isWedgePlaced {
             // Shelf is wedged: Stands firm, straight, and doesn't lift!
             shelfAngle = 0.0
@@ -1082,59 +1093,32 @@ public final class ShelfBalanceMinigameNode: SKNode {
         }
         
         // CoreMotion: Read device tilt in portrait mode
-        var tilt: CGFloat = simulatedTilt
-        if let motion = motionManager.deviceMotion {
-            tilt = CGFloat(motion.gravity.x)
+        guard let motion = motionManager.deviceMotion else { return }
+        let targetTilt = -CGFloat(motion.gravity.x) * 0.35
+        shelfAngle += (targetTilt - shelfAngle) * CGFloat(deltaTime * 6.0)
+        shelfAngle = max(-0.18, min(0.18, shelfAngle))
+
+        let wasBalanced = isBalanced
+        isBalanced = abs(shelfAngle) <= config.balanceTolerance
+
+        if isBalanced && !wasBalanced {
+            dbdTrackNode.run(.fadeAlpha(to: 1.0, duration: 0.2))
+            waterpassBubble.fillColor = SKColor(red: 0.25, green: 0.95, blue: 0.45, alpha: 1.0)
+            waterpassGlow.run(.fadeAlpha(to: 0.7, duration: 0.2))
+            #if canImport(UIKit)
+            HapticsService.shared.playImpact(style: .light)
+            #endif
+        } else if !isBalanced && wasBalanced {
+            dbdTrackNode.run(.fadeAlpha(to: 0.2, duration: 0.2))
+            waterpassBubble.fillColor = SKColor(red: 0.95, green: 0.75, blue: 0.35, alpha: 1.0)
+            waterpassGlow.run(.fadeAlpha(to: 0.0, duration: 0.2))
         }
-        
-        if isShelfLifted {
-            // ONCE SHELF IS LIFTED: STAYS in lifted position, balanced via Gyro
-            let targetTilt = -tilt * 0.35
-            shelfAngle += (targetTilt - shelfAngle) * CGFloat(deltaTime * 6.0)
-            
-            // Cap rotation so it doesn't float above ground
-            shelfAngle = max(-0.09, min(0.18, shelfAngle))
-            
-            // Check balance status
-            let prevBalanced = isBalanced
-            isBalanced = abs(shelfAngle) <= config.balanceTolerance
-            
-            if isBalanced && !prevBalanced {
-                dbdTrackNode.run(.fadeAlpha(to: 1.0, duration: 0.2))
-                waterpassBubble.fillColor = SKColor(red: 0.25, green: 0.95, blue: 0.45, alpha: 1.0)
-                waterpassGlow.run(.fadeAlpha(to: 0.7, duration: 0.2))
-                #if canImport(UIKit)
-                HapticsService.shared.playImpact(style: .light)
-                #endif
-            } else if !isBalanced && prevBalanced {
-                dbdTrackNode.run(.fadeAlpha(to: 0.35, duration: 0.2))
-                waterpassBubble.fillColor = SKColor(red: 0.95, green: 0.75, blue: 0.35, alpha: 1.0)
-                waterpassGlow.run(.fadeAlpha(to: 0.0, duration: 0.2))
-            }
-            
-            // Move DBD slider only when balanced
-            if isBalanced && !isWedgePlaced {
-                sliderProgress += (config.dbdSliderSpeed * CGFloat(deltaTime)) * sliderDirection
-                if sliderProgress >= 1.0 { sliderProgress = 1.0; sliderDirection = -1.0 }
-                if sliderProgress <= 0.0 { sliderProgress = 0.0; sliderDirection = 1.0 }
-                
-                let cursorX = (-dbdTrackWidth / 2) + (sliderProgress * dbdTrackWidth)
-                dbdCursorNode.position.x = cursorX
-            }
-            
-        } else {
-            // BEFORE LIFTED: Gyro tilt / drag lifts the shelf from the mud to a straight position
-            let targetTilt = 0.17 + (tilt * 0.35)
-            shelfAngle += (targetTilt - shelfAngle) * CGFloat(deltaTime * 5.0)
-            
-            // Once lifted near 0 degrees, it IMMEDIATELY STAYS up!
-            if abs(shelfAngle) <= config.balanceTolerance {
-                isShelfLifted = true
-                shelfAngle = 0.0
-                #if canImport(UIKit)
-                HapticsService.shared.playImpact(style: .medium)
-                #endif
-            }
+
+        if isBalanced && !isWedgePlaced {
+            sliderProgress += (config.dbdSliderSpeed * CGFloat(deltaTime)) * sliderDirection
+            if sliderProgress >= 1.0 { sliderProgress = 1.0; sliderDirection = -1.0 }
+            if sliderProgress <= 0.0 { sliderProgress = 0.0; sliderDirection = 1.0 }
+            dbdCursorNode.position.x = (-dbdTrackWidth / 2) + (sliderProgress * dbdTrackWidth)
         }
         
         // Apply shelf rotation pivoting on the left leg
@@ -1150,7 +1134,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
         }
     }
     
-    // MARK: - Touch Handling (Precision Tap & Drag Fallback)
+    // MARK: - Touch Handling (QTE only; balancing uses device motion)
     
     #if canImport(UIKit)
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -1166,27 +1150,11 @@ public final class ShelfBalanceMinigameNode: SKNode {
             }
         }
         
-        if isShelfLifted && !isWedgePlaced {
-            // Precision Tap DBD Slider
+        if isBalanced && !isWedgePlaced {
             evaluateDBDTap()
-        } else if !isShelfLifted {
-            // Tap to immediately lift shelf and STAY straight
-            isShelfLifted = true
-            shelfAngle = 0.0
-            shelfPivotNode.zRotation = 0.0
-            #if canImport(UIKit)
-            HapticsService.shared.playImpact(style: .medium)
-            #endif
-        } else if isWedgePlaced && hammerTaps < 2 {
-            // Hammer tap to lock the pin
-            handleHammerTap()
+        } else if !isWedgePlaced {
+            showBuMaraDialog("Keep the shelf level before tapping the marker.")
         }
-    }
-    
-    public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard isRunning && !isWedgePlaced, let touch = touches.first else { return }
-        let loc = touch.location(in: self)
-        simulatedTilt = (loc.x / 140.0)
     }
     #endif
     
@@ -1224,10 +1192,11 @@ public final class ShelfBalanceMinigameNode: SKNode {
         waterpassBubble.fillColor = SKColor(red: 0.25, green: 0.95, blue: 0.45, alpha: 1.0)
         waterpassGlow.run(.fadeAlpha(to: 0.8, duration: 0.15))
         
-        // Visual hammer tap indicator appears
-        hammerPromptNode.run(.fadeIn(withDuration: 0.2))
-        
-        showBuMaraDialog("Lock the brick in now!", isSuccess: true)
+        showBuMaraDialog("Perfect! The shelf is level and secure.", isSuccess: true)
+        run(.sequence([
+            .wait(forDuration: 0.35),
+            .run { [weak self] in self?.finishGameSuccess() }
+        ]))
     }
     
     private func handleHammerTap() {
@@ -1304,12 +1273,9 @@ public final class ShelfBalanceMinigameNode: SKNode {
         HapticsService.shared.playNotification(.error)
         #endif
         
-        // Leg sinks back into the mud
-        isShelfLifted = false
-        shelfAngle = 0.17
-        shelfPivotNode.zRotation = -shelfAngle
-        
-        dbdTrackNode.run(.fadeAlpha(to: 0.0, duration: 0.15))
+        sliderProgress = 0
+        sliderDirection = 1
+        dbdCursorNode.position.x = -dbdTrackWidth / 2
         
         // Hard impact shake
         container.run(.sequence([
@@ -1318,7 +1284,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
             .moveBy(x: -8, y: 0, duration: 0.04)
         ]))
         
-        showBuMaraDialog("Oh no, the brick missed!")
+        showBuMaraDialog("Missed! Keep it level and tap inside the green zone.")
     }
     
     private func handleFailTippedOver() {
@@ -1434,7 +1400,7 @@ public typealias ShelfBalanceMinigame = BuMaraShelfMinigameView
 public typealias ShelfBalanceMinigameView = BuMaraShelfMinigameView
 
 #if DEBUG
-#Preview("Bu Mara Shelf Minigame (SpriteKit & SpeechBubble)") {
+#Preview("Mrs. Mara Shelf Minigame (SpriteKit & SpeechBubble)") {
     BuMaraShelfMinigameView()
 }
 #endif

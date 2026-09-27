@@ -73,6 +73,7 @@ extension GameScene {
         quest4Controller.reset()
         quest5Controller.reset()
         quest6Controller.reset()
+        mapRenderer.resetSeenInventoryKinds()
         puzzleManager.reset()
         worldEventManager.reset()
         playerController.updateWorldState(worldState)

@@ -352,29 +352,29 @@ extension GameScene {
         if !hasMovedArthurInTutorial {
             worldTutorialBanner.configure(
                 badge: "1",
-                title: "Gerakkan Arthur",
-                subtitle: "Geser kontrol yang menyala.",
+                title: "Move Arthur",
+                subtitle: "Drag the highlighted control.",
                 width: bannerWidth
             )
         } else if !quest1Controller.isWellUnlocked {
             worldTutorialBanner.configure(
                 badge: "2",
-                title: "Temui Kakek",
-                subtitle: "Dekati karakter yang menyala.",
+                title: "Meet Grandpa",
+                subtitle: "Approach the highlighted character.",
                 width: bannerWidth
             )
         } else if !quest1Controller.hasCollectedWater {
             worldTutorialBanner.configure(
                 badge: "3",
-                title: "Ambil Air di Sumur",
-                subtitle: "Dekati sumur yang menyala.",
+                title: "Collect Water from the Well",
+                subtitle: "Approach the highlighted well.",
                 width: bannerWidth
             )
         } else {
             worldTutorialBanner.configure(
                 badge: "OK",
-                title: "Tutorial Selesai!",
-                subtitle: "Saatnya melanjutkan petualangan.",
+                title: "Tutorial Complete!",
+                subtitle: "It is time to continue the adventure.",
                 width: bannerWidth
             )
             worldTutorialBanner.run(SKAction.sequence([

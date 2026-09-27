@@ -3,6 +3,7 @@
 // Menampilkan tubuh tegak (billboard), bayangan tanah, pakaian khas, animasi melangkah (bobbing), dan arah hadap kiri/kanan.
 
 import SpriteKit
+import UIKit
 
 public final class MemoryCharacter: SKNode {
     public let title: String
@@ -141,7 +142,7 @@ public final class MemoryCharacter: SKNode {
             tunicColor = SKColor(red: 0.94, green: 0.92, blue: 0.83, alpha: 1)
             trimColor = SKColor(red: 0.58, green: 0.38, blue: 0.22, alpha: 1)
             scarfColor = SKColor(red: 0.24, green: 0.65, blue: 0.72, alpha: 1)
-        case "Keneth", "Kenneth":
+        case "Kenneth":
             // Keneth: tunik terakota hangat petani lumbung
             tunicColor = SKColor(red: 0.78, green: 0.40, blue: 0.26, alpha: 1)
             trimColor = SKColor(red: 0.44, green: 0.23, blue: 0.14, alpha: 1)
@@ -156,12 +157,12 @@ public final class MemoryCharacter: SKNode {
             tunicColor = SKColor(red: 0.35, green: 0.55, blue: 0.76, alpha: 1)
             trimColor = SKColor(red: 0.20, green: 0.36, blue: 0.52, alpha: 1)
             scarfColor = SKColor(red: 0.96, green: 0.91, blue: 0.78, alpha: 1)
-        case "Grandpa", "Kakek":
+        case "Grandpa":
             // Kakek: tunik zaitun / sage lembut dengan trim cokelat hangat
             tunicColor = SKColor(red: 0.48, green: 0.54, blue: 0.42, alpha: 1)
             trimColor = SKColor(red: 0.36, green: 0.26, blue: 0.18, alpha: 1)
             scarfColor = SKColor(red: 0.92, green: 0.88, blue: 0.78, alpha: 1)
-        case "Bu Mara", "Mara":
+        case "Mrs. Mara", "Mara":
             // Bu Mara: tunik terakota pengrajin gerabah dengan syal marigold
             tunicColor = SKColor(red: 0.76, green: 0.46, blue: 0.36, alpha: 1)
             trimColor = SKColor(red: 0.42, green: 0.24, blue: 0.16, alpha: 1)
@@ -220,7 +221,7 @@ public final class MemoryCharacter: SKNode {
         }
 
         // Apron gerabah kecil untuk Bu Mara
-        if title == "Bu Mara" || title == "Mara" {
+        if title == "Mrs. Mara" || title == "Mara" {
             let apron = SKShapeNode(rectOf: CGSize(width: 7.5, height: 9), cornerRadius: 1.5)
             apron.fillColor = SKColor(red: 0.88, green: 0.82, blue: 0.70, alpha: 0.9)
             apron.strokeColor = .clear
@@ -241,13 +242,13 @@ public final class MemoryCharacter: SKNode {
         // Warna dan gaya rambut
         let hairColor: SKColor
         switch title {
-        case "Keneth", "Kenneth":
+        case "Kenneth":
             hairColor = SKColor(red: 0.28, green: 0.20, blue: 0.15, alpha: 1)
         case "Roland":
             hairColor = SKColor(red: 0.35, green: 0.25, blue: 0.18, alpha: 1)
-        case "Grandpa", "Kakek":
+        case "Grandpa":
             hairColor = SKColor(red: 0.82, green: 0.82, blue: 0.85, alpha: 1)
-        case "Bu Mara", "Mara":
+        case "Mrs. Mara", "Mara":
             hairColor = SKColor(red: 0.24, green: 0.16, blue: 0.12, alpha: 1)
         default:
             hairColor = SKColor(red: 0.14, green: 0.19, blue: 0.28, alpha: 1)
@@ -275,9 +276,9 @@ public final class MemoryCharacter: SKNode {
         topknot.position = CGPoint(x: 0, y: 10.5)
         headNode.addChild(topknot)
 
-        let knotBandColor = (title == "Bu Mara" || title == "Mara")
+        let knotBandColor = (title == "Mrs. Mara" || title == "Mara")
             ? SKColor(red: 0.95, green: 0.78, blue: 0.35, alpha: 1)
-            : (title == "Grandpa" || title == "Kakek")
+            : (title == "Grandpa")
             ? SKColor(red: 0.48, green: 0.54, blue: 0.42, alpha: 1)
             : SKColor(red: 0.85, green: 0.45, blue: 0.28, alpha: 1)
 
@@ -288,7 +289,7 @@ public final class MemoryCharacter: SKNode {
         headNode.addChild(knotBand)
 
         // Alis atau janggut lembut untuk Kakek
-        if title == "Grandpa" || title == "Kakek" {
+        if title == "Grandpa" {
             let beard = SKShapeNode(ellipseOf: CGSize(width: 7, height: 4.5))
             beard.fillColor = SKColor(red: 0.84, green: 0.84, blue: 0.86, alpha: 0.95)
             beard.strokeColor = .clear
@@ -423,34 +424,64 @@ public final class MemoryCharacter: SKNode {
     }
 
     // Menampilkan lencana status mengambang di atas karakter
-    public func setStatusBadge(icon: String, text: String, color: SKColor) {
+    public func setStatusBadge(symbolName: String, text: String, color: SKColor) {
         statusBadgeNode?.removeFromParent()
         statusBadgeNode = nil
 
-        let badge = SKNode()
+        let badge = Self.makeStatusBadge(symbolName: symbolName, text: text, color: color)
         badge.position = CGPoint(x: 0, y: 56)
+
+        addChild(badge)
+        statusBadgeNode = badge
+    }
+
+    public static func makeStatusBadge(symbolName: String, text: String, color: SKColor) -> SKNode {
+        let badge = SKNode()
+        badge.name = "InteractionBadge"
         badge.zPosition = 25
 
-        let bg = SKShapeNode(rectOf: CGSize(width: 76, height: 18), cornerRadius: 9)
-        bg.fillColor = SKColor(red: 0.12, green: 0.16, blue: 0.14, alpha: 0.92)
-        bg.strokeColor = color
-        bg.lineWidth = 1.2
-        badge.addChild(bg)
+        let width = min(132, max(88, CGFloat(text.count) * 6.4 + 44))
+        let background = SKShapeNode(rectOf: CGSize(width: width, height: 28), cornerRadius: 10)
+        background.name = "InteractionBadge"
+        background.fillColor = SKColor(red: 0.10, green: 0.11, blue: 0.10, alpha: 0.96)
+        background.strokeColor = SKColor.white.withAlphaComponent(0.26)
+        background.lineWidth = 1
+        badge.addChild(background)
 
-        let label = SKLabelNode(text: "\(icon) \(text)")
+        let accent = SKShapeNode(rectOf: CGSize(width: 3, height: 16), cornerRadius: 1.5)
+        accent.position.x = -width / 2 + 8
+        accent.fillColor = color
+        accent.strokeColor = .clear
+        background.addChild(accent)
+
+        if let symbol = UIImage(
+            systemName: symbolName,
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold)
+        )?.withTintColor(color, renderingMode: .alwaysOriginal) {
+            let icon = SKSpriteNode(texture: SKTexture(image: symbol))
+            icon.name = "InteractionBadge"
+            icon.size = CGSize(width: 15, height: 15)
+            icon.position.x = -width / 2 + 23
+            icon.zPosition = 1
+            background.addChild(icon)
+        }
+
+        let label = SKLabelNode(text: text.uppercased())
+        label.name = "InteractionBadge"
         label.fontName = "AvenirNext-Bold"
-        label.fontSize = 9.5
-        label.fontColor = color
+        label.fontSize = 10
+        label.fontColor = SKColor.white.withAlphaComponent(0.92)
+        label.horizontalAlignmentMode = .left
         label.verticalAlignmentMode = .center
-        bg.addChild(label)
+        label.position.x = -width / 2 + 35
+        label.position.y = -1
+        background.addChild(label)
 
         badge.run(SKAction.repeatForever(SKAction.sequence([
             SKAction.moveBy(x: 0, y: 3, duration: 0.9),
             SKAction.moveBy(x: 0, y: -3, duration: 0.9)
         ])))
-
-        addChild(badge)
-        statusBadgeNode = badge
+        return badge
     }
 
     public func clearStatusBadge() {
