@@ -81,6 +81,7 @@ extension GameScene {
         }
         // STRICT QUEST 1 CHECK: Tutorial ONLY appears during Quest 1 before water is collected
         guard isQuest1TutorialActive else { return nil }
+        guard !UserDefaults.standard.bool(forKey: "tutorial.v1.mapCompleted") else { return nil }
 
         if !hasRotatedPieceInTutorial {
             guard let preview = mapController.preview else {
@@ -182,6 +183,7 @@ extension GameScene {
     }
 
     var canEnterWorldDuringTutorial: Bool {
+        if UserDefaults.standard.bool(forKey: "tutorial.v1.mapCompleted") { return true }
         guard isQuest1TutorialActive else { return true }
         return hasRotatedPieceInTutorial
             && worldState.buildingObjects.contains { $0.kind == .arthurHouse }
@@ -245,6 +247,9 @@ extension GameScene {
         transitionController.presentMapImmediately(at: mapRenderer.cameraCenter)
         cameraController.snapToMapOverview(center: mapRenderer.cameraCenter)
         finishWorldToMapTransition()
+        if isQuest1TutorialActive, UserDefaults.standard.bool(forKey: "tutorial.v1.mapCompleted") {
+            startMapToWorldTransition()
+        }
     }
 
     func updateViewTransition(deltaTime: TimeInterval) {
@@ -291,6 +296,9 @@ extension GameScene {
     }
 
     func finishMapToWorldTransition() {
+        if isQuest1TutorialActive {
+            UserDefaults.standard.set(true, forKey: "tutorial.v1.mapCompleted")
+        }
         cameraController.returnToPlayerFollow()
         worldRoot.alpha = 1
         worldDebugRoot.alpha = showsDebugOverlay ? 1 : 0

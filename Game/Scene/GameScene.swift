@@ -73,11 +73,26 @@ final class GameScene: SKScene {
     let joystickBase = SKShapeNode(circleOfRadius: 72)
     let joystickKnob = SKShapeNode(circleOfRadius: 28)
     let worldTutorialBanner = InWorldTutorialBannerNode()
-    var hasMovedArthurInTutorial = false
-    var hasRotatedTileInTutorial = false
-    var hasRotatedPieceInTutorial = false
-    var hasTriedMismatchedTileInTutorial = false
-    var tutorialInvalidBuildingKinds: Set<BuildingObjectKind> = []
+    var hasMovedArthurInTutorial: Bool {
+        get { UserDefaults.standard.bool(forKey: "tutorial.v1.moved") }
+        set { if newValue { UserDefaults.standard.set(true, forKey: "tutorial.v1.moved") } }
+    }
+    var hasRotatedTileInTutorial: Bool {
+        get { UserDefaults.standard.bool(forKey: "tutorial.v1.rotated") }
+        set { if newValue { UserDefaults.standard.set(true, forKey: "tutorial.v1.rotated") } }
+    }
+    var hasRotatedPieceInTutorial: Bool {
+        get { UserDefaults.standard.bool(forKey: "tutorial.v1.connected") }
+        set { if newValue { UserDefaults.standard.set(true, forKey: "tutorial.v1.connected") } }
+    }
+    var hasTriedMismatchedTileInTutorial: Bool {
+        get { UserDefaults.standard.bool(forKey: "tutorial.v1.mismatched") }
+        set { if newValue { UserDefaults.standard.set(true, forKey: "tutorial.v1.mismatched") } }
+    }
+    var tutorialInvalidBuildingKinds: Set<BuildingObjectKind> {
+        get { Set((UserDefaults.standard.stringArray(forKey: "tutorial.v1.invalidBuildings") ?? []).compactMap(BuildingObjectKind.init(rawValue:))) }
+        set { UserDefaults.standard.set(newValue.map(\.rawValue), forKey: "tutorial.v1.invalidBuildings") }
+    }
     var pendingWorldInteractionNPC: MemoryCharacter?
     var pendingWorldInteractionBuildingID: UUID?
     var pendingWorldTouchStartPosition: CGPoint?

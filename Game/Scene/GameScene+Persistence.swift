@@ -45,20 +45,25 @@ extension GameScene {
     func layoutWorldObjectiveCards() {
         let insets = view?.safeAreaInsets ?? .zero
         let rightEdge = size.width / 2 - insets.right - 16
-        let cardWidth = min(size.width - 56, 410)
         let topEdge = size.height / 2 - insets.top - 16
         let objectiveScale: CGFloat = 0.78
 
         worldTutorialBanner.setScale(objectiveScale)
         worldQuestTracker.setScale(objectiveScale)
 
-        worldTutorialBanner.position = CGPoint(
-            x: rightEdge - cardWidth * objectiveScale / 2,
-            y: topEdge - 29 * objectiveScale
-        )
+        let questHalfHeight = (worldQuestTracker.path?.boundingBoxOfPath.height ?? 112) / 2
         worldQuestTracker.position = CGPoint(
             x: rightEdge - 126 * objectiveScale,
-            y: topEdge - 56 * objectiveScale
+            y: topEdge - questHalfHeight * objectiveScale
+        )
+        let minimapBottom = worldMinimap.position.y - worldMinimap.bottomExtent * worldMinimap.yScale
+        let questBottom = worldQuestTracker.isHidden
+            ? topEdge
+            : worldQuestTracker.position.y - questHalfHeight * objectiveScale
+        // Reserve a separate row below both upper panels, including the banner's bob animation.
+        worldTutorialBanner.position = CGPoint(
+            x: 0,
+            y: min(minimapBottom, questBottom) - 20 - 41 * objectiveScale
         )
     }
 
@@ -98,11 +103,7 @@ extension GameScene {
         pendingLoadedPlayerSpatialState = nil
         selectedObjectKind = nil
         objectPreview = nil
-        hasMovedArthurInTutorial = false
-        hasRotatedTileInTutorial = false
-        hasRotatedPieceInTutorial = false
-        hasTriedMismatchedTileInTutorial = false
-        tutorialInvalidBuildingKinds.removeAll()
+        // App-level tutorial milestones survive restarting the puzzle.
         worldState = .buildingPuzzleBiomePrototype(allowing: [.z2, .l1])
         quest1Controller.reset()
         quest2Controller.reset()

@@ -4,6 +4,7 @@ import UIKit
 
 extension GameScene {
     var isQuest1TutorialActive: Bool {
+        if UserDefaults.standard.bool(forKey: "tutorial.v1.completed") { return false }
         guard !quest1Controller.isCompleted,
               !quest1Controller.hasCollectedWater,
               !quest2Controller.isActive,
@@ -149,6 +150,11 @@ extension GameScene {
 
     @discardableResult
     func synchronizeQuestProgressionUnlocks() -> Bool {
+        // Preserve completion for saves created before tutorial milestones existed.
+        if quest1Controller.hasCollectedWater || quest1Controller.isCompleted || quest2Controller.isActive || quest2Controller.isCompleted {
+            UserDefaults.standard.set(true, forKey: "tutorial.v1.completed")
+            UserDefaults.standard.set(true, forKey: "tutorial.v1.mapCompleted")
+        }
         let hadFirstIPiece = worldState.piece(role: .z1) != nil
         var didChangePieces = worldState.synchronizePuzzlePieces(allowing: questUnlockedPieceRoles())
         let hasFinishedMapTutorial = quest1Controller.hasCollectedWater || quest1Controller.isCompleted
@@ -432,6 +438,7 @@ extension GameScene {
             synchronizeQuestProgressionUnlocks()
             syncVillageNPCs()
         case .waterCollected(let lines):
+            UserDefaults.standard.set(true, forKey: "tutorial.v1.completed")
             AudioService.shared.playSFX("WellWaterPull")
             mapRenderer.announceNewBuilding(.buMaraHouse)
             showQuestDialogue(lines) { [weak self] in
