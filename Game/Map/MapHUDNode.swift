@@ -5,13 +5,26 @@ struct MapQuestItem {
     let category: String
     let title: String
     let isCompleted: Bool
+    let buildingKind: BuildingObjectKind?
+
+    init(category: String, title: String, isCompleted: Bool, buildingKind: BuildingObjectKind? = nil) {
+        self.category = category
+        self.title = title
+        self.isCompleted = isCompleted
+        self.buildingKind = buildingKind
+    }
 }
 
 enum MapTutorialStep: Equatable {
     case selectTile
-    case rotateTile(isValid: Bool)
+    case rotateTile
+    case tryMismatchedTile
+    case tryMatchingTile(isValid: Bool)
     case openSidebar
+    case buildingSize(BuildingObjectKind)
+    case questRequirement(BuildingObjectKind)
     case dragHouse
+    case tryWrongSoil(BuildingObjectKind)
     case placeHouse(isValid: Bool)
     case dragWell
     case placeWell(isValid: Bool)
@@ -22,10 +35,15 @@ enum MapTutorialStep: Equatable {
         switch self {
         case .selectTile: return "1"
         case .rotateTile: return "2"
-        case .openSidebar: return "3"
-        case .dragHouse, .placeHouse: return "4"
-        case .dragWell, .placeWell: return "5"
-        case .enterWorld: return "6"
+        case .tryMismatchedTile: return "3"
+        case .tryMatchingTile: return "4"
+        case .openSidebar: return "5"
+        case .buildingSize: return "6"
+        case .tryWrongSoil, .placeHouse: return "7"
+        case .questRequirement: return "8"
+        case .dragWell, .placeWell: return "9"
+        case .dragHouse: return "6"
+        case .enterWorld: return "10"
         case .newBuilding: return "+1"
         }
     }
@@ -36,16 +54,26 @@ enum MapTutorialStep: Equatable {
             return "Select a Tile"
         case .rotateTile:
             return "Rotate the Tile"
+        case .tryMismatchedTile:
+            return "Try the Wrong Color"
+        case .tryMatchingTile(let isValid):
+            return isValid ? "Colors Match" : "Find the Same Color"
         case .openSidebar:
             return "Open Buildings"
+        case .buildingSize:
+            return "Building Footprint"
+        case .questRequirement:
+            return "Quest Requirement"
         case .dragHouse:
             return "Drag Arthur's House"
+        case .tryWrongSoil:
+            return "Try Non-Village Soil"
         case .placeHouse(let isValid):
-            return isValid ? "Drop It Here" : "Find the Yellow Area"
+            return isValid ? "Drop It Here" : "Find Village Soil"
         case .dragWell:
             return "Drag the Well"
         case .placeWell(let isValid):
-            return isValid ? "Drop It Here" : "Find the Yellow Area"
+            return isValid ? "Drop It Here" : "Find Village Soil"
         case .newBuilding:
             return "New Building Unlocked!"
         case .enterWorld:
@@ -56,27 +84,44 @@ enum MapTutorialStep: Equatable {
     var subtitle: String {
         switch self {
         case .selectTile:
-            return "Tap the highlighted tile."
+            return "Tap the highlighted tile first."
         case .rotateTile:
-            return "Use the highlighted buttons."
+            return "Use rotate until the tile is facing the edge you want to test."
+        case .tryMismatchedTile:
+            return "Drag it so different-colored edges touch. It will bounce away."
+        case .tryMatchingTile(let isValid):
+            return isValid
+                ? "Good. Release it to connect the matching colors."
+                : "Now drag it so same-colored edges touch."
         case .openSidebar:
-            return "Tap the highlighted button."
+            return "Open the Buildings tab."
+        case .buildingSize(let kind):
+            let definition = BuildingObjectCatalog.definition(for: kind)
+            return "\(definition.title) needs \(definition.mapWidth) x \(definition.mapHeight) squares; each map tile has small soil squares."
+        case .questRequirement(let kind):
+            let definition = BuildingObjectCatalog.definition(for: kind)
+            return "The top-right requirement shows what the quest needs. Now place \(definition.title)."
         case .dragHouse:
-            return "Follow the movement shown on screen."
+            return "Drag Arthur's House from Buildings."
+        case .tryWrongSoil(let kind):
+            let definition = BuildingObjectCatalog.definition(for: kind)
+            return "Try \(definition.title) on non-village soil. This building type does not fit there."
         case .placeHouse(let isValid):
+            let definition = BuildingObjectCatalog.definition(for: .arthurHouse)
             return isValid
-                ? "The position is correct."
-                : "Drag it until the frame turns green."
+                ? "Correct: village soil fits this \(definition.mapWidth) x \(definition.mapHeight) building."
+                : "Move the full footprint onto village soil until it turns green."
         case .dragWell:
-            return "Follow the movement shown on screen."
+            return "Drag the Well from Buildings. It needs 4 x 4 squares."
         case .placeWell(let isValid):
+            let definition = BuildingObjectCatalog.definition(for: .well)
             return isValid
-                ? "The position is correct."
-                : "Drag it until the frame turns green."
+                ? "Correct: village soil fits this \(definition.mapWidth) x \(definition.mapHeight) building."
+                : "Move the full footprint onto village soil until it turns green."
         case .newBuilding(let openInventory):
-            return openInventory ? "Open Buildings to find Mrs. Mara’s House." : "Drag Mrs. Mara’s House onto village soil."
+            return openInventory ? "Open Buildings." : "Buildings can only be placed on village soil."
         case .enterWorld:
-            return "Double-tap the highlighted tile."
+            return "Double-tap the highlighted tile to enter the world."
         }
     }
 }
@@ -124,6 +169,8 @@ final class TutorialBannerNode: SKNode {
         subLabel.fontColor = SKColor(red: 0.44, green: 0.32, blue: 0.22, alpha: 1.0)
         subLabel.horizontalAlignmentMode = .left
         subLabel.verticalAlignmentMode = .center
+        subLabel.numberOfLines = 2
+        subLabel.lineBreakMode = .byWordWrapping
         addChild(subLabel)
 
         let bobUp = SKAction.moveBy(x: 0, y: 2.5, duration: 1.4)
@@ -142,8 +189,8 @@ final class TutorialBannerNode: SKNode {
         }
         isHidden = false
 
-        let bannerWidth = min(maxWidth, 350)
-        let bannerHeight: CGFloat = 54
+        let bannerWidth = min(maxWidth, 390)
+        let bannerHeight: CGFloat = 68
 
         background.path = CGPath(
             roundedRect: CGRect(x: -bannerWidth / 2, y: -bannerHeight / 2, width: bannerWidth, height: bannerHeight),
@@ -330,7 +377,7 @@ final class MapHUDNode: SKNode {
         )
 
         questPanel.update(with: Array(questItems.prefix(2)))
-        questPanel.isHidden = tutorialStep != nil || (inventoryExpanded && sceneSize.width * cameraScale < 530)
+        questPanel.isHidden = questItems.isEmpty || (inventoryExpanded && sceneSize.width * cameraScale < 530)
 
         // Keep tutorial copy inside the top HUD row, away from the inventory
         // list and the bottom placement controls.
@@ -382,9 +429,15 @@ final class MapHUDNode: SKNode {
             cancelObjectButton.position = CGPoint(x: -75, y: -25)
             placeObjectButton.setTitle("✓ Place")
             cancelObjectButton.setTitle("✕ Cancel")
+            let isTryingWrongSoil: Bool
+            if case .tryWrongSoil = tutorialStep {
+                isTryingWrongSoil = true
+            } else {
+                isTryingWrongSoil = false
+            }
             placeObjectButton.isHidden = false
             cancelObjectButton.isHidden = false
-            placeObjectButton.setEnabled(isValid)
+            placeObjectButton.setEnabled(isValid && !isTryingWrongSoil)
         } else if preview != nil {
             objectStatus.numberOfLines = 2
             // TILE PIECES: ROTATION ACTIVE!
@@ -452,20 +505,28 @@ final class MapHUDNode: SKNode {
         rotateLeftButton.setTutorialHighlighted(false)
         rotateRightButton.setTutorialHighlighted(false)
         placeObjectButton.setTutorialHighlighted(false)
+        questPanel.setTutorialHighlighted(false)
         inventoryItemNodes.values.forEach {
             $0.childNode(withName: "TutorialGlow")?.removeFromParent()
         }
 
         switch step {
-        case .rotateTile:
+        case .rotateTile, .tryMismatchedTile, .tryMatchingTile:
             rotateLeftButton.setTutorialHighlighted(true)
             rotateRightButton.setTutorialHighlighted(true)
         case .newBuilding(openInventory: false):
             addTutorialGlow(to: inventoryItemNodes[.buMaraHouse])
+        case .buildingSize(let kind):
+            addTutorialGlow(to: inventoryItemNodes[kind])
         case .dragHouse:
             addTutorialGlow(to: inventoryItemNodes[.arthurHouse])
         case .dragWell:
             addTutorialGlow(to: inventoryItemNodes[.well])
+        case .questRequirement:
+            questPanel.setTutorialHighlighted(true)
+            addTutorialGlow(to: inventoryItemNodes[.well])
+        case .tryWrongSoil(let kind):
+            addTutorialGlow(to: inventoryItemNodes[kind])
         case .placeHouse(let isValid), .placeWell(let isValid):
             if isValid { placeObjectButton.setTutorialHighlighted(true) }
         default:

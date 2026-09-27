@@ -664,7 +664,7 @@ final class MapRenderer {
 private extension MapTutorialStep {
     var isBuildingPlacementStep: Bool {
         switch self {
-        case .placeHouse, .placeWell:
+        case .tryWrongSoil, .placeHouse, .placeWell:
             return true
         default:
             return false
@@ -684,8 +684,12 @@ private extension MapTutorialStep {
 
     var placementKind: BuildingObjectKind? {
         switch self {
+        case .tryWrongSoil(let kind):
+            return kind
         case .placeHouse:
             return .arthurHouse
+        case .placeWell:
+            return .well
         default:
             return nil
         }

@@ -72,16 +72,21 @@ extension GameScene {
         // STRICT QUEST 1 CHECK: Tutorial ONLY appears during Quest 1 before water is collected
         guard isQuest1TutorialActive else { return nil }
 
-        // STEP 1: Click & Rotate Tile Tutorial
         if !hasRotatedPieceInTutorial {
-            if let preview = mapController.preview {
-                return .rotateTile(isValid: preview.isValid)
+            guard let preview = mapController.preview else {
+                return .selectTile
             }
-            return .selectTile
+            if !hasRotatedTileInTutorial {
+                return .rotateTile
+            }
+            if !hasTriedMismatchedTileInTutorial {
+                return .tryMismatchedTile
+            }
+            return .tryMatchingTile(isValid: preview.isValid)
         }
 
         if let preview = mapController.preview {
-            return .rotateTile(isValid: preview.isValid)
+            return .tryMatchingTile(isValid: preview.isValid)
         }
 
         let hasArthurHome = worldState.buildingObjects.contains { $0.kind == .arthurHouse }
@@ -89,6 +94,10 @@ extension GameScene {
 
         if let objectPreview {
             let isValid = BuildingPlacementValidator().validate(objectPreview, in: worldState) == .valid
+            if objectPreview.kind != .well,
+               !tutorialInvalidBuildingKinds.contains(objectPreview.kind) {
+                return .tryWrongSoil(objectPreview.kind)
+            }
             if objectPreview.kind == .well {
                 return .placeWell(isValid: isValid)
             } else {
@@ -96,6 +105,10 @@ extension GameScene {
             }
         }
         if let selectedKind = selectedObjectKind {
+            if selectedKind != .well,
+               !tutorialInvalidBuildingKinds.contains(selectedKind) {
+                return .tryWrongSoil(selectedKind)
+            }
             if selectedKind == .well {
                 return .placeWell(isValid: false)
             } else {
@@ -105,16 +118,13 @@ extension GameScene {
 
         if !hasArthurHome {
             if mapRenderer.inventoryExpanded {
-                return .dragHouse
+                return .buildingSize(.arthurHouse)
             }
             return .openSidebar
         }
 
         if !hasWell {
-            if mapRenderer.inventoryExpanded {
-                return .dragWell
-            }
-            return .openSidebar
+            return .questRequirement(.well)
         }
 
         return .enterWorld
@@ -322,6 +332,14 @@ extension GameScene {
         if stack.contains(where: { $0.name == MapNodeName.confirmButton.rawValue }) {
             if selectedObjectKind != nil {
                 if let objectPreview,
+                   objectPreview.kind != .well,
+                   isQuest1TutorialActive,
+                   !tutorialInvalidBuildingKinds.contains(objectPreview.kind) {
+                    showProgressionFeedback("TRY THE WRONG SOIL FIRST")
+                    rebuildMapView()
+                    return
+                }
+                if let objectPreview,
                    worldState.placeBuildingObject(objectPreview) == .valid {
                     let title = BuildingObjectCatalog.definition(for: objectPreview.kind).title
                     self.objectPreview = nil
@@ -478,6 +496,13 @@ extension GameScene {
         }
 
         if validator.validate(preview, in: worldState) == .valid {
+            if preview.kind != .well,
+               isQuest1TutorialActive,
+               !tutorialInvalidBuildingKinds.contains(preview.kind) {
+                showProgressionFeedback("TRY THE WRONG SOIL FIRST")
+                rebuildMapView()
+                return
+            }
             _ = worldState.placeBuildingObject(preview)
             syncQuest2PlacementProgress()
             selectedObjectKind = nil
@@ -501,6 +526,8 @@ extension GameScene {
             showProgressionFeedback("\(title.uppercased()) RESTORED")
             rebuildMapView()
         } else {
+            tutorialInvalidBuildingKinds.insert(preview.kind)
+            showProgressionFeedback("BUILDINGS NEED VILLAGE SOIL")
             // A new building that still touches a tile remains selected in red
             // so the player can drag it to another position.
             AudioService.shared.playSFX("PaperMap")
@@ -531,8 +558,9 @@ extension GameScene {
             rotationInputLocked = false
             return
         }
-        hasRotatedPieceInTutorial = true
-
+        if isQuest1TutorialActive {
+            hasRotatedTileInTutorial = true
+        }
         gameMode = .mapPieceSelected(preview.pieceID)
         mapRenderer.updatePreviewNode(
             piece: piece,
@@ -584,6 +612,8 @@ extension GameScene {
         }
 
         if tutorialDrop && !preview.isValid {
+            hasTriedMismatchedTileInTutorial = true
+            showProgressionFeedback("EDGES MUST MATCH COLOR")
             preview = mapController.applyTutorialBounce(mapper: mapRenderer.mapper) ?? preview
             gameMode = .mapPieceSelected(pieceID)
             mapRenderer.animatePreviewSnap(pieceID: pieceID, to: preview.visualPosition, in: mapRoot) { [weak self] in
@@ -620,7 +650,15 @@ extension GameScene {
             }
             self.mapRenderer.updatePreviewNode(piece: piece, preview: currentPreview, in: self.mapRoot, worldState: self.worldState)
             if currentPreview.isValid {
-                self.confirmMapPreview(keepSelection: true)
+                if self.isQuest1TutorialActive {
+                    guard self.hasRotatedTileInTutorial && self.hasTriedMismatchedTileInTutorial else {
+                        self.rebuildMapView()
+                        return
+                    }
+                    self.hasRotatedPieceInTutorial = true
+                    self.showProgressionFeedback("MATCHING COLORS CONNECT")
+                }
+                self.confirmMapPreview(keepSelection: !self.isQuest1TutorialActive)
             } else {
                 self.rebuildMapView()
             }
@@ -664,6 +702,15 @@ extension GameScene {
     func confirmMapPreview(keepSelection: Bool = false) {
         guard let preview = mapController.preview else {
             return
+        }
+
+        if isQuest1TutorialActive, preview.isValid {
+            guard hasRotatedTileInTutorial && hasTriedMismatchedTileInTutorial else {
+                gameMode = .mapPieceSelected(preview.pieceID)
+                rebuildMapView()
+                return
+            }
+            hasRotatedPieceInTutorial = true
         }
 
         gameMode = .committingMapChange

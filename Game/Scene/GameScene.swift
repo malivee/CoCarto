@@ -74,7 +74,10 @@ final class GameScene: SKScene {
     let joystickKnob = SKShapeNode(circleOfRadius: 28)
     let worldTutorialBanner = InWorldTutorialBannerNode()
     var hasMovedArthurInTutorial = false
+    var hasRotatedTileInTutorial = false
     var hasRotatedPieceInTutorial = false
+    var hasTriedMismatchedTileInTutorial = false
+    var tutorialInvalidBuildingKinds: Set<BuildingObjectKind> = []
 
     var playerNode: PlayerNode?
     var showsDebugOverlay = false

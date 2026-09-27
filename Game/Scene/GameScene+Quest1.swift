@@ -32,7 +32,8 @@ extension GameScene {
             return [MapQuestItem(
                 category: "Quest 6",
                 title: "\(VillageQuestCatalog.Quest6.mapObjective) (\(rockSaltMineCount)/3)",
-                isCompleted: rockSaltMineCount >= 3
+                isCompleted: rockSaltMineCount >= 3,
+                buildingKind: .rockSalt
             )]
         }
 
@@ -40,7 +41,8 @@ extension GameScene {
             return [MapQuestItem(
                 category: "Quest 5",
                 title: VillageQuest5Catalog.mapObjective,
-                isCompleted: hasAnnethHome
+                isCompleted: hasAnnethHome,
+                buildingKind: .annethHouse
             )]
         }
 
@@ -48,43 +50,46 @@ extension GameScene {
             return [MapQuestItem(
                 category: "Quest 4",
                 title: VillageQuest4Catalog.mapObjective,
-                isCompleted: hasAnimalPen
+                isCompleted: hasAnimalPen,
+                buildingKind: .animalPen
             )]
         }
 
         if !quest1Controller.isCompleted && !quest1Controller.hasCollectedWater {
+            guard hasArthurHome else { return [] }
             return [
-                MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: hasArthurHome),
-                MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: hasWell)
+                MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: true, buildingKind: .arthurHouse),
+                MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: hasWell, buildingKind: .well)
             ]
         }
         if quest1Controller.hasCollectedWater && !quest2Controller.isCompleted {
             var quest2Items = [
-                MapQuestItem(category: "Quest 2", title: VillageQuestCatalog.Quest2.mapObjective, isCompleted: false)
+                MapQuestItem(category: "Quest 2", title: VillageQuestCatalog.Quest2.mapObjective, isCompleted: false, buildingKind: .buMaraHouse)
             ]
             if !hasMaraHome {
-                quest2Items.append(MapQuestItem(category: "Quest 2", title: VillageQuestCatalog.Quest2.worldObjectives[2], isCompleted: false))
+                quest2Items.append(MapQuestItem(category: "Quest 2", title: VillageQuestCatalog.Quest2.worldObjectives[2], isCompleted: false, buildingKind: .buMaraHouse))
             }
             return quest2Items
         }
         if quest1Controller.isCompleted && quest2Controller.isCompleted && !hasBarn {
-            return [MapQuestItem(category: "Quest 3", title: VillageQuest3Catalog.mapObjective, isCompleted: false)]
+            return [MapQuestItem(category: "Quest 3", title: VillageQuest3Catalog.mapObjective, isCompleted: false, buildingKind: .barn)]
         }
         var items: [MapQuestItem] = []
         if hasArthurHome {
-            items.append(MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: true))
+            items.append(MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: true, buildingKind: .arthurHouse))
         }
         if quest1Controller.isWellUnlocked || hasWell {
-            items.append(MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: hasWell))
+            items.append(MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: hasWell, buildingKind: .well))
         }
         if quest1Controller.hasCollectedWater || quest2Controller.isActive || quest2Controller.isCompleted || hasMaraHome {
-            items.append(MapQuestItem(category: "Quest 2", title: VillageQuestCatalog.Quest2.mapObjective, isCompleted: quest2Controller.isCompleted))
+            items.append(MapQuestItem(category: "Quest 2", title: VillageQuestCatalog.Quest2.mapObjective, isCompleted: quest2Controller.isCompleted, buildingKind: .buMaraHouse))
         }
         if quest1Controller.isCompleted && quest2Controller.isCompleted {
             items.append(MapQuestItem(
                 category: "Quest 3",
                 title: VillageQuest3Catalog.mapObjective,
-                isCompleted: quest3Controller.isCompleted || hasBarn
+                isCompleted: quest3Controller.isCompleted || hasBarn,
+                buildingKind: .barn
             ))
         }
         return items

@@ -91,6 +91,11 @@ extension GameScene {
         pendingLoadedPlayerSpatialState = nil
         selectedObjectKind = nil
         objectPreview = nil
+        hasMovedArthurInTutorial = false
+        hasRotatedTileInTutorial = false
+        hasRotatedPieceInTutorial = false
+        hasTriedMismatchedTileInTutorial = false
+        tutorialInvalidBuildingKinds.removeAll()
         worldState = .buildingPuzzleBiomePrototype(allowing: [.z2, .l1])
         quest1Controller.reset()
         quest2Controller.reset()
