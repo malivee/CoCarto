@@ -3,8 +3,9 @@ import UIKit
 import CoreImage
 
 extension GameScene {
-    func enterMapView() {
-        guard gameMode == .exploring, !isQuest1TutorialActive else {
+    func enterMapView(allowDuringQuestTutorial: Bool = false) {
+        guard gameMode == .exploring,
+              allowDuringQuestTutorial || !isQuest1TutorialActive else {
             return
         }
 
