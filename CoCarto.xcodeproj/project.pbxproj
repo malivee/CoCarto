@@ -32,6 +32,7 @@
 		EE15C545306704A60000F592 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		EE15C7BB3068C8DD0000F592 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		EE15C8F73068CC010000F592 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
+		EE15CB7430693DC50000F592 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -232,6 +233,11 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		EE15CB7A30693DC50000F592 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -334,6 +340,10 @@
 					ProjectRef = AA3EB30E3066687A00BCF5E3 /* CoCarto.xcodeproj */;
 				},
 				{
+					ProductGroup = EE15CB7A30693DC50000F592 /* Products */;
+					ProjectRef = EE15CB7430693DC50000F592 /* CoCarto.xcodeproj */;
+				},
+				{
 					ProductGroup = 2361980530666E4700C66ECB /* Products */;
 					ProjectRef = 236197FF30666E4700C66ECB /* CoCarto.xcodeproj */;
 				},
@@ -417,7 +427,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DTTY9ZX5T4;
+				DEVELOPMENT_TEAM = 8V4LVBCX83;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -450,7 +460,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DTTY9ZX5T4;
+				DEVELOPMENT_TEAM = 8V4LVBCX83;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

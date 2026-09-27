@@ -379,11 +379,11 @@ final class MapHUDNode: SKNode {
         updateNewBuildingBadge(isInventoryExpanded: inventoryExpanded)
 
         questPanel.position = CGPoint(
-            x: cameraCenter.x + halfWidth - sideInset - 126,
-            y: topY - 22
+            x: cameraCenter.x + halfWidth - sideInset - 143,
+            y: topY - (questItems.count >= 3 ? 45 : 22)
         )
 
-        questPanel.update(with: Array(questItems.prefix(2)))
+        questPanel.update(with: Array(questItems.prefix(3)))
         questPanel.isHidden = questItems.isEmpty || (inventoryExpanded && sceneSize.width * cameraScale < 530)
 
         // Keep tutorial copy inside the top HUD row, away from the inventory
