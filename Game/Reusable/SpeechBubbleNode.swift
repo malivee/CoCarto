@@ -36,8 +36,8 @@ public struct SpeechBubbleConfig {
         text: String = "",
         speaker: String? = nil,
         pageIndicator: String? = nil,
-        fontName: String = "AvenirNext-Bold",
-        fontSize: CGFloat = 19,
+        fontName: String = GameFont.name,
+        fontSize: CGFloat = 20,
         // Teks putih bersih dan tajam
         fontColor: SKColor = .white,
         // Warna emas hangat untuk nama pembicara (#F6D57A)
@@ -107,7 +107,7 @@ public class SpeechBubbleNode: SKNode {
             sLabel.horizontalAlignmentMode = .center
             sLabel.verticalAlignmentMode = .center
             #if canImport(UIKit)
-            let sFont = UIFont.systemFont(ofSize: 15, weight: .heavy)
+            let sFont = GameFont.uiFont(size: 18)
             sLabel.attributedText = NSAttributedString(string: speaker.uppercased(), attributes: [
                 .font: sFont,
                 .foregroundColor: config.speakerColor,
@@ -115,7 +115,7 @@ public class SpeechBubbleNode: SKNode {
             ])
             #else
             sLabel.text = speaker.uppercased()
-            sLabel.fontSize = 15
+            sLabel.fontSize = 18
             sLabel.fontColor = config.speakerColor
             #endif
             speakerLabel = sLabel
@@ -128,8 +128,7 @@ public class SpeechBubbleNode: SKNode {
         textLabel.verticalAlignmentMode = .center
         #if canImport(UIKit)
         let targetSize = config.fontSize
-        let descriptor = UIFont.systemFont(ofSize: targetSize, weight: .bold).fontDescriptor.withDesign(.rounded) ?? UIFont.boldSystemFont(ofSize: targetSize).fontDescriptor
-        let font = UIFont(descriptor: descriptor, size: targetSize)
+        let font = GameFont.uiFont(size: targetSize)
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .center
         paragraph.lineSpacing = 3.0
@@ -151,14 +150,14 @@ public class SpeechBubbleNode: SKNode {
             iLabel.horizontalAlignmentMode = .center
             iLabel.verticalAlignmentMode = .center
             #if canImport(UIKit)
-            let iFont = UIFont.systemFont(ofSize: 11, weight: .medium)
+            let iFont = GameFont.uiFont(size: 13)
             iLabel.attributedText = NSAttributedString(string: indicator, attributes: [
                 .font: iFont,
                 .foregroundColor: SKColor(white: 0.65, alpha: 1.0)
             ])
             #else
             iLabel.text = indicator
-            iLabel.fontSize = 11
+            iLabel.fontSize = 13
             iLabel.fontColor = SKColor(white: 0.65, alpha: 1.0)
             #endif
             indicatorLabel = iLabel
@@ -475,6 +474,3 @@ import SwiftUI
     .ignoresSafeArea()
 }
 #endif
-
-
-

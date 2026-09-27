@@ -149,9 +149,9 @@ final class MapCellNode: SKSpriteNode {
 
     private func addEdgeDebugLabels(edges: CellEdges, cellSize: CGFloat) {
         for direction in Direction.allCases {
-            let label = SKLabelNode(fontNamed: "Menlo-Bold")
+            let label = SKLabelNode(fontNamed: GameFont.name)
             label.text = edges[direction].debugSymbol
-            label.fontSize = 10
+            label.fontSize = 13
             label.fontColor = edges[direction].debugColor
             label.verticalAlignmentMode = .center
             label.horizontalAlignmentMode = .center
@@ -163,9 +163,9 @@ final class MapCellNode: SKSpriteNode {
 
     private func addBiomeEdgeDebugLabels(edges: CellBiomeEdges, cellSize: CGFloat) {
         for direction in Direction.allCases {
-            let label = SKLabelNode(fontNamed: "Menlo-Bold")
+            let label = SKLabelNode(fontNamed: GameFont.name)
             label.text = String(edges[direction].debugSymbol)
-            label.fontSize = 12
+            label.fontSize = 15
             label.fontColor = edges[direction].debugColor
             label.verticalAlignmentMode = .center
             label.horizontalAlignmentMode = .center

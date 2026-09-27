@@ -130,9 +130,9 @@ final class TutorialBannerNode: SKNode {
     private let background = SKShapeNode()
     private let innerBorder = SKShapeNode()
     private let sealBg = SKShapeNode()
-    private let sealIcon = SKLabelNode(fontNamed: "AvenirNext-Bold")
-    private let titleLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
-    private let subLabel = SKLabelNode(fontNamed: "AvenirNext-Medium")
+    private let sealIcon = SKLabelNode(fontNamed: GameFont.name)
+    private let titleLabel = SKLabelNode(fontNamed: GameFont.name)
+    private let subLabel = SKLabelNode(fontNamed: GameFont.name)
 
     override init() {
         super.init()
@@ -159,13 +159,13 @@ final class TutorialBannerNode: SKNode {
         sealIcon.horizontalAlignmentMode = .center
         addChild(sealIcon)
 
-        titleLabel.fontSize = 13.5
+        titleLabel.fontSize = 15
         titleLabel.fontColor = SKColor(red: 0.22, green: 0.14, blue: 0.08, alpha: 1.0)
         titleLabel.horizontalAlignmentMode = .left
         titleLabel.verticalAlignmentMode = .center
         addChild(titleLabel)
 
-        subLabel.fontSize = 11.5
+        subLabel.fontSize = 13
         subLabel.fontColor = SKColor(red: 0.44, green: 0.32, blue: 0.22, alpha: 1.0)
         subLabel.horizontalAlignmentMode = .left
         subLabel.verticalAlignmentMode = .center
@@ -190,7 +190,7 @@ final class TutorialBannerNode: SKNode {
         isHidden = false
 
         let bannerWidth = min(maxWidth, 390)
-        let bannerHeight: CGFloat = 68
+        let bannerHeight: CGFloat = 82
 
         background.path = CGPath(
             roundedRect: CGRect(x: -bannerWidth / 2, y: -bannerHeight / 2, width: bannerWidth, height: bannerHeight),
@@ -216,18 +216,18 @@ final class TutorialBannerNode: SKNode {
         let textWidth = bannerWidth - (textX - (-bannerWidth / 2)) - 14
 
         titleLabel.text = step.title
-        titleLabel.position = CGPoint(x: textX, y: 11)
+        titleLabel.position = CGPoint(x: textX, y: 16)
         titleLabel.preferredMaxLayoutWidth = textWidth
 
         subLabel.text = step.subtitle
-        subLabel.position = CGPoint(x: textX, y: -11)
+        subLabel.position = CGPoint(x: textX, y: -14)
         subLabel.preferredMaxLayoutWidth = textWidth
     }
 }
 
 final class MapHUDNode: SKNode {
 
-    static let inventoryItemHeight: CGFloat = 112
+    static let inventoryItemHeight: CGFloat = 120
     static let inventoryPanelHeight: CGFloat = 392
 
     private let inventoryToggle = MapButtonNode(
@@ -240,7 +240,7 @@ final class MapHUDNode: SKNode {
 
         borderless: false,
 
-        fontSize: 17
+        fontSize: 18
 
     )
 
@@ -276,20 +276,20 @@ final class MapHUDNode: SKNode {
     private let inventoryScrollTrack = SKShapeNode()
     private let inventoryScrollThumb = SKShapeNode()
     private let newBuildingBadge = SKShapeNode()
-    private let newBuildingBadgeLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
-    private let emptyInventoryLabel = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+    private let newBuildingBadgeLabel = SKLabelNode(fontNamed: GameFont.name)
+    private let emptyInventoryLabel = SKLabelNode(fontNamed: GameFont.name)
 
     private let selectionTray = SKShapeNode()
 
     private let selectionControls = SKNode()
-    private let objectStatus = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+    private let objectStatus = SKLabelNode(fontNamed: GameFont.name)
     private let placeObjectButton = MapButtonNode(title: "PLACE", name: MapNodeName.confirmButton.rawValue)
     private let cancelObjectButton = MapButtonNode(title: "CANCEL", name: MapNodeName.cancelButton.rawValue)
     private let enterWorldButton = MapButtonNode(
         title: "ENTER WORLD  ▶",
         name: MapNodeName.enterWorldButton.rawValue,
         size: CGSize(width: 218, height: 58),
-        fontSize: 17
+        fontSize: 18
     )
     private let tutorialBanner = TutorialBannerNode()
     private var inventoryItemNodes: [BuildingObjectKind: SKNode] = [:]
@@ -378,17 +378,24 @@ final class MapHUDNode: SKNode {
         inventoryPanel.isHidden = !inventoryExpanded
         updateNewBuildingBadge(isInventoryExpanded: inventoryExpanded)
 
+        let hudWidth = sceneSize.width * cameraScale
+        let questPanelHeight = QuestTrackerNode.panelHeight(for: min(questItems.count, 3))
+        let questPanelHalfHeight = questPanelHeight / 2
+        let questPanelY = topY + 34 - questPanelHalfHeight
         questPanel.position = CGPoint(
-            x: cameraCenter.x + halfWidth - sideInset - 143,
-            y: topY - (questItems.count >= 3 ? 45 : 22)
+            x: cameraCenter.x + halfWidth - sideInset - 126,
+            y: questPanelY
         )
 
         questPanel.update(with: Array(questItems.prefix(3)))
-        questPanel.isHidden = questItems.isEmpty || (inventoryExpanded && sceneSize.width * cameraScale < 530)
+        questPanel.isHidden = questItems.isEmpty || (inventoryExpanded && hudWidth < 560)
 
         // Keep tutorial copy inside the top HUD row, away from the inventory
         // list and the bottom placement controls.
-        let bannerY = inventoryExpanded ? topY - 40 - panelSize.height - 38 : topY - 78
+        let defaultBannerY = inventoryExpanded ? topY - 40 - panelSize.height - 44 : topY - 78
+        let bannerY = !questItems.isEmpty && !inventoryExpanded
+            ? min(defaultBannerY, questPanelY - questPanelHalfHeight - 50)
+            : defaultBannerY
         tutorialBanner.position = CGPoint(x: cameraCenter.x, y: bannerY)
         let bannerMaxWidth = min(halfWidth * 2 - 40, 420)
         tutorialBanner.update(with: tutorialStep, maxWidth: bannerMaxWidth)
@@ -645,7 +652,7 @@ final class MapHUDNode: SKNode {
         inventoryPanel.addChild(inventoryScrollThumb)
 
         emptyInventoryLabel.text = "ALL BUILDINGS PLACED\nNew buildings unlock through quests."
-        emptyInventoryLabel.fontSize = 15
+        emptyInventoryLabel.fontSize = 16.5
         emptyInventoryLabel.fontColor = SKColor.white.withAlphaComponent(0.78)
         emptyInventoryLabel.numberOfLines = 0
         emptyInventoryLabel.horizontalAlignmentMode = .center
@@ -716,9 +723,9 @@ final class MapHUDNode: SKNode {
             thumbnailPlate.addChild(thumbnail)
         }
 
-        let label = SKLabelNode(fontNamed: "AvenirNext-Medium")
+        let label = SKLabelNode(fontNamed: GameFont.name)
         label.text = title
-        label.fontSize = 15
+        label.fontSize = 16.5
         label.numberOfLines = 2
         label.preferredMaxLayoutWidth = 117
         label.lineBreakMode = .byWordWrapping
@@ -728,31 +735,33 @@ final class MapHUDNode: SKNode {
         label.position = CGPoint(x: -28, y: 20)
         root.addChild(label)
 
-        let dimensions = SKLabelNode(fontNamed: "AvenirNext-Regular")
+        let dimensions = SKLabelNode(fontNamed: GameFont.name)
         dimensions.text = "\(definition.mapWidth) × \(definition.mapHeight) grid squares"
-        dimensions.fontSize = 13
+        dimensions.fontSize = 14
         dimensions.fontColor = SKColor.white.withAlphaComponent(0.72)
         dimensions.horizontalAlignmentMode = .left
-        dimensions.position = CGPoint(x: -88, y: -24)
+        dimensions.verticalAlignmentMode = .center
+        dimensions.position = CGPoint(x: -88, y: -22)
         root.addChild(dimensions)
 
-        let dragHint = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        let dragHint = SKLabelNode(fontNamed: GameFont.name)
         dragHint.text = "Tap or drag right"
-        dragHint.fontSize = 11
+        dragHint.fontSize = 12.5
         dragHint.fontColor = SKColor.white.withAlphaComponent(0.52)
         dragHint.horizontalAlignmentMode = .right
-        dragHint.position = CGPoint(x: 88, y: -42)
+        dragHint.verticalAlignmentMode = .center
+        dragHint.position = CGPoint(x: 88, y: -43)
         root.addChild(dragHint)
 
         if isNew {
             let badge = SKShapeNode(rectOf: CGSize(width: 38, height: 18), cornerRadius: 6)
-            badge.position = CGPoint(x: -68, y: -38)
+            badge.position = CGPoint(x: -68, y: -43)
             badge.fillColor = SKColor(red: 0.92, green: 0.43, blue: 0.16, alpha: 1)
             badge.strokeColor = SKColor(red: 1, green: 0.82, blue: 0.34, alpha: 1)
             badge.lineWidth = 1
-            let badgeText = SKLabelNode(fontNamed: "AvenirNext-Bold")
+            let badgeText = SKLabelNode(fontNamed: GameFont.name)
             badgeText.text = "NEW"
-            badgeText.fontSize = 10
+            badgeText.fontSize = 12
             badgeText.fontColor = .white
             badgeText.verticalAlignmentMode = .center
             badgeText.position.y = -1
@@ -777,7 +786,7 @@ final class MapHUDNode: SKNode {
         newBuildingBadge.zPosition = 20
         inventoryToggle.addChild(newBuildingBadge)
 
-        newBuildingBadgeLabel.fontSize = 11
+        newBuildingBadgeLabel.fontSize = 13
         newBuildingBadgeLabel.fontColor = .white
         newBuildingBadgeLabel.verticalAlignmentMode = .center
         newBuildingBadgeLabel.position.y = -1
@@ -849,7 +858,7 @@ final class MapHUDNode: SKNode {
         selectionControls.addChild(rotateLeftButton)
 
         selectionControls.addChild(rotateRightButton)
-        objectStatus.fontSize = 15
+        objectStatus.fontSize = 16.5
         objectStatus.numberOfLines = 2
         objectStatus.verticalAlignmentMode = .top
         objectStatus.position.y = 94
@@ -979,7 +988,7 @@ final class MapButtonNode: SKNode {
     private let tutorialGlow: SKShapeNode
 
 
-    init(title: String, name: String, size: CGSize? = nil, borderless: Bool = false, fontSize: CGFloat = 14) {
+    init(title: String, name: String, size: CGSize? = nil, borderless: Bool = false, fontSize: CGFloat = 16) {
 
         let isEnterMapButton = name == MapNodeName.enterButton.rawValue
 
@@ -1003,7 +1012,7 @@ final class MapButtonNode: SKNode {
             cornerRadius: isEnterMapButton ? 21 : min(17, resolvedSize.height / 2 + 3)
         )
 
-        label = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        label = SKLabelNode(fontNamed: GameFont.name)
 
         super.init()
 
@@ -1079,7 +1088,7 @@ final class MapButtonNode: SKNode {
 
         label.text = displayTitle
 
-        label.fontSize = isEnterMapButton ? 13 : (title.count == 1 ? 34 : fontSize)
+        label.fontSize = isEnterMapButton ? 16 : (title.count == 1 ? 34 : fontSize)
 
         label.fontColor = isEnterMapButton
             ? SKColor(red: 0.24, green: 0.19, blue: 0.15, alpha: 1)

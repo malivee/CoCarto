@@ -109,7 +109,7 @@ public final class ShelfBalanceMinigameNode: SKNode {
     
     // Minimalist Top HUD (Ultra-minimal: Only a small "WEDGE SHELF" badge and close button)
     private let headerBar = SKNode()
-    private let headerTitleLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+    private let headerTitleLabel = SKLabelNode(fontNamed: GameFont.name)
     
     // Speech Bubble Dialog (Mrs. Mara's short narrative)
     private var activeSpeechBubble: SpeechBubbleNode?
@@ -980,8 +980,8 @@ public final class ShelfBalanceMinigameNode: SKNode {
         headerBar.addChild(pillBg)
         
         headerTitleLabel.text = "WEDGE SHELF"
-        headerTitleLabel.fontName = "AvenirNext-Bold"
-        headerTitleLabel.fontSize = 11
+        headerTitleLabel.fontName = GameFont.name
+        headerTitleLabel.fontSize = 14
         headerTitleLabel.fontColor = SKColor(red: 0.95, green: 0.88, blue: 0.72, alpha: 1.0)
         headerTitleLabel.verticalAlignmentMode = .center
         headerTitleLabel.position = CGPoint(x: 0, y: 0)
@@ -995,9 +995,9 @@ public final class ShelfBalanceMinigameNode: SKNode {
         dismissBtn.position = CGPoint(x: 155, y: 0)
         dismissBtn.name = "dismissBtn"
         
-        let xLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        let xLabel = SKLabelNode(fontNamed: GameFont.name)
         xLabel.text = "✕"
-        xLabel.fontSize = 12
+        xLabel.fontSize = 15
         xLabel.fontColor = SKColor(red: 0.95, green: 0.88, blue: 0.72, alpha: 0.9)
         xLabel.verticalAlignmentMode = .center
         xLabel.horizontalAlignmentMode = .center
@@ -1325,8 +1325,8 @@ public final class ShelfBalanceMinigameNode: SKNode {
         let config = SpeechBubbleConfig(
             text: message,
             speaker: "MRS. MARA",
-            fontName: "AvenirNext-Bold",
-            fontSize: 13,
+            fontName: GameFont.name,
+            fontSize: 16,
             fontColor: .white,
             speakerColor: isSuccess ? SKColor(red: 0.45, green: 0.90, blue: 0.55, alpha: 1.0) : SKColor(red: 0.96, green: 0.83, blue: 0.48, alpha: 1.0),
             backgroundColor: SKColor(red: 0.08, green: 0.07, blue: 0.09, alpha: 0.96),

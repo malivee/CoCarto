@@ -18,35 +18,38 @@ public final class MinigameTutorialOverlayNode: SKNode {
         dimmer.zPosition = -1
         addChild(dimmer)
 
-        let height = CGFloat(142 + steps.count * 34)
-        let card = SKShapeNode(rectOf: CGSize(width: 332, height: height), cornerRadius: 22)
+        let height = CGFloat(146 + steps.count * 40)
+        let card = SKShapeNode(rectOf: CGSize(width: 340, height: height), cornerRadius: 22)
         card.fillColor = SKColor(red: 0.10, green: 0.08, blue: 0.07, alpha: 0.98)
         card.strokeColor = SKColor(red: 0.92, green: 0.73, blue: 0.35, alpha: 1)
         card.lineWidth = 2
         addChild(card)
 
-        let heading = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        let heading = SKLabelNode(fontNamed: GameFont.name)
         heading.text = title.uppercased()
-        heading.fontSize = 19
+        heading.fontSize = 21
         heading.fontColor = SKColor(red: 1.0, green: 0.88, blue: 0.58, alpha: 1)
         heading.verticalAlignmentMode = .center
         heading.position.y = height / 2 - 38
         addChild(heading)
 
         for (index, step) in steps.enumerated() {
-            let label = SKLabelNode(fontNamed: "AvenirNext-Medium")
+            let label = SKLabelNode(fontNamed: GameFont.name)
             label.text = "\(index + 1).  \(step)"
-            label.fontSize = 13
+            label.fontSize = 14.5
             label.fontColor = .white
             label.horizontalAlignmentMode = .left
             label.verticalAlignmentMode = .center
-            label.position = CGPoint(x: -138, y: height / 2 - 78 - CGFloat(index * 34))
+            label.numberOfLines = 2
+            label.preferredMaxLayoutWidth = 290
+            label.lineBreakMode = .byWordWrapping
+            label.position = CGPoint(x: -145, y: height / 2 - 80 - CGFloat(index * 40))
             addChild(label)
         }
 
-        let prompt = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        let prompt = SKLabelNode(fontNamed: GameFont.name)
         prompt.text = "TAP TO START"
-        prompt.fontSize = 14
+        prompt.fontSize = 15.5
         prompt.fontColor = SKColor(red: 0.55, green: 0.95, blue: 0.65, alpha: 1)
         prompt.verticalAlignmentMode = .center
         prompt.position.y = -height / 2 + 34

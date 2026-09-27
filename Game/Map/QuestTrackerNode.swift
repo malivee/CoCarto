@@ -2,7 +2,17 @@ import SpriteKit
 import UIKit
 
 final class QuestTrackerNode: SKShapeNode {
-    private var panelRect = CGRect(x: -143, y: -69, width: 286, height: 138)
+    private static let panelWidth: CGFloat = 252
+    private var panelRect = CGRect(x: -126, y: -47, width: 252, height: 94)
+
+    static func panelHeight(for itemCount: Int) -> CGFloat {
+        switch itemCount {
+        case 0: return 0
+        case 1: return 94
+        case 2: return 124
+        default: return 164
+        }
+    }
 
     override init() {
         super.init()
@@ -21,15 +31,20 @@ final class QuestTrackerNode: SKShapeNode {
         nil
     }
 
-    func update(with items: [MapQuestItem]) {
+    func update(with items: [MapQuestItem], showsItemIcon: Bool = true) {
         removeAllChildren()
         isHidden = items.isEmpty
 
         let visibleItems = Array(items.prefix(3))
         guard let firstItem = visibleItems.first else { return }
 
-        let panelHeight: CGFloat = visibleItems.count >= 3 ? 184 : 138
-        panelRect = CGRect(x: -143, y: -panelHeight / 2, width: 286, height: panelHeight)
+        let panelHeight = Self.panelHeight(for: visibleItems.count)
+        panelRect = CGRect(
+            x: -Self.panelWidth / 2,
+            y: -panelHeight / 2,
+            width: Self.panelWidth,
+            height: panelHeight
+        )
         path = CGPath(
             roundedRect: panelRect,
             cornerWidth: 18,
@@ -37,27 +52,18 @@ final class QuestTrackerNode: SKShapeNode {
             transform: nil
         )
 
-        let heading = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        let heading = SKLabelNode(fontNamed: GameFont.name)
         heading.text = "\(firstItem.category.uppercased())  BUILD REQUIREMENTS"
-        heading.fontSize = 11
+        heading.fontSize = 12.5
         heading.fontColor = SKColor(red: 1.0, green: 0.81, blue: 0.38, alpha: 1)
         heading.horizontalAlignmentMode = .left
         heading.verticalAlignmentMode = .center
-        heading.position = CGPoint(x: -130, y: visibleItems.count >= 3 ? 73 : 50)
+        heading.position = CGPoint(x: -114, y: panelHeight / 2 - 18)
         addChild(heading)
 
-        let rowPositions: [CGFloat]
-        switch visibleItems.count {
-        case 1:
-            rowPositions = [-5]
-        case 2:
-            rowPositions = [16, -35]
-        default:
-            rowPositions = [38, -10, -58]
-        }
         for (index, item) in visibleItems.enumerated() {
-            let row = makeRequirementRow(for: item)
-            row.position = CGPoint(x: 0, y: rowPositions[index])
+            let row = makeRequirementRow(for: item, showsItemIcon: showsItemIcon)
+            row.position = CGPoint(x: 0, y: panelHeight / 2 - 46 - CGFloat(index) * 42)
             addChild(row)
         }
     }
@@ -80,10 +86,10 @@ final class QuestTrackerNode: SKShapeNode {
         addChild(glow)
     }
 
-    private func makeRequirementRow(for item: MapQuestItem) -> SKNode {
+    private func makeRequirementRow(for item: MapQuestItem, showsItemIcon: Bool) -> SKNode {
         let root = SKNode()
 
-        let rowBackground = SKShapeNode(rectOf: CGSize(width: 264, height: 44), cornerRadius: 11)
+        let rowBackground = SKShapeNode(rectOf: CGSize(width: 232, height: 38), cornerRadius: 10)
         rowBackground.fillColor = item.isCompleted
             ? SKColor(red: 0.17, green: 0.31, blue: 0.20, alpha: 0.90)
             : SKColor.white.withAlphaComponent(0.075)
@@ -93,34 +99,36 @@ final class QuestTrackerNode: SKShapeNode {
         rowBackground.lineWidth = 1
         root.addChild(rowBackground)
 
-        let plate = SKShapeNode(rectOf: CGSize(width: 36, height: 36), cornerRadius: 8)
-        plate.position = CGPoint(x: -110, y: 0)
-        plate.fillColor = SKColor(red: 0.95, green: 0.89, blue: 0.74, alpha: 0.98)
-        plate.strokeColor = SKColor(red: 0.50, green: 0.36, blue: 0.18, alpha: 0.45)
-        plate.lineWidth = 1
-        root.addChild(plate)
+        if showsItemIcon {
+            let plate = SKShapeNode(rectOf: CGSize(width: 32, height: 32), cornerRadius: 7)
+            plate.position = CGPoint(x: -98, y: 0)
+            plate.fillColor = SKColor(red: 0.95, green: 0.89, blue: 0.74, alpha: 0.98)
+            plate.strokeColor = SKColor(red: 0.50, green: 0.36, blue: 0.18, alpha: 0.45)
+            plate.lineWidth = 1
+            root.addChild(plate)
 
-        if let kind = item.buildingKind,
-           let assetName = BuildingObjectRenderer.assetName(for: kind) {
-            let texture = SKTexture(imageNamed: assetName)
-            let textureSize = texture.size()
-            let scale = min(30 / max(textureSize.width, 1), 30 / max(textureSize.height, 1))
-            let sprite = SKSpriteNode(texture: texture)
-            sprite.size = CGSize(width: textureSize.width * scale, height: textureSize.height * scale)
-            sprite.zPosition = 2
-            plate.addChild(sprite)
+            if let kind = item.buildingKind,
+               let assetName = BuildingObjectRenderer.assetName(for: kind) {
+                let texture = SKTexture(imageNamed: assetName)
+                let textureSize = texture.size()
+                let scale = min(27 / max(textureSize.width, 1), 27 / max(textureSize.height, 1))
+                let sprite = SKSpriteNode(texture: texture)
+                sprite.size = CGSize(width: textureSize.width * scale, height: textureSize.height * scale)
+                sprite.zPosition = 2
+                plate.addChild(sprite)
+            }
         }
 
-        let title = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        let title = SKLabelNode(fontNamed: GameFont.name)
         title.text = item.title
-        title.fontSize = 12
+        title.fontSize = showsItemIcon ? 13.5 : 16
         title.fontColor = item.isCompleted ? SKColor.white.withAlphaComponent(0.74) : .white
         title.horizontalAlignmentMode = .left
         title.verticalAlignmentMode = .center
         title.numberOfLines = 2
-        title.preferredMaxLayoutWidth = 205
+        title.preferredMaxLayoutWidth = showsItemIcon ? 184 : 220
         title.lineBreakMode = .byWordWrapping
-        title.position = CGPoint(x: -84, y: 0)
+        title.position = CGPoint(x: showsItemIcon ? -76 : -110, y: 0)
         root.addChild(title)
 
         return root

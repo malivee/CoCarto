@@ -221,11 +221,11 @@ public struct RockSaltCarvingView: View {
 
             VStack(alignment: .leading, spacing: 16) {
                 Text("MINE ROCK SALT")
-                    .font(.system(size: 22, weight: .black, design: .rounded))
+                    .font(.custom(GameFont.name, size: 27))
                     .foregroundColor(Color(red: 0.75, green: 0.92, blue: 1.0))
 
                 Text("1. Tap the salt deposit to swing the pickaxe.\n2. Keep striking until the deposit shatters.\n3. Complete the mine to collect its rock salt.")
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(.custom(GameFont.name, size: 18))
                     .foregroundColor(.white)
                     .lineSpacing(7)
 
@@ -234,7 +234,7 @@ public struct RockSaltCarvingView: View {
                         isShowingTutorial = false
                     }
                 }
-                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .font(.custom(GameFont.name, size: 18))
                 .foregroundColor(Color(red: 0.04, green: 0.10, blue: 0.14))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -253,12 +253,12 @@ public struct RockSaltCarvingView: View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("ROCK SALT")
-                    .font(.system(size: 16, weight: .heavy, design: .rounded))
+                    .font(.custom(GameFont.name, size: 20))
                     .foregroundColor(Color(red: 0.98, green: 0.95, blue: 0.90))
                     .shadow(color: Color.black.opacity(0.8), radius: 1, x: 1, y: 1)
                 
                 Text("Collect salt shards")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .font(.custom(GameFont.name, size: 14))
                     .foregroundColor(Color.white.opacity(0.7))
             }
             
@@ -271,7 +271,7 @@ public struct RockSaltCarvingView: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(Color(red: 0.6, green: 0.9, blue: 1.0))
                     Text("\(mountainHits)/\(maxHits)")
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .font(.custom(GameFont.name, size: 17))
                         .foregroundColor(Color.white)
                 }
                 .padding(.horizontal, 14)
@@ -316,11 +316,11 @@ public struct RockSaltCarvingView: View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("OLD MINER")
-                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .font(.custom(GameFont.name, size: 16))
                     .foregroundColor(Color(red: 0.80, green: 0.85, blue: 0.90)) // Light grayish blue for miner
                 
                 Text(dialogMessage)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .font(.custom(GameFont.name, size: 17))
                     .foregroundColor(.white)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -357,11 +357,11 @@ public struct RockSaltCarvingView: View {
                 }
                 
                 Text("SALT COLLECTED!")
-                    .font(.system(size: 26, weight: .black, design: .rounded))
+                    .font(.custom(GameFont.name, size: 31))
                     .foregroundColor(Color.white)
                 
                 Text("Pure rock salt crystals have been shattered and are ready for the village's kitchen supply.")
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(.custom(GameFont.name, size: 18))
                     .foregroundColor(Color(red: 0.85, green: 0.90, blue: 0.95))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
@@ -371,7 +371,7 @@ public struct RockSaltCarvingView: View {
                     onDismiss?()
                 }) {
                     Text("COMPLETE")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.custom(GameFont.name, size: 20))
                         .foregroundColor(Color(red: 0.05, green: 0.1, blue: 0.2))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)

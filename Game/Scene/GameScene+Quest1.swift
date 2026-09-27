@@ -200,23 +200,16 @@ extension GameScene {
             handleQuest6Result(activation)
         }
         var items: [MapQuestItem] = []
-        let hasArthurHome = worldState.buildingObjects.contains { $0.kind == .arthurHouse }
-        let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
-        let hasMaraHome = worldState.buildingObjects.contains { $0.kind == .buMaraHouse }
-        let hasBarn = worldState.buildingObjects.contains { $0.kind == .barn }
 
         if quest6Controller.isActive {
-            let mineCount = worldState.buildingObjects.filter { $0.kind == .rockSalt }.count
             let title: String
-            if mineCount < 3 {
-                title = "\(VillageQuestCatalog.Quest6.mapObjective) (\(mineCount)/3)"
-            } else if !quest6Controller.hasCollectedRockSalt {
+            if !quest6Controller.hasCollectedRockSalt {
                 title = "Mine Rock Salt (\(quest6Controller.collectedRockSaltCount)/3)"
             } else {
                 title = "Return the Rock Salt to Anneth"
             }
             items.append(MapQuestItem(category: "Quest 6", title: title, isCompleted: false))
-            worldQuestTracker.update(with: items)
+            worldQuestTracker.update(with: items, showsItemIcon: false)
             worldQuestTracker.isHidden = gameMode != .exploring
             worldQuestLabel.isHidden = true
             return
@@ -228,7 +221,7 @@ extension GameScene {
                 title: VillageQuest5Catalog.worldObjective,
                 isCompleted: false
             ))
-            worldQuestTracker.update(with: items)
+            worldQuestTracker.update(with: items, showsItemIcon: false)
             worldQuestTracker.isHidden = gameMode != .exploring
             worldQuestLabel.isHidden = true
             return
@@ -240,29 +233,17 @@ extension GameScene {
                 title: VillageQuest4Catalog.worldObjective,
                 isCompleted: false
             ))
-            worldQuestTracker.update(with: items)
+            worldQuestTracker.update(with: items, showsItemIcon: false)
             worldQuestTracker.isHidden = gameMode != .exploring
             worldQuestLabel.isHidden = true
             return
         }
 
         if !quest1Controller.isCompleted {
-            if !hasArthurHome {
-                items.append(MapQuestItem(
-                    category: "Quest 1",
-                    title: VillageQuestCatalog.Quest1.mapObjectives[0],
-                    isCompleted: false
-                ))
-            } else if !quest1Controller.isWellUnlocked {
+            if !quest1Controller.isWellUnlocked {
                 items.append(MapQuestItem(
                     category: "Quest 1",
                     title: "Talk to Grandpa at Arthur's House.",
-                    isCompleted: false
-                ))
-            } else if !hasWell {
-                items.append(MapQuestItem(
-                    category: "Quest 1",
-                    title: VillageQuestCatalog.Quest1.mapObjectives[1],
                     isCompleted: false
                 ))
             } else {
@@ -276,19 +257,9 @@ extension GameScene {
             }
         }
         if quest1Controller.hasCollectedWater && !quest2Controller.isCompleted {
-            let quest2Title: String
-            if !hasArthurHome {
-                quest2Title = VillageQuestCatalog.Quest2.worldObjectives[0]
-            } else if !hasWell {
-                quest2Title = VillageQuestCatalog.Quest2.worldObjectives[1]
-            } else if !hasMaraHome {
-                quest2Title = VillageQuestCatalog.Quest2.worldObjectives[2]
-            } else {
-                quest2Title = VillageQuestCatalog.Quest2.mapObjective
-            }
             items.append(MapQuestItem(
                 category: "Quest 2",
-                title: quest2Title,
+                title: VillageQuestCatalog.Quest2.mapObjective,
                 isCompleted: false
             ))
         }
@@ -296,12 +267,12 @@ extension GameScene {
             let quest3Progress = VillageQuest3Progress.load()
             items.append(MapQuestItem(
                 category: "Quest 3",
-                title: hasBarn ? VillageQuest3Catalog.worldObjective : VillageQuest3Catalog.mapObjective,
+                title: VillageQuest3Catalog.worldObjective,
                 isCompleted: quest3Progress.sortedSeeds
             ))
         }
-        worldQuestTracker.update(with: items)
-        worldQuestTracker.isHidden = gameMode != .exploring || items.isEmpty || isQuest1TutorialActive
+        worldQuestTracker.update(with: items, showsItemIcon: false)
+        worldQuestTracker.isHidden = gameMode != .exploring || items.isEmpty
         worldQuestLabel.isHidden = true
         updateWorldTutorialBanner()
     }
@@ -546,7 +517,7 @@ extension GameScene {
             text: line.text,
             speaker: line.speaker,
             pageIndicator: "Tap to continue",
-            fontSize: 17,
+            fontSize: 20,
             maxWidth: min(size.width - 72, 360)
         ))
         bubble.name = "QuestDialogue"
