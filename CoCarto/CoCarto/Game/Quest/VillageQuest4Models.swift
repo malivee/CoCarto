@@ -4,9 +4,9 @@ import Foundation
 
 enum VillageQuest4Catalog {
     static let questNumber = 4
-    static let title = "Quest 4 - Temui Roland di Kandang"
-    static let mapObjective = "Place animal pen"
-    static let worldObjective = "Meet Roland at animal pen"
+    static let title = "Quest 4 - Meet Roland at the Animal Pen"
+    static let mapObjective = "Place the Animal Pen"
+    static let worldObjective = "Meet Roland at the Animal Pen"
 
     static let dialogue: [VillageQuestDialogueLine] = [
         .init(speaker: "Roland", text: "Find it yet?"),

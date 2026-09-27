@@ -1,4 +1,5 @@
 import SpriteKit
+import Foundation
 
 final class MapRenderer {
     private(set) var mapper = MapGridMapper(cellSize: 96, origin: .zero)
@@ -12,10 +13,18 @@ final class MapRenderer {
     private let mapCellSize: CGFloat
     private let worldCellSize: CGFloat
     private var currentTutorialTarget: BuildingObject?
+    private var newInventoryKinds: Set<BuildingObjectKind> = []
+    private var seenInventoryKinds: Set<BuildingObjectKind>
+    private let seenInventoryKindsKey = "cocarto.ui.seen-building-kinds.v1"
 
     init(mapCellSize: CGFloat = 96, worldCellSize: CGFloat = 256) {
         self.mapCellSize = mapCellSize
         self.worldCellSize = worldCellSize
+        if let storedKinds = UserDefaults.standard.stringArray(forKey: seenInventoryKindsKey) {
+            self.seenInventoryKinds = Set(storedKinds.compactMap(BuildingObjectKind.init(rawValue:)))
+        } else {
+            self.seenInventoryKinds = [.arthurHouse, .well]
+        }
     }
 
     func buildMap(
@@ -48,6 +57,9 @@ final class MapRenderer {
         availableInventoryKinds = BuildingObjectKind.allCases.filter {
             unlockedObjectKinds.contains($0) && !unavailableKinds.contains($0)
         }
+        newInventoryKinds.formUnion(unlockedObjectKinds.subtracting(seenInventoryKinds))
+        let visibleNewInventoryKinds = newInventoryKinds.intersection(availableInventoryKinds)
+        scrollInventory(by: 0)
         if availableInventoryKinds.isEmpty {
             selectedInventoryIndex = 0
         } else {
@@ -165,7 +177,10 @@ final class MapRenderer {
             contentRoot.addChild(makePlayerMarker(at: markerPosition))
         }
 
-        let hud = MapHUDNode(inventoryKinds: availableInventoryKinds)
+        let hud = MapHUDNode(
+            inventoryKinds: availableInventoryKinds,
+            newInventoryKinds: visibleNewInventoryKinds
+        )
         let shouldAnimateSelection = preview != nil && preview?.pieceID != lastRenderedSelectionID
         hud.layout(
             cameraCenter: CGPoint.zero,
@@ -203,17 +218,34 @@ final class MapRenderer {
     }
 
     func scrollInventory(by delta: CGFloat) {
-        let contentHeight = CGFloat(availableInventoryKinds.count) * 58
-        let viewportHeight: CGFloat = 356
-        let maximumOffset = max(0, contentHeight - viewportHeight + 12)
+        let contentHeight = CGFloat(availableInventoryKinds.count) * MapHUDNode.inventoryItemHeight + 20
+        let viewportHeight = MapHUDNode.inventoryPanelHeight - 8
+        let maximumOffset = max(0, contentHeight - viewportHeight)
         inventoryScrollOffset = min(max(inventoryScrollOffset + delta, 0), maximumOffset)
     }
 
     func selectInventoryItem(at index: Int) {
         guard availableInventoryKinds.indices.contains(index) else { return }
         selectedInventoryIndex = index
+        markInventoryKindSeen(availableInventoryKinds[index])
         inventoryExpanded = false
         inventoryScrollOffset = 0
+    }
+
+    func resetSeenInventoryKinds() {
+        seenInventoryKinds = [.arthurHouse, .well]
+        newInventoryKinds.removeAll()
+        persistSeenInventoryKinds()
+    }
+
+    private func markInventoryKindSeen(_ kind: BuildingObjectKind) {
+        seenInventoryKinds.insert(kind)
+        newInventoryKinds.remove(kind)
+        persistSeenInventoryKinds()
+    }
+
+    private func persistSeenInventoryKinds() {
+        UserDefaults.standard.set(seenInventoryKinds.map(\.rawValue).sorted(), forKey: seenInventoryKindsKey)
     }
 
     func inventoryKind(at index: Int) -> BuildingObjectKind? {
@@ -534,8 +566,8 @@ final class MapRenderer {
         let halfHeight = sceneSize.height * cameraScale / 2
         let topY = halfHeight - 116
         let start = CGPoint(
-            x: -halfWidth + 14 + 83,
-            y: topY - 71 - CGFloat(inventoryIndex) * 58 + inventoryScrollOffset
+            x: -halfWidth + 14 + 114,
+            y: topY - 50 - MapHUDNode.inventoryItemHeight / 2 - CGFloat(inventoryIndex) * MapHUDNode.inventoryItemHeight + inventoryScrollOffset
         )
 
         let preview = BuildingObjectRenderer.makeNode(

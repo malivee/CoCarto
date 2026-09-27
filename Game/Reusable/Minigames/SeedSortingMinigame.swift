@@ -54,6 +54,7 @@ public final class SeedSortingMinigameNode: SKNode {
     private var currentProgress: CGFloat = 0.0
     private var accumulatedShake: CGFloat = 0.0
     private var lastAcceleration: CMAcceleration?
+    private var isTutorialVisible = true
     
     private let motionManager = CMMotionManager()
     
@@ -302,6 +303,17 @@ public final class SeedSortingMinigameNode: SKNode {
             motionManager.accelerometerUpdateInterval = 1.0 / 60.0
             motionManager.startAccelerometerUpdates()
         }
+
+        let tutorial = MinigameTutorialOverlayNode(
+            title: "Sort the Wheat",
+            steps: [
+                "Hold the device securely.",
+                "Shake it gently in a steady rhythm.",
+                "Continue until the progress ring is full."
+            ]
+        )
+        tutorial.onDismiss = { [weak self] in self?.isTutorialVisible = false }
+        addChild(tutorial)
         
         // Manual Update Loop
         let loop = SKAction.customAction(withDuration: 1000.0) { [weak self] _, _ in
@@ -311,7 +323,7 @@ public final class SeedSortingMinigameNode: SKNode {
     }
     
     private func updatePhysics() {
-        guard isRunning, !isCompleted else { return }
+        guard isRunning, !isCompleted, !isTutorialVisible else { return }
         
         var tiltVector = CGVector.zero
         var shakeIntensity: CGFloat = 0.0

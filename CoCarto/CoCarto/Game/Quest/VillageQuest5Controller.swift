@@ -48,7 +48,7 @@ final class VillageQuest5Controller {
             return .unavailable([.init(speaker: "Quest", text: "Finish Quest 4 first.")])
         }
         guard worldState.buildingObjects.contains(where: { $0.kind == .annethHouse }) else {
-            return .unavailable([.init(speaker: "Quest", text: "Place Anneth home on the map first.")])
+            return .unavailable([.init(speaker: "Quest", text: "Place Anneth's House on the map first.")])
         }
         guard !progress.completed else {
             return .alreadyCompleted([.init(speaker: "Anneth", text: "The clean tubers are ready to take home.")])

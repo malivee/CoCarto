@@ -23,12 +23,12 @@ struct BuildingObjectDefinition: Sendable {
 enum BuildingObjectCatalog {
     // Map units are microgrid squares; ingame visuals use one quarter of the map dimensions.
     static let definitions: [BuildingObjectKind: BuildingObjectDefinition] = [
-        .arthurHouse: .init(kind: .arthurHouse, title: "Rumah Arthur", mapWidth: 6, mapHeight: 4),
-        .well: .init(kind: .well, title: "Sumur", mapWidth: 4, mapHeight: 4),
-        .buMaraHouse: .init(kind: .buMaraHouse, title: "Rumah Bu Mara", mapWidth: 8, mapHeight: 4),
-        .barn: .init(kind: .barn, title: "Lumbung", mapWidth: 6, mapHeight: 8),
-        .animalPen: .init(kind: .animalPen, title: "Kandang", mapWidth: 8, mapHeight: 10),
-        .annethHouse: .init(kind: .annethHouse, title: "Rumah Anneth", mapWidth: 8, mapHeight: 6),
+        .arthurHouse: .init(kind: .arthurHouse, title: "Arthur's House", mapWidth: 6, mapHeight: 4),
+        .well: .init(kind: .well, title: "Well", mapWidth: 4, mapHeight: 4),
+        .buMaraHouse: .init(kind: .buMaraHouse, title: "Mrs. Mara's House", mapWidth: 8, mapHeight: 4),
+        .barn: .init(kind: .barn, title: "Barn", mapWidth: 6, mapHeight: 8),
+        .animalPen: .init(kind: .animalPen, title: "Animal Pen", mapWidth: 8, mapHeight: 10),
+        .annethHouse: .init(kind: .annethHouse, title: "Anneth's House", mapWidth: 8, mapHeight: 6),
         .rockSalt: .init(kind: .rockSalt, title: "Rock Salt Mine", mapWidth: 4, mapHeight: 5)
     ]
 
@@ -64,11 +64,11 @@ enum BuildingPlacementResult: Equatable {
 
     var message: String {
         switch self {
-        case .valid: return "Siap dipasang"
-        case .requiresVillageSoil: return "Seluruh area harus village soil utuh"
-        case .requiresRockSalt: return "Seluruh area harus biome rock salt"
-        case .overlapsObject: return "Area sudah ditempati objek"
-        case .placementLimitReached: return "Maksimal 3 tambang rock salt"
+        case .valid: return "Ready to place"
+        case .requiresVillageSoil: return "The entire area must be on village soil"
+        case .requiresRockSalt: return "The entire area must be on rock salt terrain"
+        case .overlapsObject: return "The area is already occupied"
+        case .placementLimitReached: return "You can place up to three rock salt mines"
         }
     }
 }

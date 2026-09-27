@@ -315,7 +315,7 @@ final class MainMenuScene: SKScene {
 
         let label = SKLabelNode(fontNamed: "AvenirNext-Bold")
         label.name = NodeName.play
-        label.text = "MULAI PETUALANGAN"
+        label.text = "START ADVENTURE"
         label.fontSize = min(18, size.width * 0.046)
         label.fontColor = palette.ink
         label.verticalAlignmentMode = .center

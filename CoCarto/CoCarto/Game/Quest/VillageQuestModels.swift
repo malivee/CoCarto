@@ -329,18 +329,18 @@ enum VillageQuestCatalog {
 
     enum Quest1 {
         static let mapObjectives = [
-            "Place Arthur Home",
-            "Place well"
+            "Place Arthur's House",
+            "Place the Well"
         ]
-        static let worldObjective = "Get water from the well for Grandpa."
+        static let worldObjective = "Get Water from the Well for Grandpa"
     }
 
     enum Quest2 {
-        static let mapObjective = "Help Mrs. Mara move her claypots"
+        static let mapObjective = "Help Mrs. Mara Fix Her Shelf"
         static let worldObjectives = [
-            "Place Arthur Home",
-            "Place well",
-            "Place Mrs. Mara Home"
+            "Place Arthur's House",
+            "Place the Well",
+            "Place Mrs. Mara's House"
         ]
 
         static let dialogue = [
@@ -350,7 +350,7 @@ enum VillageQuestCatalog {
             ),
             VillageQuestDialogueLine(
                 speaker: "Arthur",
-                text: "The ground is sinking under this leg, Bu Mara. Moving the pots won't fix it. Let me wedge this broken brick under it."
+                text: "The ground is sinking under this leg, Mrs. Mara. Moving the pots won't fix it. Let me wedge this broken brick under it."
             ),
             VillageQuestDialogueLine(
                 speaker: "Mrs. Mara",
@@ -376,8 +376,8 @@ enum VillageQuestCatalog {
     }
 
     enum Quest6 {
-        static let mapObjectives = ["Place Anneth Home", "Place rock salt mine (0/3)"]
-        static let worldObjective = "Pick up Rock Salt"
+        static let mapObjective = "Place Rock Salt Mines"
+        static let worldObjective = "Collect Rock Salt"
     }
 
     static func buildingID(for kind: BuildingObjectKind) -> String {

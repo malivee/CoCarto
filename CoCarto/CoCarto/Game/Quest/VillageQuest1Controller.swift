@@ -46,7 +46,7 @@ final class VillageQuest1Controller {
 
         guard canStart(in: worldState) else {
             return .unavailable([
-                .init(speaker: "Quest", text: "Place Arthur Home first.")
+                .init(speaker: "Quest", text: "Place Arthur's House first.")
             ])
         }
 

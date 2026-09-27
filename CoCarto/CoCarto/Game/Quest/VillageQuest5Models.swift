@@ -2,9 +2,9 @@ import Foundation
 
 enum VillageQuest5Catalog {
     static let questNumber = 5
-    static let title = "Quest 5 - Temui Anneth Dirumahnya"
-    static let mapObjective = "Place Anneth home"
-    static let worldObjective = "Meet Anneth at her home"
+    static let title = "Quest 5 - Meet Anneth at Her House"
+    static let mapObjective = "Place Anneth's House"
+    static let worldObjective = "Meet Anneth at Her House"
 
     static let dialogue: [VillageQuestDialogueLine] = [
         .init(speaker: "Arthur", text: "Anneth? Roland said you wanted to see me."),

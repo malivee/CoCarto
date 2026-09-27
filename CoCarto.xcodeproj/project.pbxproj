@@ -27,6 +27,8 @@
 		AAD4F6B730661F4600F88A5D /* TWBP.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TWBP.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE15C2DA3066F1DE0000F592 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 		EE15C545306704A60000F592 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
+		EE15C7BB3068C8DD0000F592 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
+		EE15C8F73068CC010000F592 /* CoCarto.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoCarto.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -190,6 +192,16 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		EE15C7C13068C8DD0000F592 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		EE15C8FD3068CC010000F592 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -284,6 +296,10 @@
 					ProjectRef = 236197FF30666E4700C66ECB /* CoCarto.xcodeproj */;
 				},
 				{
+					ProductGroup = EE15C8FD3068CC010000F592 /* Products */;
+					ProjectRef = EE15C8F73068CC010000F592 /* CoCarto.xcodeproj */;
+				},
+				{
 					ProductGroup = AA3ED65A3066D07E00BCF5E3 /* Products */;
 					ProjectRef = AA3ED6543066D07E00BCF5E3 /* CoCarto.xcodeproj */;
 				},
@@ -318,6 +334,10 @@
 				{
 					ProductGroup = AA3EF9B2306704F500BCF5E3 /* Products */;
 					ProjectRef = AA3EF9AC306704F500BCF5E3 /* CoCarto.xcodeproj */;
+				},
+				{
+					ProductGroup = EE15C7C13068C8DD0000F592 /* Products */;
+					ProjectRef = EE15C7BB3068C8DD0000F592 /* CoCarto.xcodeproj */;
 				},
 			);
 			projectRoot = "";
@@ -355,7 +375,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DTTY9ZX5T4;
+				DEVELOPMENT_TEAM = 8V4LVBCX83;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -388,7 +408,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = DTTY9ZX5T4;
+				DEVELOPMENT_TEAM = 8V4LVBCX83;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

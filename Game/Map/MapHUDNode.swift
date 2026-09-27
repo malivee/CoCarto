@@ -31,46 +31,46 @@ enum MapTutorialStep: Equatable {
     var title: String {
         switch self {
         case .selectTile:
-            return "Pilih Ubin"
+            return "Select a Tile"
         case .rotateTile:
-            return "Putar Ubin"
+            return "Rotate the Tile"
         case .openSidebar:
-            return "Buka Bangunan"
+            return "Open Buildings"
         case .dragHouse:
-            return "Seret Rumah Arthur"
+            return "Drag Arthur's House"
         case .placeHouse(let isValid):
-            return isValid ? "Lepaskan di Sini" : "Cari Area Kuning"
+            return isValid ? "Drop It Here" : "Find the Yellow Area"
         case .dragWell:
-            return "Seret Sumur"
+            return "Drag the Well"
         case .placeWell(let isValid):
-            return isValid ? "Lepaskan di Sini" : "Cari Area Kuning"
+            return isValid ? "Drop It Here" : "Find the Yellow Area"
         case .enterWorld:
-            return "Masuk ke Desa"
+            return "Enter the Village"
         }
     }
 
     var subtitle: String {
         switch self {
         case .selectTile:
-            return "Ketuk ubin yang menyala."
+            return "Tap the highlighted tile."
         case .rotateTile:
-            return "Gunakan tombol yang menyala."
+            return "Use the highlighted buttons."
         case .openSidebar:
-            return "Ketuk tombol yang menyala."
+            return "Tap the highlighted button."
         case .dragHouse:
-            return "Ikuti contoh gerak di layar."
+            return "Follow the movement shown on screen."
         case .placeHouse(let isValid):
             return isValid
-                ? "Posisinya sudah tepat."
-                : "Geser sampai bingkai hijau."
+                ? "The position is correct."
+                : "Drag it until the frame turns green."
         case .dragWell:
-            return "Ikuti contoh gerak di layar."
+            return "Follow the movement shown on screen."
         case .placeWell(let isValid):
             return isValid
-                ? "Posisinya sudah tepat."
-                : "Geser sampai bingkai hijau."
+                ? "The position is correct."
+                : "Drag it until the frame turns green."
         case .enterWorld:
-            return "Ketuk ubin yang menyala dua kali."
+            return "Double-tap the highlighted tile."
         }
     }
 }
@@ -174,17 +174,20 @@ final class TutorialBannerNode: SKNode {
 
 final class MapHUDNode: SKNode {
 
+    static let inventoryItemHeight: CGFloat = 112
+    static let inventoryPanelHeight: CGFloat = 392
+
     private let inventoryToggle = MapButtonNode(
 
-        title: "HOUSE ⌄",
+        title: "BUILD  +",
 
         name: MapNodeName.inventoryToggle.rawValue,
 
-        size: CGSize(width: 166, height: 64),
+        size: CGSize(width: 228, height: 68),
 
         borderless: false,
 
-        fontSize: 18
+        fontSize: 17
 
     )
 
@@ -217,28 +220,35 @@ final class MapHUDNode: SKNode {
     private let inventoryCrop = SKCropNode()
 
     private let inventoryContent = SKNode()
+    private let inventoryScrollTrack = SKShapeNode()
+    private let inventoryScrollThumb = SKShapeNode()
+    private let newBuildingBadge = SKShapeNode()
+    private let newBuildingBadgeLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+    private let emptyInventoryLabel = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
 
     private let selectionTray = SKShapeNode()
 
     private let selectionControls = SKNode()
     private let objectStatus = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
-    private let placeObjectButton = MapButtonNode(title: "Pasang", name: MapNodeName.confirmButton.rawValue)
-    private let cancelObjectButton = MapButtonNode(title: "Batal", name: MapNodeName.cancelButton.rawValue)
+    private let placeObjectButton = MapButtonNode(title: "PLACE", name: MapNodeName.confirmButton.rawValue)
+    private let cancelObjectButton = MapButtonNode(title: "CANCEL", name: MapNodeName.cancelButton.rawValue)
     private let tutorialBanner = TutorialBannerNode()
     private var inventoryItemNodes: [BuildingObjectKind: SKNode] = [:]
 
     private let inventoryKinds: [BuildingObjectKind]
+    private let newInventoryKinds: Set<BuildingObjectKind>
 
 //    private let inventoryItems = ["House", "Workshop", "Farm", "Market", "Bridge", "Tower"]
 
-    private let itemHeight: CGFloat = 58
+    private let itemHeight = MapHUDNode.inventoryItemHeight
 
-    private let panelSize = CGSize(width: 166, height: 356)
+    private let panelSize = CGSize(width: 228, height: MapHUDNode.inventoryPanelHeight)
 
 
-    init(inventoryKinds: [BuildingObjectKind]) {
+    init(inventoryKinds: [BuildingObjectKind], newInventoryKinds: Set<BuildingObjectKind> = []) {
 
         self.inventoryKinds = inventoryKinds
+        self.newInventoryKinds = newInventoryKinds
 
         super.init()
 
@@ -247,6 +257,8 @@ final class MapHUDNode: SKNode {
         zPosition = 600
 
         configureInventory()
+
+        configureNewBuildingBadge()
 
         configureSelectionControls()
 
@@ -291,19 +303,20 @@ final class MapHUDNode: SKNode {
         let topY = cameraCenter.y + halfHeight - 116
 
 
-        inventoryToggle.position = CGPoint(x: cameraCenter.x - halfWidth + sideInset + 83, y: topY)
+        inventoryToggle.position = CGPoint(x: cameraCenter.x - halfWidth + sideInset + panelSize.width / 2, y: topY)
 
-        inventoryToggle.setTitle(inventoryExpanded ? "TUTUP ⌃" : "BANGUNAN ⌄")
+        inventoryToggle.setTitle(inventoryExpanded ? "CLOSE  ×" : "BUILD  +")
 
         inventoryPanel.position = CGPoint(
 
             x: cameraCenter.x - halfWidth + sideInset + panelSize.width / 2,
 
-            y: topY - 32 - panelSize.height / 2
+            y: topY - 40 - panelSize.height / 2
 
         )
 
         inventoryPanel.isHidden = !inventoryExpanded
+        updateNewBuildingBadge(isInventoryExpanded: inventoryExpanded)
 
         questPanel.position = CGPoint(
             x: cameraCenter.x + halfWidth - sideInset - 126,
@@ -311,11 +324,11 @@ final class MapHUDNode: SKNode {
         )
 
         questPanel.update(with: Array(questItems.prefix(2)))
-        questPanel.isHidden = (tutorialStep != nil)
+        questPanel.isHidden = tutorialStep != nil || (inventoryExpanded && sceneSize.width * cameraScale < 530)
 
         // Keep tutorial copy inside the top HUD row, away from the inventory
         // list and the bottom placement controls.
-        let bannerY = topY - 78
+        let bannerY = inventoryExpanded ? topY - 40 - panelSize.height - 38 : topY - 78
         tutorialBanner.position = CGPoint(x: cameraCenter.x, y: bannerY)
         let bannerMaxWidth = min(halfWidth * 2 - 40, 420)
         tutorialBanner.update(with: tutorialStep, maxWidth: bannerMaxWidth)
@@ -351,19 +364,23 @@ final class MapHUDNode: SKNode {
             let definition = BuildingObjectCatalog.definition(for: selectedObjectKind)
             objectStatus.isHidden = false
             let isValid = objectResult == .valid
-            let statusText = isValid ? "● Siap Dipasang" : "○ " + (objectResult?.message ?? "Pindahkan ke tanah desa")
-            objectStatus.text = "\(definition.title) (\(objectPreview?.mapDimensions.width ?? definition.mapWidth)×\(objectPreview?.mapDimensions.height ?? definition.mapHeight)) · \(statusText)"
+            let statusText = isValid ? "● Ready to Place" : "○ " + (objectResult?.message ?? "Move it onto village soil")
+            let dimensions = objectPreview?.mapDimensions
+                ?? (width: definition.mapWidth, height: definition.mapHeight)
+            objectStatus.text = "\(definition.title)\nFootprint: \(dimensions.width) × \(dimensions.height) grid squares\n\(statusText)"
             objectStatus.fontColor = isValid ? SKColor(red: 0.4, green: 0.95, blue: 0.5, alpha: 1.0) : SKColor(red: 0.98, green: 0.75, blue: 0.35, alpha: 1.0)
-            objectStatus.position.y = 30
+            objectStatus.numberOfLines = 3
+            objectStatus.position.y = 78
 
             placeObjectButton.position = CGPoint(x: 75, y: -25)
             cancelObjectButton.position = CGPoint(x: -75, y: -25)
-            placeObjectButton.setTitle("✓ Pasang")
-            cancelObjectButton.setTitle("✕ Batal")
+            placeObjectButton.setTitle("✓ Place")
+            cancelObjectButton.setTitle("✕ Cancel")
             placeObjectButton.isHidden = false
             cancelObjectButton.isHidden = false
             placeObjectButton.setEnabled(isValid)
         } else if preview != nil {
+            objectStatus.numberOfLines = 2
             // TILE PIECES: ROTATION ACTIVE!
             selectionControls.isHidden = false
             selectionControls.position.y = 44
@@ -371,15 +388,15 @@ final class MapHUDNode: SKNode {
 
             objectStatus.isHidden = false
             let isValid = preview?.isValid == true
-            let alignText = isValid ? "● Posisi Cocok" : "○ Tepi Belum Sesuai"
-            objectStatus.text = "Ubin Peta · \(alignText) · Putar dengan ⟲ / ⟳"
+            let alignText = isValid ? "● Position Valid" : "○ Edges Do Not Match"
+            objectStatus.text = "Map Tile · \(alignText) · Rotate with ⟲ / ⟳"
             objectStatus.fontColor = isValid ? SKColor(red: 0.4, green: 0.95, blue: 0.5, alpha: 1.0) : SKColor(red: 0.98, green: 0.75, blue: 0.35, alpha: 1.0)
             objectStatus.position.y = 94
 
             placeObjectButton.position = CGPoint(x: 66, y: -65)
             cancelObjectButton.position = CGPoint(x: -66, y: -65)
-            placeObjectButton.setTitle("✓ Selesai")
-            cancelObjectButton.setTitle("✕ Batal")
+            placeObjectButton.setTitle("✓ Done")
+            cancelObjectButton.setTitle("✕ Cancel")
             placeObjectButton.isHidden = false
             cancelObjectButton.isHidden = false
             placeObjectButton.setEnabled(isValid)
@@ -416,6 +433,7 @@ final class MapHUDNode: SKNode {
         }
 
         inventoryContent.position.y = inventoryScrollOffset
+        updateInventoryScrollIndicator(offset: inventoryScrollOffset)
 
     }
 
@@ -488,9 +506,10 @@ final class MapHUDNode: SKNode {
 
         )
 
-        inventoryPanel.fillColor = SKColor(red: 0.04, green: 0.06, blue: 0.07, alpha: 0.78)
+        inventoryPanel.fillColor = SKColor(red: 0.10, green: 0.11, blue: 0.10, alpha: 0.97)
 
-        inventoryPanel.strokeColor = .clear
+        inventoryPanel.strokeColor = SKColor.white.withAlphaComponent(0.20)
+        inventoryPanel.lineWidth = 1
 
         inventoryPanel.zPosition = 10
 
@@ -526,12 +545,40 @@ final class MapHUDNode: SKNode {
 
         inventoryCrop.addChild(inventoryContent)
 
+        inventoryScrollTrack.path = CGPath(
+            roundedRect: CGRect(x: -2, y: -(panelSize.height - 28) / 2, width: 4, height: panelSize.height - 28),
+            cornerWidth: 2,
+            cornerHeight: 2,
+            transform: nil
+        )
+        inventoryScrollTrack.position.x = panelSize.width / 2 - 9
+        inventoryScrollTrack.fillColor = SKColor.white.withAlphaComponent(0.12)
+        inventoryScrollTrack.strokeColor = .clear
+        inventoryScrollTrack.zPosition = 8
+        inventoryPanel.addChild(inventoryScrollTrack)
+
+        inventoryScrollThumb.fillColor = SKColor(red: 0.98, green: 0.72, blue: 0.24, alpha: 0.92)
+        inventoryScrollThumb.strokeColor = .clear
+        inventoryScrollThumb.zPosition = 9
+        inventoryPanel.addChild(inventoryScrollThumb)
+
+        emptyInventoryLabel.text = "ALL BUILDINGS PLACED\nNew buildings unlock through quests."
+        emptyInventoryLabel.fontSize = 15
+        emptyInventoryLabel.fontColor = SKColor.white.withAlphaComponent(0.78)
+        emptyInventoryLabel.numberOfLines = 0
+        emptyInventoryLabel.horizontalAlignmentMode = .center
+        emptyInventoryLabel.verticalAlignmentMode = .center
+        emptyInventoryLabel.preferredMaxLayoutWidth = panelSize.width - 36
+        emptyInventoryLabel.zPosition = 4
+        emptyInventoryLabel.isHidden = !inventoryKinds.isEmpty
+        inventoryPanel.addChild(emptyInventoryLabel)
+
 
         for (index, kind) in inventoryKinds.enumerated() {
 
             let title = BuildingObjectCatalog.definition(for: kind).title
 
-            let item = makeInventoryItem(title: title, index: index)
+            let item = makeInventoryItem(title: title, index: index, isNew: newInventoryKinds.contains(kind))
 
             item.position = CGPoint(x: 0, y: panelSize.height / 2 - 10 - itemHeight / 2 - CGFloat(index) * itemHeight)
 
@@ -543,7 +590,7 @@ final class MapHUDNode: SKNode {
     }
 
 
-    private func makeInventoryItem(title: String, index: Int) -> SKNode {
+    private func makeInventoryItem(title: String, index: Int, isNew: Bool) -> SKNode {
         let root = SKNode()
         root.name = MapNodeName.inventoryItem.rawValue
         root.userData = ["inventoryIndex": index]
@@ -552,17 +599,18 @@ final class MapHUDNode: SKNode {
         let definition = BuildingObjectCatalog.definition(for: kind)
 
         let hitArea = SKShapeNode(
-            rectOf: CGSize(width: panelSize.width - 12, height: itemHeight - 6),
+            rectOf: CGSize(width: panelSize.width - 28, height: itemHeight - 10),
             cornerRadius: 10
         )
         hitArea.name = MapNodeName.inventoryItem.rawValue
-        hitArea.fillColor = SKColor.white.withAlphaComponent(0.08)
+        hitArea.userData = ["inventoryIndex": index]
+        hitArea.fillColor = SKColor.white.withAlphaComponent(0.06)
         hitArea.strokeColor = SKColor.white.withAlphaComponent(0.12)
         hitArea.lineWidth = 1
         root.addChild(hitArea)
 
-        let thumbnailPlate = SKShapeNode(rectOf: CGSize(width: 46, height: 46), cornerRadius: 9)
-        thumbnailPlate.position.x = -50
+        let thumbnailPlate = SKShapeNode(rectOf: CGSize(width: 52, height: 52), cornerRadius: 10)
+        thumbnailPlate.position = CGPoint(x: -65, y: 17)
         thumbnailPlate.fillColor = SKColor(red: 0.95, green: 0.89, blue: 0.74, alpha: 0.94)
         thumbnailPlate.strokeColor = SKColor(red: 0.94, green: 0.68, blue: 0.19, alpha: 0.72)
         thumbnailPlate.lineWidth = 1.5
@@ -571,7 +619,7 @@ final class MapHUDNode: SKNode {
         if let assetName = BuildingObjectRenderer.assetName(for: kind) {
             let texture = SKTexture(imageNamed: assetName)
             let textureSize = texture.size()
-            let maximumSize = CGSize(width: 40, height: 38)
+            let maximumSize = CGSize(width: 44, height: 44)
             let scale = min(
                 maximumSize.width / max(textureSize.width, 1),
                 maximumSize.height / max(textureSize.height, 1)
@@ -588,35 +636,115 @@ final class MapHUDNode: SKNode {
 
         let label = SKLabelNode(fontNamed: "AvenirNext-Medium")
         label.text = title
-        label.fontSize = title.count > 13 ? 11.5 : 12.5
+        label.fontSize = 15
+        label.numberOfLines = 2
+        label.preferredMaxLayoutWidth = 117
+        label.lineBreakMode = .byWordWrapping
         label.fontColor = .white
         label.horizontalAlignmentMode = .left
         label.verticalAlignmentMode = .center
-        label.position = CGPoint(x: -20, y: 7)
+        label.position = CGPoint(x: -28, y: 20)
         root.addChild(label)
 
         let dimensions = SKLabelNode(fontNamed: "AvenirNext-Regular")
-        dimensions.text = "\(definition.mapWidth)×\(definition.mapHeight)"
-        dimensions.fontSize = 10
-        dimensions.fontColor = SKColor.white.withAlphaComponent(0.58)
+        dimensions.text = "\(definition.mapWidth) × \(definition.mapHeight) grid squares"
+        dimensions.fontSize = 13
+        dimensions.fontColor = SKColor.white.withAlphaComponent(0.72)
         dimensions.horizontalAlignmentMode = .left
-        dimensions.position = CGPoint(x: -20, y: -15)
+        dimensions.position = CGPoint(x: -88, y: -24)
         root.addChild(dimensions)
 
         let dragHint = SKLabelNode(fontNamed: "AvenirNext-Bold")
-        dragHint.text = "⋮⋮"
-        dragHint.fontSize = 12
-        dragHint.fontColor = SKColor.white.withAlphaComponent(0.34)
-        dragHint.position = CGPoint(x: 63, y: -4)
+        dragHint.text = "Tap or drag right"
+        dragHint.fontSize = 11
+        dragHint.fontColor = SKColor.white.withAlphaComponent(0.52)
+        dragHint.horizontalAlignmentMode = .right
+        dragHint.position = CGPoint(x: 88, y: -42)
         root.addChild(dragHint)
 
+        if isNew {
+            let badge = SKShapeNode(rectOf: CGSize(width: 38, height: 18), cornerRadius: 6)
+            badge.position = CGPoint(x: -68, y: -38)
+            badge.fillColor = SKColor(red: 0.92, green: 0.43, blue: 0.16, alpha: 1)
+            badge.strokeColor = SKColor(red: 1, green: 0.82, blue: 0.34, alpha: 1)
+            badge.lineWidth = 1
+            let badgeText = SKLabelNode(fontNamed: "AvenirNext-Bold")
+            badgeText.text = "NEW"
+            badgeText.fontSize = 10
+            badgeText.fontColor = .white
+            badgeText.verticalAlignmentMode = .center
+            badgeText.position.y = -1
+            badge.addChild(badgeText)
+            root.addChild(badge)
+        }
+
         return root
+    }
+
+    private func configureNewBuildingBadge() {
+        newBuildingBadge.path = CGPath(
+            roundedRect: CGRect(x: -36, y: -13, width: 72, height: 26),
+            cornerWidth: 13,
+            cornerHeight: 13,
+            transform: nil
+        )
+        newBuildingBadge.position = CGPoint(x: 68, y: 30)
+        newBuildingBadge.fillColor = SKColor(red: 0.92, green: 0.34, blue: 0.14, alpha: 1)
+        newBuildingBadge.strokeColor = SKColor(red: 1, green: 0.84, blue: 0.38, alpha: 1)
+        newBuildingBadge.lineWidth = 1.5
+        newBuildingBadge.zPosition = 20
+        inventoryToggle.addChild(newBuildingBadge)
+
+        newBuildingBadgeLabel.fontSize = 11
+        newBuildingBadgeLabel.fontColor = .white
+        newBuildingBadgeLabel.verticalAlignmentMode = .center
+        newBuildingBadgeLabel.position.y = -1
+        newBuildingBadge.addChild(newBuildingBadgeLabel)
+    }
+
+    private func updateNewBuildingBadge(isInventoryExpanded: Bool) {
+        let count = newInventoryKinds.count
+        newBuildingBadge.isHidden = count == 0
+        newBuildingBadgeLabel.text = "NEW"
+        newBuildingBadge.removeAction(forKey: "newBuildingPulse")
+        newBuildingBadge.setScale(1)
+        if count > 0 && !isInventoryExpanded {
+            let pulse = SKAction.sequence([
+                .scale(to: 1.08, duration: 0.55),
+                .scale(to: 1.0, duration: 0.55)
+            ])
+            pulse.timingMode = .easeInEaseOut
+            newBuildingBadge.run(.repeatForever(pulse), withKey: "newBuildingPulse")
+        }
+    }
+
+    private func updateInventoryScrollIndicator(offset: CGFloat) {
+        let contentHeight = CGFloat(inventoryKinds.count) * itemHeight + 20
+        let viewportHeight = panelSize.height - 8
+        let maximumOffset = max(0, contentHeight - viewportHeight)
+        inventoryScrollTrack.isHidden = maximumOffset == 0
+        inventoryScrollThumb.isHidden = maximumOffset == 0
+        guard maximumOffset > 0 else { return }
+
+        let trackHeight = panelSize.height - 28
+        let thumbHeight = max(42, trackHeight * viewportHeight / contentHeight)
+        inventoryScrollThumb.path = CGPath(
+            roundedRect: CGRect(x: -3, y: -thumbHeight / 2, width: 6, height: thumbHeight),
+            cornerWidth: 3,
+            cornerHeight: 3,
+            transform: nil
+        )
+        let travel = trackHeight - thumbHeight
+        inventoryScrollThumb.position = CGPoint(
+            x: panelSize.width / 2 - 9,
+            y: travel / 2 - (min(max(offset, 0), maximumOffset) / maximumOffset) * travel
+        )
     }
 
 
     private func configureSelectionControls() {
 
-        selectionTray.fillColor = SKColor(red: 0.035, green: 0.10, blue: 0.19, alpha: 1)
+        selectionTray.fillColor = SKColor(red: 0.10, green: 0.11, blue: 0.10, alpha: 0.97)
 
         selectionTray.strokeColor = .clear
 
@@ -639,7 +767,7 @@ final class MapHUDNode: SKNode {
         selectionControls.addChild(rotateLeftButton)
 
         selectionControls.addChild(rotateRightButton)
-        objectStatus.fontSize = 12
+        objectStatus.fontSize = 15
         objectStatus.numberOfLines = 2
         objectStatus.verticalAlignmentMode = .top
         objectStatus.position.y = 94

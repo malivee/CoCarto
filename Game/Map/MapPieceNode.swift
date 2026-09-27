@@ -103,7 +103,7 @@ final class MapPieceNode: SKNode {
         case .movable, .playerConnected, .selected:
             return
         }
-        label.fontSize = 13
+        label.fontSize = 16
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center

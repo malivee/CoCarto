@@ -40,12 +40,12 @@ struct VillageQuest3Progress: Codable, Sendable {
 
 enum VillageQuest3Catalog {
     static let questNumber: Int = 3
-    static let title: String = "Quest 3 - Antarkan keranjang ke Keneth di lumbung"
-    static let triggerDescription: String = "Setelah menyelesaikan chapter satu dan dua"
-    static let unlockItem: String = "Lumbung"
-    static let requirement: String = "Pasang Lumbung"
-    static let mapObjective: String = "Place Barn"
-    static let worldObjective: String = "Deliver the basket to Keneth at the barn."
+    static let title: String = "Quest 3 - Deliver the Basket to Kenneth at the Barn"
+    static let triggerDescription: String = "Complete Chapters One and Two"
+    static let unlockItem: String = "Barn"
+    static let requirement: String = "Place the Barn"
+    static let mapObjective: String = "Place the Barn"
+    static let worldObjective: String = "Deliver the Basket to Kenneth at the Barn"
 
     // 1. Dialog sebelum minigame (Arthur mengantar keranjang, Kenneth menyuruh cuci tangan & bantu gandum)
     static let preMinigameDialogue: [VillageQuestDialogueLine] = [

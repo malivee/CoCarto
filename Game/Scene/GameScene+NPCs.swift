@@ -48,7 +48,7 @@ extension GameScene {
 
             case .buMaraHouse:
                 npc = MemoryCharacter(
-                    title: "Bu Mara",
+                    title: "Mrs. Mara",
                     color: SKColor(red: 0.76, green: 0.46, blue: 0.36, alpha: 1)
                 )
                 npc.name = "npc-bumara"
@@ -94,11 +94,12 @@ extension GameScene {
                 npc.name = "npc-rocksalt-miner"
                 npc.useSpriteAsset(named: "penambangRocksalt", size: CGSize(width: 46, height: 60))
                 offset = CGPoint(x: 22, y: -24)
+                updateOldMinerBadge(npc)
 
             case .well:
                 if isQuest1TutorialActive && quest1Controller.isWellUnlocked && !quest1Controller.hasCollectedWater {
-                    let wellBadge = makeWellTutorialBadge()
-                    wellBadge.position = CGPoint(x: buildingPos.x, y: buildingPos.y + 44)
+                    let wellBadge = makeWellInteractionBadge(objectID: object.id)
+                    wellBadge.position = CGPoint(x: buildingPos.x, y: buildingPos.y + 62)
                     root.addChild(wellBadge)
                 }
                 continue
@@ -198,11 +199,11 @@ extension GameScene {
         if quest1Controller.isCompleted {
             npc.clearStatusBadge()
         } else if quest1Controller.hasCollectedWater {
-            npc.setStatusBadge(icon: "💧", text: "Air Sumur", color: .systemCyan)
+            npc.setStatusBadge(text: "Talk")
         } else if quest1Controller.isActive {
-            npc.setStatusBadge(icon: "!", text: "Bicara", color: .systemYellow)
+            npc.setStatusBadge(text: "Talk")
         } else if quest1Controller.canStart(in: worldState) {
-            npc.setStatusBadge(icon: "!", text: "Bicara", color: .systemYellow)
+            npc.setStatusBadge(text: "Talk")
         } else {
             npc.clearStatusBadge()
         }
@@ -211,7 +212,7 @@ extension GameScene {
     private func updateBuMaraBadge(_ npc: MemoryCharacter) {
         let placedBuildings = Set(worldState.buildingObjects.map { VillageQuestCatalog.buildingID(for: $0.kind) })
         if placedBuildings.contains(VillageQuestCatalog.BuildingID.buMaraHouse) {
-            npc.setStatusBadge(icon: "🏺", text: "Gerabah", color: .systemOrange)
+            npc.setStatusBadge(text: "Talk")
         } else {
             npc.clearStatusBadge()
         }
@@ -221,9 +222,9 @@ extension GameScene {
         if quest3Controller.isCompleted {
             npc.clearStatusBadge()
         } else if quest3Controller.isWaitingForMinigame {
-            npc.setStatusBadge(icon: "🌾", text: "Benih", color: .systemGreen)
+            npc.setStatusBadge(text: "Talk")
         } else if quest3Controller.canStart(in: worldState) {
-            npc.setStatusBadge(icon: "🧺", text: "Keranjang", color: .systemYellow)
+            npc.setStatusBadge(text: "Talk")
         } else {
             npc.clearStatusBadge()
         }
@@ -233,7 +234,7 @@ extension GameScene {
         if quest4Controller.isCompleted {
             npc.clearStatusBadge()
         } else if quest4Controller.canStart(in: worldState) {
-            npc.setStatusBadge(icon: "!", text: "Bicara", color: .systemYellow)
+            npc.setStatusBadge(text: "Talk")
         } else {
             npc.clearStatusBadge()
         }
@@ -243,45 +244,22 @@ extension GameScene {
         if quest5Controller.isCompleted {
             npc.clearStatusBadge()
         } else if quest5Controller.canStart(in: worldState) {
-            npc.setStatusBadge(icon: "!", text: "Bicara", color: .systemYellow)
+            npc.setStatusBadge(text: "Talk")
         } else {
             npc.clearStatusBadge()
         }
     }
 
-    private func makeWellTutorialBadge() -> SKNode {
-        let node = SKNode()
-        node.name = "WellTutorialBadge"
-        node.zPosition = 60
+    private func updateOldMinerBadge(_ npc: MemoryCharacter) {
+        npc.setStatusBadge(text: "Talk")
+    }
 
-        let pill = SKShapeNode(rectOf: CGSize(width: 104, height: 32), cornerRadius: 10)
-        pill.name = "WellTutorialBadge"
-        pill.fillColor = SKColor(red: 0.94, green: 0.97, blue: 1.0, alpha: 0.96)
-        pill.strokeColor = SKColor(red: 0.18, green: 0.52, blue: 0.78, alpha: 1.0)
-        pill.lineWidth = 1.8
-        pill.glowWidth = 4
-        pill.run(.repeatForever(.sequence([
-            .fadeAlpha(to: 0.45, duration: 0.65),
-            .fadeAlpha(to: 1.0, duration: 0.65)
-        ])))
-        node.addChild(pill)
-
-        let label = SKLabelNode(fontNamed: "AvenirNext-Bold")
-        label.name = "WellTutorialBadge"
-        label.text = "Timba Air"
-        label.fontSize = 12
-        label.fontColor = SKColor(red: 0.10, green: 0.35, blue: 0.55, alpha: 1.0)
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        node.addChild(label)
-
-        let bobUp = SKAction.moveBy(x: 0, y: 5, duration: 0.55)
-        bobUp.timingMode = .easeInEaseOut
-        let bobDown = SKAction.moveBy(x: 0, y: -5, duration: 0.55)
-        bobDown.timingMode = .easeInEaseOut
-        node.run(SKAction.repeatForever(SKAction.sequence([bobUp, bobDown])))
-
-        return node
+    private func makeWellInteractionBadge(objectID: UUID) -> SKNode {
+        let badge = MemoryCharacter.makeStatusBadge(text: "Use Well")
+        badge.name = "WellInteractionBadge"
+        badge.zPosition = 60
+        badge.userData = [BuildingObjectRenderer.objectIDKey: objectID.uuidString]
+        return badge
     }
 
     private func makeTutorialHalo() -> SKShapeNode {
