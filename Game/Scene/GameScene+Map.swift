@@ -136,8 +136,11 @@ extension GameScene {
     func prepareMapForTransition() {
         worldQuestLabel.isHidden = true
         worldQuestTracker.isHidden = true
-        let focusPoint = mapRenderer.focusPoint(for: playerController.state, worldState: worldState, preview: nil)
-        mapViewport.reset(contentBounds: mapRenderer.contentBounds(for: worldState), sceneSize: size, focusPoint: focusPoint)
+        // Center the initial map on the complete puzzle footprint so every
+        // tetromino is visible when the map scene opens.
+        let puzzleBounds = mapRenderer.contentBounds(for: worldState)
+        let focusPoint = CGPoint(x: puzzleBounds.midX, y: puzzleBounds.midY)
+        mapViewport.reset(contentBounds: puzzleBounds, sceneSize: size, focusPoint: focusPoint)
         rebuildMapView()
         worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
         worldRoot.isHidden = false
@@ -550,12 +553,32 @@ extension GameScene {
 
     func finishPieceDrag(pieceID: UUID) {
         lastMapDragScreenPosition = nil
-        guard let preview = mapController.resolveDrop(in: worldState, mapper: mapRenderer.mapper) else {
+        let tutorialDrop = isQuest1TutorialActive
+        guard var preview = mapController.resolveDrop(
+            in: worldState,
+            mapper: mapRenderer.mapper,
+            allowNudge: !tutorialDrop
+        ) else {
             gameMode = .mapIdle
             return
         }
 
-        if mapController.shouldReturnSelectedPieceToBag(in: worldState) {
+        if tutorialDrop && !preview.isValid {
+            preview = mapController.applyTutorialBounce(mapper: mapRenderer.mapper) ?? preview
+            gameMode = .mapPieceSelected(pieceID)
+            mapRenderer.animatePreviewSnap(pieceID: pieceID, to: preview.visualPosition, in: mapRoot) { [weak self] in
+                guard let self,
+                      let currentPreview = self.mapController.preview,
+                      let piece = self.worldState.piece(id: currentPreview.pieceID) else {
+                    return
+                }
+                self.mapRenderer.updatePreviewNode(piece: piece, preview: currentPreview, in: self.mapRoot, worldState: self.worldState)
+                self.rebuildMapView()
+            }
+            return
+        }
+
+        if !tutorialDrop && mapController.shouldReturnSelectedPieceToBag(in: worldState) {
             let originalPosition = mapRenderer.mapper.mapPosition(for: preview.originalPlacement.gridPosition)
             mapRenderer.animatePreviewSnap(pieceID: pieceID, to: originalPosition, in: mapRoot) { [weak self] in
                 guard let self else { return }

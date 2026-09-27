@@ -143,10 +143,10 @@ final class MapController {
     /// Finalizes the grid position only when the drag ends. If the exact drop
     /// overlaps or has incompatible edges, try a small nearby displacement so
     /// the piece does not jump back across the map.
-    func resolveDrop(in worldState: WorldState, mapper: MapGridMapper, nudgeRadius: Int = 2) -> PiecePlacementPreview? {
+    func resolveDrop(in worldState: WorldState, mapper: MapGridMapper, nudgeRadius: Int = 2, allowNudge: Bool = true) -> PiecePlacementPreview? {
         guard var preview else { return nil }
 
-        if !preview.isValid {
+        if !preview.isValid && allowNudge {
             let origin = preview.proposedPosition
             let offsets = (-nudgeRadius...nudgeRadius).flatMap { y in
                 (-nudgeRadius...nudgeRadius).map { x in GridPosition(x: x, y: y) }
@@ -176,6 +176,32 @@ final class MapController {
             }
         }
 
+        preview.visualPosition = mapper.mapPosition(for: preview.proposedPosition)
+        self.preview = preview
+        interactionState = .pieceSelected(preview.pieceID)
+        dragOffsetFromPieceOrigin = .zero
+        return preview
+    }
+
+    /// Tutorial feedback: keep an invalid drop visible, but push it one cell
+    /// farther in the drag direction so it moves away from the puzzle.
+    func applyTutorialBounce(mapper: MapGridMapper) -> PiecePlacementPreview? {
+        guard var preview else { return nil }
+        let dx = preview.proposedPosition.x - preview.originalPlacement.gridPosition.x
+        let dy = preview.proposedPosition.y - preview.originalPlacement.gridPosition.y
+        guard dx != 0 || dy != 0 else { return preview }
+
+        let outward: GridPosition
+        if abs(dx) >= abs(dy) {
+            outward = GridPosition(x: dx > 0 ? 1 : -1, y: 0)
+        } else {
+            outward = GridPosition(x: 0, y: dy > 0 ? 1 : -1)
+        }
+        preview.proposedPosition = GridPosition(
+            x: preview.proposedPosition.x + outward.x,
+            y: preview.proposedPosition.y + outward.y
+        )
+        preview.isValid = false
         preview.visualPosition = mapper.mapPosition(for: preview.proposedPosition)
         self.preview = preview
         interactionState = .pieceSelected(preview.pieceID)
