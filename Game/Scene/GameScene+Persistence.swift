@@ -42,14 +42,23 @@ extension GameScene {
     func layoutWorldObjectiveCards() {
         let insets = view?.safeAreaInsets ?? .zero
         let rightEdge = size.width / 2 - insets.right - 16
-        let minimapRight = worldMinimap.position.x + 92 * worldMinimap.xScale
         let cardWidth = min(size.width - 56, 410)
-        let besideMinimap = rightEdge - minimapRight - 16 >= cardWidth
-        let top = worldMinimap.position.y + 87 * worldMinimap.yScale
-        let cardTop = besideMinimap ? top : worldMinimap.position.y - 87 * worldMinimap.yScale - 12
-        let centerX = besideMinimap ? rightEdge - cardWidth / 2 : 0
-        worldTutorialBanner.position = CGPoint(x: centerX, y: cardTop - 29)
-        worldQuestTracker.position = CGPoint(x: besideMinimap ? rightEdge - 126 : 0, y: cardTop - 56)
+        let topEdge = size.height / 2 - insets.top - 16
+        let objectiveScale: CGFloat = 0.78
+
+        worldTutorialBanner.setScale(objectiveScale)
+        worldQuestTracker.setScale(objectiveScale)
+
+        // Keep objectives anchored to the upper-right HUD instead of falling
+        // back to the center, where they obscure the player and buildings.
+        worldTutorialBanner.position = CGPoint(
+            x: rightEdge - cardWidth * objectiveScale / 2,
+            y: topEdge - 29 * objectiveScale
+        )
+        worldQuestTracker.position = CGPoint(
+            x: rightEdge - 126 * objectiveScale,
+            y: topEdge - 56 * objectiveScale
+        )
     }
 
     func puzzleStatusText() -> String {

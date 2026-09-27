@@ -129,6 +129,7 @@ enum MapNodeName: String {
     case cancelButton = "MapCancelButton"
     case confirmButton = "MapConfirmButton"
     case exitButton = "MapExitButton"
+    case enterWorldButton = "MapEnterWorldButton"
     case inventoryToggle = "MapInventoryToggle"
     case inventoryPanel = "MapInventoryPanel"
     case inventoryItem = "MapInventoryItem"

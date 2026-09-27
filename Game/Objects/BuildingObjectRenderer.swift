@@ -41,8 +41,18 @@ enum BuildingObjectRenderer {
             x: (CGFloat(object.origin.x) + CGFloat(dimensions.width) / 2) * microSize - cellSize / 2,
             y: (CGFloat(object.origin.y) + CGFloat(dimensions.height) / 2) * microSize - cellSize / 2
         )
+        let orientedAssetSize = quarterTurn
+            ? CGSize(width: size.height, height: size.width)
+            : size
         if isWorld, result == nil {
-            root.physicsBody = makeCollisionBody(for: object.kind, size: size)
+            // The artwork itself rotates inside an unrotated root node. Keep
+            // physics on a matching child so asymmetric collision shapes (for
+            // example the barn roof) rotate with the visible building.
+            let collisionNode = SKNode()
+            collisionNode.name = "BuildingCollision"
+            collisionNode.zRotation = object.rotation.radians
+            collisionNode.physicsBody = makeCollisionBody(for: object.kind, size: orientedAssetSize)
+            root.addChild(collisionNode)
         }
         let outline = SKShapeNode(rectOf: size, cornerRadius: 3)
         let assetName = assetName(for: object.kind)
@@ -57,16 +67,13 @@ enum BuildingObjectRenderer {
         root.addChild(outline)
 
         if let assetName {
-            let assetSize = quarterTurn
-                ? CGSize(width: size.height, height: size.width)
-                : size
             if isWorld {
                 root.addChild(makeAssetShadow(size: size, isWorld: true, kind: object.kind))
             }
 
             let sprite = SKSpriteNode(imageNamed: assetName)
             sprite.name = "BuildingAsset"
-            sprite.size = assetSize
+            sprite.size = orientedAssetSize
             sprite.zRotation = object.rotation.radians
             sprite.zPosition = 1
             if isWorld,
@@ -124,23 +131,29 @@ enum BuildingObjectRenderer {
 
         switch kind {
         case .arthurHouse:
-            body = doorwayCollision(width: 0.90, upperHeight: 0.68, entranceWidth: 0.30, size: size)
+            body = doorwayCollision(width: 0.72, upperHeight: 0.54, entranceWidth: 0.42, size: size)
         case .well:
             // Keep the physical rim inside the one-subgrid interaction radius,
             // so the player can stand close enough to tap the well itself.
-            body = SKPhysicsBody(circleOfRadius: min(size.width, size.height) * 0.28)
+            body = SKPhysicsBody(circleOfRadius: min(size.width, size.height) * 0.22)
         case .buMaraHouse:
-            body = doorwayCollision(width: 0.92, upperHeight: 0.68, entranceWidth: 0.28, size: size)
+            // Mrs. Mara's long porch should remain walkable. Block only the
+            // solid inner structure and bias it right to match the artwork.
+            body = rectangularCollision(
+                width: 0.62,
+                height: 0.32,
+                yOffset: 0.06,
+                xOffset: 0.08,
+                size: size
+            )
         case .barn:
-            body = doorwayCollision(width: 0.88, upperHeight: 0.70, entranceWidth: 0.32, size: size)
+            body = barnCollision(size: size)
         case .animalPen:
-            // The pen is much taller than the other assets. Keep its collision
-            // on the rear half and leave a wider front opening for Roland.
-            body = doorwayCollision(width: 0.86, upperHeight: 0.48, entranceWidth: 0.52, size: size)
+            body = animalPenCollision(size: size)
         case .annethHouse:
-            body = doorwayCollision(width: 0.90, upperHeight: 0.68, entranceWidth: 0.30, size: size)
+            body = annethHouseCollision(size: size)
         case .rockSalt:
-            body = rectangularCollision(width: 0.82, height: 0.86, yOffset: 0, size: size)
+            body = doorwayCollision(width: 0.58, upperHeight: 0.42, entranceWidth: 0.40, size: size)
         }
 
         body.isDynamic = false
@@ -157,12 +170,66 @@ enum BuildingObjectRenderer {
         width: CGFloat,
         height: CGFloat,
         yOffset: CGFloat,
+        xOffset: CGFloat = 0,
         size: CGSize
     ) -> SKPhysicsBody {
         SKPhysicsBody(
             rectangleOf: CGSize(width: size.width * width, height: size.height * height),
-            center: CGPoint(x: 0, y: size.height * yOffset)
+            center: CGPoint(x: size.width * xOffset, y: size.height * yOffset)
         )
+    }
+
+    private static func barnCollision(size: CGSize) -> SKPhysicsBody {
+        // Keep the lower structure narrow so Kenneth remains approachable,
+        // while a separate wider strip prevents walking onto the roof.
+        let structure = rectangularCollision(
+            width: 0.42,
+            height: 0.30,
+            yOffset: 0.04,
+            size: size
+        )
+        let roof = rectangularCollision(
+            width: 0.76,
+            height: 0.30,
+            yOffset: 0.30,
+            size: size
+        )
+        return SKPhysicsBody(bodies: [structure, roof])
+    }
+
+    private static func animalPenCollision(size: CGSize) -> SKPhysicsBody {
+        // The pen is an open enclosure, not a solid building. Follow the fence
+        // perimeter and leave a centered gate along the lower fence.
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: size.width * 0.12, y: -size.height * 0.42))
+        path.addLine(to: CGPoint(x: size.width * 0.28, y: -size.height * 0.22))
+        path.addLine(to: CGPoint(x: size.width * 0.43, y: size.height * 0.08))
+        path.addLine(to: CGPoint(x: size.width * 0.34, y: size.height * 0.20))
+        path.addLine(to: CGPoint(x: -size.width * 0.18, y: size.height * 0.28))
+        path.addLine(to: CGPoint(x: -size.width * 0.44, y: size.height * 0.08))
+        path.addLine(to: CGPoint(x: -size.width * 0.36, y: -size.height * 0.12))
+        path.addLine(to: CGPoint(x: -size.width * 0.12, y: -size.height * 0.42))
+        return SKPhysicsBody(edgeChainFrom: path)
+    }
+
+    private static func annethHouseCollision(size: CGSize) -> SKPhysicsBody {
+        // Match the sloping roof instead of using a wide rectangle whose empty
+        // corners block the player. The smaller lower body covers the walls.
+        let roofPath = CGMutablePath()
+        roofPath.move(to: CGPoint(x: 0, y: size.height * 0.42))
+        roofPath.addLine(to: CGPoint(x: size.width * 0.34, y: size.height * 0.04))
+        roofPath.addLine(to: CGPoint(x: size.width * 0.08, y: -size.height * 0.10))
+        roofPath.addLine(to: CGPoint(x: -size.width * 0.34, y: size.height * 0.02))
+        roofPath.closeSubpath()
+
+        let roof = SKPhysicsBody(polygonFrom: roofPath)
+        let structure = rectangularCollision(
+            width: 0.44,
+            height: 0.18,
+            yOffset: -0.14,
+            size: size
+        )
+        return SKPhysicsBody(bodies: [roof, structure])
     }
 
     private static func doorwayCollision(

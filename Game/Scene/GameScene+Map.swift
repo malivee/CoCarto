@@ -47,13 +47,19 @@ extension GameScene {
     }
 
     func enterWorldByDoubleTappingTile(at _: CGPoint, pieceID: UUID) {
-        guard worldState.piece(id: pieceID) != nil,
-              let playerNode else {
+        guard worldState.piece(id: pieceID) != nil else {
             return
         }
 
-        // A first tap may have selected this piece. A double tap is navigation,
-        // so discard that transient edit before resolving the destination tile.
+        enterWorldFromMap()
+    }
+
+    func enterWorldFromMap() {
+        guard let playerNode else { return }
+
+        // Entering the world discards any transient map edit before returning
+        // control to the player. The visible HUD button and double-tap shortcut
+        // share this transition path.
         mapController.cancel()
         rotationInputLocked = false
 
@@ -270,6 +276,11 @@ extension GameScene {
     func handleMapTouchBegan(at location: CGPoint) {
         let stack = nodeStack(at: location)
 
+        if stack.contains(where: { $0.name == MapNodeName.enterWorldButton.rawValue }) {
+            enterWorldFromMap()
+            return
+        }
+
         if let target = footprintDebugTarget(in: stack) {
             footprintDebugTarget = target
             rebuildMapView()
@@ -333,7 +344,7 @@ extension GameScene {
             return
         }
 
-        guard let pieceID = pieceID(in: stack) else {
+        guard let pieceID = pieceID(in: stack) ?? pieceID(atMapLocation: location) else {
             if mapController.preview != nil {
                 finishCurrentSelection()
                 return
@@ -347,7 +358,7 @@ extension GameScene {
             return
         }
 
-        _ = mapController.beginDrag(
+        guard let preview = mapController.beginDrag(
             pieceID: pieceID,
             touchPositionInContent: mapRenderer.screenPointToContent(
                 location,
@@ -356,12 +367,14 @@ extension GameScene {
             mapper: mapRenderer.mapper,
             worldState: worldState,
             playerState: playerController.state
-        )
+        ) else {
+            mapController.beginPan(at: location)
+            return
+        }
         AudioService.shared.playSFX("PaperMap")
         lastMapDragScreenPosition = location
         gameMode = .mapDragging(pieceID)
-        if let preview = mapController.preview,
-           let piece = worldState.piece(id: preview.pieceID) {
+        if let piece = worldState.piece(id: preview.pieceID) {
             mapRenderer.updatePreviewNode(piece: piece, preview: preview, in: mapRoot, worldState: worldState)
         }
     }
@@ -579,18 +592,6 @@ extension GameScene {
             return
         }
 
-        if !tutorialDrop && mapController.shouldReturnSelectedPieceToBag(in: worldState) {
-            let originalPosition = mapRenderer.mapper.mapPosition(for: preview.originalPlacement.gridPosition)
-            mapRenderer.animatePreviewSnap(pieceID: pieceID, to: originalPosition, in: mapRoot) { [weak self] in
-                guard let self else { return }
-                self.mapController.cancel()
-                self.gameMode = .mapIdle
-                self.rebuildMapView()
-                self.showProgressionFeedback("PIECE RETURNED TO BAG")
-            }
-            return
-        }
-
         AudioService.shared.playSFX("PaperMap")
         gameMode = .mapPieceSelected(pieceID)
         mapRenderer.animatePreviewSnap(pieceID: pieceID, to: preview.visualPosition, in: mapRoot) { [weak self] in
@@ -711,6 +712,30 @@ extension GameScene {
             }
         }
         return nil
+    }
+
+    /// Resolves a touched tile from map geometry when a visual overlay (for
+    /// example the first tutorial glow) is the topmost hit-test result.
+    /// This keeps an unrotated piece draggable from the first gesture.
+    func pieceID(atMapLocation location: CGPoint) -> UUID? {
+        let contentPosition = mapRenderer.screenPointToContent(
+            location,
+            contentOffset: mapViewport.contentOffset
+        )
+        let touchedCell = mapRenderer.mapper.gridPosition(containing: contentPosition)
+
+        return worldState.pieces.reversed().first { piece in
+            let position: GridPosition
+            let rotation: GridRotation
+            if let preview = mapController.preview, preview.pieceID == piece.id {
+                position = preview.proposedPosition
+                rotation = preview.proposedRotation
+            } else {
+                position = piece.gridPosition
+                rotation = piece.rotation
+            }
+            return piece.occupiedCells(at: position, rotation: rotation).contains(touchedCell)
+        }?.id
     }
 
     func buildingObjectID(in stack: [SKNode]) -> UUID? {

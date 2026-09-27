@@ -70,7 +70,7 @@ enum MapTutorialStep: Equatable {
                 ? "The position is correct."
                 : "Drag it until the frame turns green."
         case .enterWorld:
-            return "Double-tap the highlighted tile."
+            return "Tap ENTER WORLD to start exploring."
         }
     }
 }
@@ -232,6 +232,12 @@ final class MapHUDNode: SKNode {
     private let objectStatus = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
     private let placeObjectButton = MapButtonNode(title: "PLACE", name: MapNodeName.confirmButton.rawValue)
     private let cancelObjectButton = MapButtonNode(title: "CANCEL", name: MapNodeName.cancelButton.rawValue)
+    private let enterWorldButton = MapButtonNode(
+        title: "ENTER WORLD  ▶",
+        name: MapNodeName.enterWorldButton.rawValue,
+        size: CGSize(width: 218, height: 58),
+        fontSize: 17
+    )
     private let tutorialBanner = TutorialBannerNode()
     private var inventoryItemNodes: [BuildingObjectKind: SKNode] = [:]
 
@@ -267,6 +273,7 @@ final class MapHUDNode: SKNode {
         configureTutorialNodes()
 
         addChild(inventoryToggle)
+        addChild(enterWorldButton)
 
     }
 
@@ -351,6 +358,11 @@ final class MapHUDNode: SKNode {
         selectionTray.position = CGPoint(x: cameraCenter.x, y: trayY)
         let isTrayVisible = preview != nil || selectedObjectKind != nil
         selectionTray.isHidden = !isTrayVisible
+        enterWorldButton.position = CGPoint(
+            x: cameraCenter.x,
+            y: cameraCenter.y - halfHeight + 48
+        )
+        enterWorldButton.isHidden = isTrayVisible || inventoryExpanded
         objectStatus.preferredMaxLayoutWidth = halfWidth * 2 - 30
 
         if let selectedObjectKind {
@@ -446,6 +458,7 @@ final class MapHUDNode: SKNode {
         rotateLeftButton.setTutorialHighlighted(false)
         rotateRightButton.setTutorialHighlighted(false)
         placeObjectButton.setTutorialHighlighted(false)
+        enterWorldButton.setTutorialHighlighted(step == .enterWorld)
         inventoryItemNodes.values.forEach {
             $0.childNode(withName: "TutorialGlow")?.removeFromParent()
         }
