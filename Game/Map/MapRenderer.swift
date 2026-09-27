@@ -82,6 +82,7 @@ final class MapRenderer {
             playerState: playerState,
             preview: preview
         )
+        let shouldHighlightVillageSoil = selectedObjectKind != nil || objectPreview != nil
         for piece in worldState.pieces {
             var renderedPiece = piece
             if let preview, preview.pieceID == piece.id {
@@ -109,9 +110,19 @@ final class MapRenderer {
                 mismatchedEdgesByLocalCell: mismatchedEdges
             )
             contentRoot.addChild(pieceNode)
+            if shouldHighlightVillageSoil {
+                addVillageSoilMicrogridOverlay(to: pieceNode, piece: renderedPiece)
+            }
             if tutorialStep == .selectTile, piece.isMovable {
                 addTutorialGlow(around: pieceNode, in: contentRoot)
             }
+        }
+
+        if let tutorialStep,
+           let preview,
+           let piece = worldState.piece(id: preview.pieceID),
+           let targetPiece = tutorialPieceTarget(for: tutorialStep, piece: piece, preview: preview, worldState: worldState) {
+            addTutorialPieceTarget(targetPiece, tutorialStep: tutorialStep, in: contentRoot)
         }
 
         let displayedWorldState: WorldState
@@ -130,6 +141,7 @@ final class MapRenderer {
             cellSize: mapCellSize,
             isWorld: false
         )
+
         if let objectPreview {
             let result = BuildingPlacementValidator().validate(objectPreview, in: worldState)
             let previewNode = BuildingObjectRenderer.makeNode(
@@ -144,20 +156,14 @@ final class MapRenderer {
             }
         }
 
-        if tutorialStep?.placementKind == .arthurHouse,
-           let target = currentTutorialTarget,
-           objectPreview.map({ !matchesCurrentTutorialTarget($0) }) ?? true {
-            let landingPreview = BuildingObjectRenderer.makeNode(
-                target,
-                cellSize: mapCellSize,
-                isWorld: false,
-                result: .valid
-            )
-            landingPreview.name = "TutorialLandingPreview"
-            landingPreview.userData = nil
-            landingPreview.alpha = 0.42
-            contentRoot.addChild(landingPreview)
-            addTutorialGlow(around: landingPreview, in: contentRoot, color: .systemGreen)
+        if let tutorialStep {
+            if case .tryWrongSoil(let kind) = tutorialStep,
+               let invalidTarget = tutorialInvalidBuildingTarget(for: kind, in: worldState) {
+                addTutorialBuildingTarget(invalidTarget, result: .requiresVillageSoil, in: contentRoot)
+            } else if let target = currentTutorialTarget,
+                      objectPreview.map({ !matchesCurrentTutorialTarget($0) }) ?? true {
+                addTutorialBuildingTarget(target, result: .valid, in: contentRoot)
+            }
         }
 
         if tutorialStep == .enterWorld,
@@ -491,30 +497,79 @@ final class MapRenderer {
         return node
     }
 
+    private func addVillageSoilMicrogridOverlay(to pieceNode: SKNode, piece: WorldPiece) {
+        let root = SKNode()
+        root.name = "VillageSoilMicrogridOverlay"
+        root.zPosition = 35
+        let microSize = mapCellSize / CGFloat(MicroBiomeGrid.dimension)
+        let halfCellSize = mapCellSize / 2
+
+        for cell in piece.cellDefinitions {
+            let microBiomeGrid = BuildingPuzzleCellID(rawValue: cell.id.rawValue)
+                .map { BuildingPuzzleBiomeFixture.grid(for: $0) }
+                ?? cell.microBiomeGrid
+            let cellOrigin = mapper.offset(for: cell.localPosition)
+            for position in MicroGridPosition.allPositions where microBiomeGrid.biome(at: position) == .villageSoil {
+                let node = SKShapeNode(rectOf: CGSize(width: microSize - 1.5, height: microSize - 1.5), cornerRadius: 1.5)
+                node.position = CGPoint(
+                    x: cellOrigin.x - halfCellSize + CGFloat(position.x) * microSize + microSize / 2,
+                    y: cellOrigin.y + halfCellSize - CGFloat(position.y) * microSize - microSize / 2
+                )
+                node.fillColor = SKColor.systemGreen.withAlphaComponent(0.10)
+                node.strokeColor = SKColor.systemGreen.withAlphaComponent(0.92)
+                node.lineWidth = 1.2
+                node.glowWidth = 1.8
+                root.addChild(node)
+            }
+        }
+
+        guard !root.children.isEmpty else { return }
+        root.run(.repeatForever(.sequence([
+            .fadeAlpha(to: 0.42, duration: 0.55),
+            .fadeAlpha(to: 0.86, duration: 0.55)
+        ])))
+        pieceNode.addChild(root)
+    }
+
     private func makeFootprintOverlay(for rectangle: GlobalMicroRectangle) -> SKNode {
         let root = SKNode()
         root.zPosition = 240
         let microSize = mapCellSize / CGFloat(MicroBiomeGrid.dimension)
         for position in rectangle.positions() {
-            let largeCell = GridPosition(
-                x: Int(floor(Double(position.x) / Double(MicroBiomeGrid.dimension))),
-                y: Int(floor(Double(position.y) / Double(MicroBiomeGrid.dimension)))
-            )
-            let localX = position.x - largeCell.x * MicroBiomeGrid.dimension
-            let localY = position.y - largeCell.y * MicroBiomeGrid.dimension
-            let cellCenter = mapper.mapPosition(for: largeCell)
-            let topLeft = CGPoint(x: cellCenter.x - mapCellSize / 2 + microSize / 2, y: cellCenter.y + mapCellSize / 2 - microSize / 2)
             let node = SKSpriteNode(
                 color: SKColor.systemYellow.withAlphaComponent(0.72),
                 size: CGSize(width: microSize - 1, height: microSize - 1)
             )
-            node.position = CGPoint(
-                x: topLeft.x + CGFloat(localX) * microSize,
-                y: topLeft.y - CGFloat(localY) * microSize
-            )
+            node.position = microgridMapPosition(for: position, microSize: microSize)
             root.addChild(node)
         }
         return root
+    }
+
+    private func microgridMapPosition(for position: GridPosition, microSize: CGFloat) -> CGPoint {
+        microgridMapPosition(x: position.x, y: position.y, microSize: microSize)
+    }
+
+    private func microgridMapPosition(for position: GlobalMicroPosition, microSize: CGFloat) -> CGPoint {
+        microgridMapPosition(x: position.x, y: position.y, microSize: microSize)
+    }
+
+    private func microgridMapPosition(x: Int, y: Int, microSize: CGFloat) -> CGPoint {
+        let largeCell = GridPosition(
+            x: Int(floor(Double(x) / Double(MicroBiomeGrid.dimension))),
+            y: Int(floor(Double(y) / Double(MicroBiomeGrid.dimension)))
+        )
+        let localX = x - largeCell.x * MicroBiomeGrid.dimension
+        let localY = y - largeCell.y * MicroBiomeGrid.dimension
+        let cellCenter = mapper.mapPosition(for: largeCell)
+        let topLeft = CGPoint(
+            x: cellCenter.x - mapCellSize / 2 + microSize / 2,
+            y: cellCenter.y + mapCellSize / 2 - microSize / 2
+        )
+        return CGPoint(
+            x: topLeft.x + CGFloat(localX) * microSize,
+            y: topLeft.y - CGFloat(localY) * microSize
+        )
     }
 
     private func makePlayerMarker(at position: CGPoint) -> SKNode {
@@ -525,6 +580,38 @@ final class MapRenderer {
         marker.lineWidth = 4
         marker.zPosition = 500
         return marker
+    }
+
+    private func addTutorialPieceTarget(
+        _ piece: WorldPiece,
+        tutorialStep: MapTutorialStep,
+        in parent: SKNode
+    ) {
+        let isWrongTarget: Bool
+        if case .tryMismatchedTile = tutorialStep {
+            isWrongTarget = true
+        } else {
+            isWrongTarget = false
+        }
+        let targetNode = MapPieceNode(
+            piece: piece,
+            mapper: mapper,
+            interactionState: .selected(isValid: !isWrongTarget)
+        )
+        targetNode.name = "TutorialTileTarget"
+        targetNode.alpha = 0.34
+        targetNode.zPosition = 18
+        parent.addChild(targetNode)
+        addTutorialGlow(around: targetNode, in: parent, color: isWrongTarget ? .systemRed : .systemGreen)
+    }
+
+    private func addTutorialBuildingTarget(_ object: BuildingObject, result: BuildingPlacementResult, in parent: SKNode) {
+        let node = BuildingObjectRenderer.makeNode(object, cellSize: mapCellSize, isWorld: false, result: result)
+        node.name = "TutorialBuildingTarget"
+        node.userData = nil
+        node.alpha = result == .valid ? 0.42 : 0.36
+        parent.addChild(node)
+        addTutorialGlow(around: node, in: parent, color: result == .valid ? .systemGreen : .systemRed)
     }
 
     private func addTutorialGlow(
@@ -546,6 +633,105 @@ final class MapRenderer {
             .fadeAlpha(to: 1.0, duration: 0.65)
         ])))
         parent.addChild(glow)
+    }
+
+    private func tutorialPieceTarget(
+        for step: MapTutorialStep,
+        piece: WorldPiece,
+        preview: PiecePlacementPreview,
+        worldState: WorldState
+    ) -> WorldPiece? {
+        let wantsMismatch: Bool
+        switch step {
+        case .tryMismatchedTile:
+            wantsMismatch = true
+        case .tryMatchingTile:
+            wantsMismatch = false
+        default:
+            return nil
+        }
+
+        let validator = PlacementValidator()
+        let origin = preview.originalPlacement.gridPosition
+        let offsets = (-5...5).flatMap { y in
+            (-5...5).map { x in GridPosition(x: x, y: y) }
+        }
+            .filter { $0.x != 0 || $0.y != 0 }
+            .sorted {
+                let left = abs($0.x) + abs($0.y)
+                let right = abs($1.x) + abs($1.y)
+                if left != right { return left < right }
+                if abs($0.y) != abs($1.y) { return abs($0.y) < abs($1.y) }
+                return abs($0.x) < abs($1.x)
+            }
+
+        for offset in offsets {
+            let position = GridPosition(x: origin.x + offset.x, y: origin.y + offset.y)
+            guard touchesAnotherPiece(piece: piece, at: position, rotation: preview.proposedRotation, in: worldState) else {
+                continue
+            }
+            let mismatches = validator.mismatchedEdgeDirections(
+                pieceID: piece.id,
+                at: position,
+                rotation: preview.proposedRotation,
+                in: worldState
+            )
+            let isValid = validator.canPlace(
+                pieceID: piece.id,
+                at: position,
+                rotation: preview.proposedRotation,
+                in: worldState
+            )
+            guard wantsMismatch ? !mismatches.isEmpty : isValid else {
+                continue
+            }
+            var target = piece
+            target.gridPosition = position
+            target.rotation = preview.proposedRotation
+            return target
+        }
+        return nil
+    }
+
+    private func touchesAnotherPiece(
+        piece: WorldPiece,
+        at position: GridPosition,
+        rotation: GridRotation,
+        in worldState: WorldState
+    ) -> Bool {
+        let proposedCells = piece.occupiedCells(at: position, rotation: rotation)
+        let otherCells = worldState.pieces
+            .filter { $0.id != piece.id }
+            .reduce(into: Set<GridPosition>()) { result, other in
+                result.formUnion(other.occupiedCells())
+            }
+        return proposedCells.contains { cell in
+            Direction.allCases.contains { direction in
+                otherCells.contains(cell + direction.gridOffset)
+            }
+        }
+    }
+
+    private func tutorialInvalidBuildingTarget(for kind: BuildingObjectKind, in worldState: WorldState) -> BuildingObject? {
+        let validator = BuildingPlacementValidator()
+        let occupied = worldState.buildingObjects.reduce(into: Set<GridPosition>()) {
+            $0.formUnion($1.occupiedPositions)
+        }
+        let tilePositions = validator.tilePositions(in: worldState)
+        let candidates = tilePositions.sorted {
+            if $0.y != $1.y { return $0.y < $1.y }
+            return $0.x < $1.x
+        }
+        for origin in candidates {
+            let object = BuildingObject(kind: kind, origin: origin, rotation: .degrees0)
+            guard object.occupiedPositions.isDisjoint(with: occupied),
+                  validator.overlapsWorldTiles(object, in: worldState),
+                  validator.validate(object, in: worldState) == .requiresVillageSoil else {
+                continue
+            }
+            return object
+        }
+        return nil
     }
 
     private func tutorialEntryPiece(

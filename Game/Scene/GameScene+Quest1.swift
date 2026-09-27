@@ -439,7 +439,7 @@ extension GameScene {
             showQuestDialogue(lines) { [weak self] in
                 guard let self else { return }
                 self.autosave(reason: "water collected and building unlocked")
-                self.enterMapView()
+                self.enterMapView(allowDuringQuestTutorial: true)
             }
             showProgressionFeedback("MRS. MARA HOME UNLOCKED")
             playerNode?.celebrate()
