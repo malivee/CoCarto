@@ -38,7 +38,7 @@ final class MainMenuScene: SKScene {
         guard let location = touches.first?.location(in: self) else { return }
         setPlayPressed(nodes(at: location).contains(where: { $0.name == NodeName.play }))
     }
-
+ 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let location = touches.first?.location(in: self) else {
             setPlayPressed(false)
@@ -162,7 +162,7 @@ final class MainMenuScene: SKScene {
         brand.addChild(glowNode)
 
         let titleShadow = SKLabelNode(fontNamed: "AvenirNext-Heavy")
-        titleShadow.text = "COCARTO"
+        titleShadow.text = "TWBP"
         titleShadow.fontSize = min(62, size.width * 0.155)
         titleShadow.fontColor = SKColor.black.withAlphaComponent(0.45)
         titleShadow.position = CGPoint(x: 3, y: -4)
@@ -170,7 +170,7 @@ final class MainMenuScene: SKScene {
         brand.addChild(titleShadow)
 
         let title = SKLabelNode(fontNamed: "AvenirNext-Heavy")
-        title.text = "COCARTO"
+        title.text = "TWBP"
         title.fontSize = titleShadow.fontSize
         title.fontColor = palette.parchment
         title.verticalAlignmentMode = .center
