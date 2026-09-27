@@ -11,6 +11,9 @@ extension GameScene {
             x: -size.width / 2 + safeInsets.left + 16 + 92 * hudScale,
             y: size.height / 2 - safeInsets.top - 16 - 87 * hudScale
         )
+        let canReturnToMap = !isQuest1TutorialActive
+        enterMapButton.isHidden = !canReturnToMap
+        worldMinimap.setNavigationEnabled(canReturnToMap)
         layoutWorldObjectiveCards()
         worldMinimap.isHidden = gameMode != .exploring
         if !worldMinimap.isHidden {
@@ -46,9 +49,9 @@ extension GameScene {
         let cardWidth = min(size.width - 56, 410)
         let besideMinimap = rightEdge - minimapRight - 16 >= cardWidth
         let top = worldMinimap.position.y + 87 * worldMinimap.yScale
-        let cardTop = besideMinimap ? top : worldMinimap.position.y - 87 * worldMinimap.yScale - 12
+        let cardTop = besideMinimap ? top : worldMinimap.position.y - worldMinimap.bottomExtent * worldMinimap.yScale - 12
         let centerX = besideMinimap ? rightEdge - cardWidth / 2 : 0
-        worldTutorialBanner.position = CGPoint(x: centerX, y: cardTop - 29)
+        worldTutorialBanner.position = CGPoint(x: centerX, y: cardTop - 41)
         worldQuestTracker.position = CGPoint(x: besideMinimap ? rightEdge - 126 : 0, y: cardTop - 56)
     }
 
@@ -88,7 +91,7 @@ extension GameScene {
         pendingLoadedPlayerSpatialState = nil
         selectedObjectKind = nil
         objectPreview = nil
-        worldState = .buildingPuzzleBiomePrototype(allowing: [.z1, .z2, .l1])
+        worldState = .buildingPuzzleBiomePrototype(allowing: [.z2, .l1])
         quest1Controller.reset()
         quest2Controller.reset()
         quest3Controller.reset()
@@ -273,6 +276,11 @@ extension GameScene {
 /// Camera HUD: geometry is rebuilt only after the world or connected area changes.
 final class WorldMinimapNode: SKNode {
     private let terrain = SKNode()
+    private let panel = SKShapeNode()
+    private let shadow = SKShapeNode()
+    private let separator = SKShapeNode()
+    private(set) var bottomExtent: CGFloat = 87
+    private var navigationEnabled: Bool?
     private let marker = SKShapeNode(circleOfRadius: 3.5)
     private var cachedPieces: [WorldPiece] = []
     private var cachedBuildings: [BuildingObject] = []
@@ -285,12 +293,12 @@ final class WorldMinimapNode: SKNode {
         super.init()
         name = MapNodeName.enterButton.rawValue
         zPosition = 1_000
-        let shadow = SKShapeNode(rectOf: CGSize(width: 184, height: 174), cornerRadius: 18)
+        shadow.path = CGPath(roundedRect: CGRect(x: -92, y: -87, width: 184, height: 174), cornerWidth: 18, cornerHeight: 18, transform: nil)
         shadow.fillColor = SKColor.black.withAlphaComponent(0.2)
         shadow.strokeColor = .clear
         shadow.position.y = -3
         addChild(shadow)
-        let panel = SKShapeNode(rectOf: CGSize(width: 184, height: 174), cornerRadius: 18)
+        panel.path = shadow.path
         panel.fillColor = SKColor(red: 0.04, green: 0.12, blue: 0.16, alpha: 0.94)
         panel.strokeColor = SKColor.white.withAlphaComponent(0.3)
         panel.lineWidth = 1
@@ -309,7 +317,7 @@ final class WorldMinimapNode: SKNode {
         north.position = CGPoint(x: 76, y: 69)
         north.horizontalAlignmentMode = .right
         addChild(north)
-        let separator = SKShapeNode(rectOf: CGSize(width: 152, height: 1))
+        separator.path = CGPath(rect: CGRect(x: -76, y: -0.5, width: 152, height: 1), transform: nil)
         separator.fillColor = SKColor.white.withAlphaComponent(0.12)
         separator.strokeColor = .clear
         separator.position.y = -28
@@ -324,6 +332,17 @@ final class WorldMinimapNode: SKNode {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func setNavigationEnabled(_ enabled: Bool) {
+        guard navigationEnabled != enabled else { return }
+        navigationEnabled = enabled
+        name = enabled ? MapNodeName.enterButton.rawValue : "WorldMinimap"
+        bottomExtent = enabled ? 87 : 30
+        let frame = CGRect(x: -92, y: -bottomExtent, width: 184, height: 87 + bottomExtent)
+        panel.path = CGPath(roundedRect: frame, cornerWidth: 18, cornerHeight: 18, transform: nil)
+        shadow.path = panel.path
+        separator.isHidden = !enabled
+    }
 
     func update(worldState: WorldState, playerState: PlayerState, playerPosition: CGPoint, mapper: WorldGridMapper) {
         let changed = cachedPieces != worldState.pieces || cachedBuildings != worldState.buildingObjects

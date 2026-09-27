@@ -16,6 +16,7 @@ enum MapTutorialStep: Equatable {
     case dragWell
     case placeWell(isValid: Bool)
     case enterWorld
+    case newBuilding(openInventory: Bool)
 
     var badge: String {
         switch self {
@@ -25,6 +26,7 @@ enum MapTutorialStep: Equatable {
         case .dragHouse, .placeHouse: return "4"
         case .dragWell, .placeWell: return "5"
         case .enterWorld: return "6"
+        case .newBuilding: return "+1"
         }
     }
 
@@ -44,6 +46,8 @@ enum MapTutorialStep: Equatable {
             return "Drag the Well"
         case .placeWell(let isValid):
             return isValid ? "Drop It Here" : "Find the Yellow Area"
+        case .newBuilding:
+            return "New Building Unlocked!"
         case .enterWorld:
             return "Enter the Village"
         }
@@ -69,6 +73,8 @@ enum MapTutorialStep: Equatable {
             return isValid
                 ? "The position is correct."
                 : "Drag it until the frame turns green."
+        case .newBuilding(let openInventory):
+            return openInventory ? "Open Buildings to find Mrs. Mara’s House." : "Drag Mrs. Mara’s House onto village soil."
         case .enterWorld:
             return "Double-tap the highlighted tile."
         }
@@ -442,7 +448,7 @@ final class MapHUDNode: SKNode {
     }
 
     private func updateTutorialHighlights(for step: MapTutorialStep?) {
-        inventoryToggle.setTutorialHighlighted(step == .openSidebar)
+        inventoryToggle.setTutorialHighlighted(step == .openSidebar || step == .newBuilding(openInventory: true))
         rotateLeftButton.setTutorialHighlighted(false)
         rotateRightButton.setTutorialHighlighted(false)
         placeObjectButton.setTutorialHighlighted(false)
@@ -454,6 +460,8 @@ final class MapHUDNode: SKNode {
         case .rotateTile:
             rotateLeftButton.setTutorialHighlighted(true)
             rotateRightButton.setTutorialHighlighted(true)
+        case .newBuilding(openInventory: false):
+            addTutorialGlow(to: inventoryItemNodes[.buMaraHouse])
         case .dragHouse:
             addTutorialGlow(to: inventoryItemNodes[.arthurHouse])
         case .dragWell:
@@ -705,7 +713,7 @@ final class MapHUDNode: SKNode {
     private func updateNewBuildingBadge(isInventoryExpanded: Bool) {
         let count = newInventoryKinds.count
         newBuildingBadge.isHidden = count == 0
-        newBuildingBadgeLabel.text = "NEW"
+        newBuildingBadgeLabel.text = "+\(count)"
         newBuildingBadge.removeAction(forKey: "newBuildingPulse")
         newBuildingBadge.setScale(1)
         if count > 0 && !isInventoryExpanded {

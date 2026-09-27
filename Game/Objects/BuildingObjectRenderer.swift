@@ -64,9 +64,10 @@ enum BuildingObjectRenderer {
                 root.addChild(makeAssetShadow(size: size, isWorld: true, kind: object.kind))
             }
 
-            let sprite = SKSpriteNode(imageNamed: assetName)
+            let texture = SKTexture(imageNamed: assetName)
+            let sprite = SKSpriteNode(texture: texture)
             sprite.name = "BuildingAsset"
-            sprite.size = assetSize
+            sprite.size = aspectFitSize(textureSize: texture.size(), in: assetSize)
             sprite.zRotation = object.rotation.radians
             sprite.zPosition = 1
             if isWorld,
@@ -98,6 +99,12 @@ enum BuildingObjectRenderer {
         root.addChild(title)
         root.zPosition = result == nil ? 0 : 50
         return root
+    }
+
+    private static func aspectFitSize(textureSize: CGSize, in bounds: CGSize) -> CGSize {
+        guard textureSize.width > 0, textureSize.height > 0 else { return bounds }
+        let scale = min(bounds.width / textureSize.width, bounds.height / textureSize.height)
+        return CGSize(width: textureSize.width * scale, height: textureSize.height * scale)
     }
 
     static func assetName(for kind: BuildingObjectKind) -> String? {

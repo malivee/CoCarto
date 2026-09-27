@@ -213,6 +213,18 @@ final class MapRenderer {
         }
     }
 
+    func hasUnseenBuilding(_ kind: BuildingObjectKind) -> Bool {
+        !seenInventoryKinds.contains(kind)
+    }
+
+    func announceNewBuilding(_ kind: BuildingObjectKind) {
+        seenInventoryKinds.remove(kind)
+        newInventoryKinds.insert(kind)
+        inventoryExpanded = false
+        inventoryScrollOffset = 0
+        persistSeenInventoryKinds()
+    }
+
     func toggleInventory() {
         inventoryExpanded.toggle()
     }

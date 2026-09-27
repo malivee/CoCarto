@@ -112,26 +112,47 @@ extension GameScene {
     }
 
     func questUnlockedPieceRoles() -> Set<PieceRole> {
-        [.z1, .z2, .l1]
+        var roles: Set<PieceRole> = [.z2, .l1]
+        if VillageQuest3Progress.load().completed { roles.insert(.z1) }
+        return roles
     }
 
     @discardableResult
     func synchronizeQuestProgressionUnlocks() -> Bool {
+        let hadFirstIPiece = worldState.piece(role: .z1) != nil
         var didChangePieces = worldState.synchronizePuzzlePieces(allowing: questUnlockedPieceRoles())
         let hasFinishedMapTutorial = quest1Controller.hasCollectedWater || quest1Controller.isCompleted
-        if worldState.setPieceMovable(hasFinishedMapTutorial, for: .z1) {
+        let hasCompletedQuest3 = quest3Controller.isCompleted
+        if worldState.setPieceMovable(hasFinishedMapTutorial, for: .z2) {
+            didChangePieces = true
+        }
+        if hasCompletedQuest3, worldState.setPieceMovable(true, for: .z1) {
             didChangePieces = true
         }
         if didChangePieces {
             playerController.updateWorldState(worldState)
             worldRenderer.applyWorldState(worldState, in: worldRoot, showsDebugLabels: showsDebugOverlay)
             syncVillageNPCs()
+
+            // Reframe the map as soon as the third piece becomes available.
+            // Before that point the initial view naturally contains only the
+            // two playable pieces present at the start of the game.
+            if !hadFirstIPiece, worldState.piece(role: .z1) != nil {
+                let bounds = mapRenderer.contentBounds(for: worldState)
+                mapRenderer.setInitialPuzzleScale(for: bounds, sceneSize: size)
+                mapViewport.reset(
+                    contentBounds: bounds,
+                    sceneSize: size,
+                    focusPoint: CGPoint(x: bounds.midX, y: bounds.midY)
+                )
+            }
         }
         return didChangePieces
     }
 
     // Placement only updates the UI. Quest 2 completes through Bu Mara's interaction and minigame.
     func syncQuest2PlacementProgress() {
+        synchronizeQuestProgressionUnlocks()
         updateWorldQuestLabel()
     }
 
@@ -409,7 +430,12 @@ extension GameScene {
             syncVillageNPCs()
         case .waterCollected(let lines):
             AudioService.shared.playSFX("WellWaterPull")
-            showQuestDialogue(lines)
+            mapRenderer.announceNewBuilding(.buMaraHouse)
+            showQuestDialogue(lines) { [weak self] in
+                guard let self else { return }
+                self.autosave(reason: "water collected and building unlocked")
+                self.enterMapView()
+            }
             showProgressionFeedback("MRS. MARA HOME UNLOCKED")
             playerNode?.celebrate()
             synchronizeQuestProgressionUnlocks()

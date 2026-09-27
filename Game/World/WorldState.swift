@@ -4,20 +4,24 @@ struct WorldState: Codable, Equatable, Sendable {
     private(set) var pieces: [WorldPiece]
     private(set) var landmarks: [WorldLandmark]
     private(set) var buildingObjects: [BuildingObject]
+    private(set) var hasPlacedBarn: Bool
 
     init(pieces: [WorldPiece], landmarks: [WorldLandmark] = Self.initialLandmarks, buildingObjects: [BuildingObject] = []) {
         self.pieces = pieces
         self.landmarks = landmarks
         self.buildingObjects = buildingObjects
+        self.hasPlacedBarn = buildingObjects.contains { $0.kind == .barn }
     }
 
-    private enum CodingKeys: String, CodingKey { case pieces, landmarks, buildingObjects }
+    private enum CodingKeys: String, CodingKey { case pieces, landmarks, buildingObjects, hasPlacedBarn }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         pieces = try container.decode([WorldPiece].self, forKey: .pieces)
         landmarks = try container.decode([WorldLandmark].self, forKey: .landmarks)
         buildingObjects = try container.decodeIfPresent([BuildingObject].self, forKey: .buildingObjects) ?? []
+        hasPlacedBarn = try container.decodeIfPresent(Bool.self, forKey: .hasPlacedBarn)
+            ?? buildingObjects.contains { $0.kind == .barn }
     }
 
     @discardableResult
@@ -29,6 +33,7 @@ struct WorldState: Codable, Equatable, Sendable {
             return .overlapsObject
         }
         buildingObjects.append(object)
+        if object.kind == .barn { hasPlacedBarn = true }
         return .valid
     }
 

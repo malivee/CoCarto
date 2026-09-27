@@ -4,7 +4,7 @@ import CoreImage
 
 extension GameScene {
     func enterMapView() {
-        guard gameMode == .exploring else {
+        guard gameMode == .exploring, !isQuest1TutorialActive else {
             return
         }
 
@@ -47,7 +47,8 @@ extension GameScene {
     }
 
     func enterWorldByDoubleTappingTile(at _: CGPoint, pieceID: UUID) {
-        guard worldState.piece(id: pieceID) != nil,
+        guard canEnterWorldDuringTutorial,
+              worldState.piece(id: pieceID) != nil,
               let playerNode else {
             return
         }
@@ -63,6 +64,11 @@ extension GameScene {
     }
 
     func currentMapTutorialStep() -> MapTutorialStep? {
+        if quest1Controller.hasCollectedWater,
+           !worldState.buildingObjects.contains(where: { $0.kind == .buMaraHouse }),
+           mapRenderer.hasUnseenBuilding(.buMaraHouse) {
+            return .newBuilding(openInventory: !mapRenderer.inventoryExpanded)
+        }
         // STRICT QUEST 1 CHECK: Tutorial ONLY appears during Quest 1 before water is collected
         guard isQuest1TutorialActive else { return nil }
 
@@ -155,7 +161,20 @@ extension GameScene {
         playerNode?.alpha = 1
     }
 
+    var canEnterWorldDuringTutorial: Bool {
+        guard isQuest1TutorialActive else { return true }
+        return hasRotatedPieceInTutorial
+            && worldState.buildingObjects.contains { $0.kind == .arthurHouse }
+            && worldState.buildingObjects.contains { $0.kind == .well }
+            && objectPreview == nil && selectedObjectKind == nil
+            && (mapController.preview == nil || mapController.preview?.isValid == true)
+    }
+
     func startMapToWorldTransition() {
+        guard canEnterWorldDuringTutorial else {
+            showProgressionFeedback("Complete the map tutorial before entering the world.")
+            return
+        }
         guard gameMode == .mapIdle || gameMode.isMapInteractionActive || gameMode == .committingMapChange else {
             return
         }

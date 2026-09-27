@@ -359,15 +359,15 @@ extension GameScene {
         } else if !quest1Controller.isWellUnlocked {
             worldTutorialBanner.configure(
                 badge: "2",
-                title: "Meet Grandpa",
-                subtitle: "Approach the highlighted character.",
+                title: "Interact with the objects\nplaced in the world",
+                subtitle: "First, approach Grandpa and tap him.",
                 width: bannerWidth
             )
         } else if !quest1Controller.hasCollectedWater {
             worldTutorialBanner.configure(
                 badge: "3",
-                title: "Collect Water from the Well",
-                subtitle: "Approach the highlighted well.",
+                title: "Interact with the objects\nplaced in the world",
+                subtitle: "Next, approach the well and tap it.",
                 width: bannerWidth
             )
         } else {
@@ -444,7 +444,7 @@ final class InWorldTutorialBannerNode: SKNode {
 
     func configure(badge: String, title: String, subtitle: String, width: CGFloat) {
         let bannerWidth = min(width, 410)
-        let bannerHeight: CGFloat = 58
+        let bannerHeight: CGFloat = 82
 
         background.path = CGPath(
             roundedRect: CGRect(x: -bannerWidth / 2, y: -bannerHeight / 2, width: bannerWidth, height: bannerHeight),
@@ -469,12 +469,13 @@ final class InWorldTutorialBannerNode: SKNode {
         let textX = sealX + sealRadius + 14
         let textWidth = bannerWidth - (textX - (-bannerWidth / 2)) - 14
 
+        titleLabel.numberOfLines = 2
         titleLabel.text = title
         titleLabel.position = CGPoint(x: textX, y: 11)
         titleLabel.preferredMaxLayoutWidth = textWidth
 
         subtitleLabel.text = subtitle
-        subtitleLabel.position = CGPoint(x: textX, y: -11)
+        subtitleLabel.position = CGPoint(x: textX, y: -22)
         subtitleLabel.preferredMaxLayoutWidth = textWidth
     }
 }
