@@ -94,7 +94,7 @@ final class MapPieceNode: SKNode {
     }
 
     private func addIndicator(interactionState: MapPieceInteractionState, mapper: MapGridMapper) {
-        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        let label = SKLabelNode(fontNamed: GameFont.name)
         switch interactionState {
         case .fixed:
             label.text = "LOCK"
@@ -103,7 +103,7 @@ final class MapPieceNode: SKNode {
         case .movable, .playerConnected, .selected:
             return
         }
-        label.fontSize = 16
+        label.fontSize = 19
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center

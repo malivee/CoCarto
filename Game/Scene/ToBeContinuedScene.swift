@@ -148,9 +148,9 @@ final class ToBeContinuedScene: SKScene {
         header.addChild(glowNode)
 
         // "CHAPTER ONE COMPLETE"
-        let eyebrowLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        let eyebrowLabel = SKLabelNode(fontNamed: GameFont.name)
         eyebrowLabel.text = "C H A P T E R   O N E   C O M P L E T E"
-        eyebrowLabel.fontSize = min(11, size.width * 0.03)
+        eyebrowLabel.fontSize = min(14, size.width * 0.038)
         eyebrowLabel.fontColor = palette.gold
         eyebrowLabel.verticalAlignmentMode = .center
         eyebrowLabel.position.y = 45
@@ -181,16 +181,16 @@ final class ToBeContinuedScene: SKScene {
         rightRule.run(eyebrowGroup)
 
         // TO BE CONTINUED Title
-        let titleShadow = SKLabelNode(fontNamed: "AvenirNext-Heavy")
+        let titleShadow = SKLabelNode(fontNamed: GameFont.name)
         titleShadow.text = "TO BE CONTINUED"
-        titleShadow.fontSize = min(36, size.width * 0.085)
+        titleShadow.fontSize = min(42, size.width * 0.10)
         titleShadow.fontColor = SKColor.black.withAlphaComponent(0.45)
         titleShadow.position = CGPoint(x: 3, y: -4)
         titleShadow.verticalAlignmentMode = .center
         titleShadow.alpha = 0
         header.addChild(titleShadow)
 
-        let titleLabel = SKLabelNode(fontNamed: "AvenirNext-Heavy")
+        let titleLabel = SKLabelNode(fontNamed: GameFont.name)
         titleLabel.text = "TO BE CONTINUED"
         titleLabel.fontSize = titleShadow.fontSize
         titleLabel.fontColor = palette.parchment
@@ -259,9 +259,9 @@ final class ToBeContinuedScene: SKScene {
         ]))
 
         // Journal Title
-        let logTitle = SKLabelNode(fontNamed: "AvenirNext-Heavy")
+        let logTitle = SKLabelNode(fontNamed: GameFont.name)
         logTitle.text = "JOURNAL ENTRIES"
-        logTitle.fontSize = 12
+        logTitle.fontSize = 15
         logTitle.fontColor = palette.ink.withAlphaComponent(0.6)
         logTitle.position = CGPoint(x: 0, y: 75)
         logTitle.alpha = 0
@@ -271,9 +271,9 @@ final class ToBeContinuedScene: SKScene {
         logTitle.run(SKAction.sequence([SKAction.wait(forDuration: 2.2), fadeLog]))
 
         // Lore Flavour Text
-        let storyText = SKLabelNode(fontNamed: "AvenirNext-Italic")
+        let storyText = SKLabelNode(fontNamed: GameFont.name)
         storyText.text = "\"From the old well to the salt mines,\ntales of the outside world begin to echo...\""
-        storyText.fontSize = 13
+        storyText.fontSize = 16
         storyText.fontColor = palette.ink
         storyText.numberOfLines = 2
         storyText.horizontalAlignmentMode = .center
@@ -286,7 +286,7 @@ final class ToBeContinuedScene: SKScene {
         let divider = SKShapeNode(rectOf: CGSize(width: cardWidth - 80, height: 1))
         divider.fillColor = palette.ink.withAlphaComponent(0.15)
         divider.strokeColor = .clear
-        divider.position = CGPoint(x: 0, y: 20)
+        divider.position = CGPoint(x: 0, y: 10)
         divider.alpha = 0
         cardContainer.addChild(divider)
         divider.run(SKAction.sequence([SKAction.wait(forDuration: 2.5), fadeLog]))
@@ -298,8 +298,8 @@ final class ToBeContinuedScene: SKScene {
             "Learned the Safe Boundaries"
         ]
         
-        let startY: CGFloat = -5
-        let spacing: CGFloat = 30
+        let startY: CGFloat = -18
+        let spacing: CGFloat = 28
 
         for (index, text) in milestones.enumerated() {
             let rowNode = SKNode()
@@ -315,18 +315,18 @@ final class ToBeContinuedScene: SKScene {
             waxStamp.position = CGPoint(x: -cardWidth/2 + 45, y: 0)
             rowNode.addChild(waxStamp)
             
-            let checkMark = SKLabelNode(fontNamed: "AvenirNext-Bold")
+            let checkMark = SKLabelNode(fontNamed: GameFont.name)
             checkMark.text = "✓"
-            checkMark.fontSize = 12
+            checkMark.fontSize = 15
             checkMark.fontColor = palette.ink
             checkMark.verticalAlignmentMode = .center
             checkMark.position = CGPoint(x: -cardWidth/2 + 45, y: 1)
             rowNode.addChild(checkMark)
 
             // Achievement Text
-            let label = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+            let label = SKLabelNode(fontNamed: GameFont.name)
             label.text = text
-            label.fontSize = 14
+            label.fontSize = 17
             label.fontColor = palette.ink.withAlphaComponent(0.9)
             label.horizontalAlignmentMode = .left
             label.verticalAlignmentMode = .center
@@ -443,10 +443,10 @@ final class ToBeContinuedScene: SKScene {
             root.addChild(background)
         }
 
-        let label = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        let label = SKLabelNode(fontNamed: GameFont.name)
         label.name = name
         label.text = title
-        label.fontSize = min(16, size.width * 0.042)
+        label.fontSize = min(19, size.width * 0.05)
         label.fontColor = isPrimary ? palette.ink : palette.parchment
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center

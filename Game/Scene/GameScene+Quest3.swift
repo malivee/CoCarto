@@ -123,8 +123,8 @@ extension GameScene {
         let bubble = SpeechBubbleNode(config: SpeechBubbleConfig(
             text: line.text,
             speaker: line.speaker,
-            fontName: "AvenirNext-Bold",
-            fontSize: 13,
+            fontName: GameFont.name,
+            fontSize: 16,
             backgroundColor: SKColor(red: 0.08, green: 0.06, blue: 0.05, alpha: 0.95),
             crayonStrokeColor: SKColor(red: 0.85, green: 0.65, blue: 0.35, alpha: 0.9),
             padding: CGSize(width: 20, height: 12),

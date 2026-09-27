@@ -4,8 +4,8 @@ final class WorldDebugRenderer {
     private let statusLabel: SKLabelNode
 
     init(debugRoot: SKNode) {
-        statusLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        statusLabel.fontSize = 18
+        statusLabel = SKLabelNode(fontNamed: GameFont.name)
+        statusLabel.fontSize = 21
         statusLabel.fontColor = .white
         statusLabel.horizontalAlignmentMode = .left
         statusLabel.verticalAlignmentMode = .top

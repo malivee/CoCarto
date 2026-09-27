@@ -19,7 +19,7 @@ final class GameScene: SKScene {
         title: "Back to Map",
         name: MapNodeName.enterButton.rawValue,
         size: CGSize(width: 104, height: 52),
-        fontSize: 16
+        fontSize: 19
     )
     let worldMinimap = WorldMinimapNode()
     let resetButton = MapButtonNode(title: "RESET", name: MapNodeName.resetButton.rawValue)
@@ -66,8 +66,8 @@ final class GameScene: SKScene {
     let quest5Controller = VillageQuest5Controller()
     let quest6Controller = VillageQuest6Controller()
     let saveService = try? SaveGameService()
-    let puzzleFeedbackLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-    let worldQuestLabel = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+    let puzzleFeedbackLabel = SKLabelNode(fontNamed: GameFont.name)
+    let worldQuestLabel = SKLabelNode(fontNamed: GameFont.name)
     let worldQuestTracker = QuestTrackerNode()
     let transitionFog = SKEffectNode()
     let joystickBase = SKShapeNode(circleOfRadius: 72)

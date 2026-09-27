@@ -297,8 +297,8 @@ public final class ItemSortingMinigameNode: SKNode {
         let config = SpeechBubbleConfig(
             text: message,
             speaker: name,
-            fontName: "AvenirNext-Bold",
-            fontSize: 13,
+            fontName: GameFont.name,
+            fontSize: 16,
             fontColor: .white,
             speakerColor: isSuccess ? SKColor(red: 0.45, green: 0.90, blue: 0.55, alpha: 1.0) : SKColor(red: 0.96, green: 0.83, blue: 0.48, alpha: 1.0),
             backgroundColor: SKColor(red: 0.08, green: 0.07, blue: 0.09, alpha: 0.96),

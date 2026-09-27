@@ -315,16 +315,16 @@ final class WorldMinimapNode: SKNode {
         panel.strokeColor = SKColor.white.withAlphaComponent(0.3)
         panel.lineWidth = 1
         addChild(panel)
-        let heading = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        let heading = SKLabelNode(fontNamed: GameFont.name)
         heading.text = "YOUR SURROUNDINGS"
-        heading.fontSize = 9
+        heading.fontSize = 12
         heading.fontColor = SKColor(red: 0.87, green: 0.83, blue: 0.68, alpha: 1)
         heading.position = CGPoint(x: -76, y: 69)
         heading.horizontalAlignmentMode = .left
         addChild(heading)
-        let north = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        let north = SKLabelNode(fontNamed: GameFont.name)
         north.text = "N ↑"
-        north.fontSize = 9
+        north.fontSize = 12
         north.fontColor = .white
         north.position = CGPoint(x: 76, y: 69)
         north.horizontalAlignmentMode = .right

@@ -73,8 +73,8 @@ public final class SeedSortingMinigameNode: SKNode {
     private let centerGoldGuide = SKShapeNode()
     private let outerRimGuide = SKShapeNode()
     
-    private let headingLabel = SKLabelNode(fontNamed: "AvenirNext-Heavy")
-    private let instructionLabel = SKLabelNode(fontNamed: "AvenirNext-Medium")
+    private let headingLabel = SKLabelNode(fontNamed: GameFont.name)
+    private let instructionLabel = SKLabelNode(fontNamed: GameFont.name)
     
     // Arrays for sorting references
     private var goodSeeds: [SKNode] = []
@@ -185,14 +185,14 @@ public final class SeedSortingMinigameNode: SKNode {
         
         // 4. Labels & Text
         headingLabel.text = config.headingText
-        headingLabel.fontSize = 23
+        headingLabel.fontSize = 27
         headingLabel.fontColor = SKColor(red: 0.95, green: 0.88, blue: 0.72, alpha: 1.0)
-        headingLabel.position = CGPoint(x: 0, y: config.basketRadius + 50)
+        headingLabel.position = CGPoint(x: 0, y: config.basketRadius + 58)
         headingLabel.zPosition = 6
         container.addChild(headingLabel)
         
         instructionLabel.text = config.instructionText
-        instructionLabel.fontSize = 12
+        instructionLabel.fontSize = 15
         instructionLabel.fontColor = SKColor(red: 0.78, green: 0.68, blue: 0.56, alpha: 0.9)
         instructionLabel.position = CGPoint(x: 0, y: config.basketRadius + 28)
         instructionLabel.zPosition = 6
@@ -200,7 +200,7 @@ public final class SeedSortingMinigameNode: SKNode {
         
         // Extra instruction label for Simulator
         #if targetEnvironment(simulator)
-        let simLabel = SKLabelNode(fontNamed: "AvenirNext-Italic")
+        let simLabel = SKLabelNode(fontNamed: GameFont.name)
         simLabel.text = "(Drag on Simulator to shake)"
         simLabel.fontColor = SKColor(red: 0.65, green: 0.55, blue: 0.45, alpha: 0.8)
         simLabel.position = CGPoint(x: 0, y: -config.basketRadius - 40)

@@ -61,9 +61,9 @@ public final class MemoryCharacter: SKNode {
         setupCartoIllustration(title: title, tintColor: color)
 
         // Label nama karakter di atas kepala
-        let nameTag = SKLabelNode(fontNamed: "AvenirNext-Medium")
+        let nameTag = SKLabelNode(fontNamed: GameFont.name)
         nameTag.text = title
-        nameTag.fontSize = 9.5
+        nameTag.fontSize = 12
         nameTag.fontColor = SKColor(white: 0.96, alpha: 0.95)
         nameTag.position = CGPoint(x: 0, y: 44)
         nameTag.verticalAlignmentMode = .center
@@ -440,8 +440,8 @@ public final class MemoryCharacter: SKNode {
         badge.name = "InteractionBadge"
         badge.zPosition = 25
 
-        let width = min(104, max(64, CGFloat(text.count) * 7 + 24))
-        let background = SKShapeNode(rectOf: CGSize(width: width, height: 24), cornerRadius: 8)
+        let width = min(110, max(68, CGFloat(text.count) * 7.5 + 24))
+        let background = SKShapeNode(rectOf: CGSize(width: width, height: 26), cornerRadius: 8)
         background.name = "InteractionBadge"
         background.fillColor = SKColor(red: 0.94, green: 0.88, blue: 0.72, alpha: 0.97)
         background.strokeColor = SKColor(red: 0.36, green: 0.27, blue: 0.18, alpha: 0.90)
@@ -450,8 +450,8 @@ public final class MemoryCharacter: SKNode {
 
         let label = SKLabelNode(text: text.uppercased())
         label.name = "InteractionBadge"
-        label.fontName = "AvenirNext-DemiBold"
-        label.fontSize = 11.5
+        label.fontName = GameFont.name
+        label.fontSize = 12.5
         label.fontColor = SKColor(red: 0.25, green: 0.18, blue: 0.12, alpha: 1)
         label.horizontalAlignmentMode = .center
         label.verticalAlignmentMode = .center
@@ -526,7 +526,7 @@ public final class MemoryCharacter: SKNode {
 
         for i in 0..<3 {
             let zLabel = SKLabelNode(text: "z")
-            zLabel.fontName = "AvenirNext-Bold"
+            zLabel.fontName = GameFont.name
             zLabel.fontSize = CGFloat(10 + i * 3)
             zLabel.fontColor = SKColor(red: 0.98, green: 0.92, blue: 0.72, alpha: 0.9)
             zLabel.position = CGPoint(x: CGFloat(i * 6), y: CGFloat(i * 8))

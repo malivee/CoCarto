@@ -161,7 +161,7 @@ final class MainMenuScene: SKScene {
         ])))
         brand.addChild(glowNode)
 
-        let titleShadow = SKLabelNode(fontNamed: "AvenirNext-Heavy")
+        let titleShadow = SKLabelNode(fontNamed: GameFont.name)
         titleShadow.text = "TWBP"
         titleShadow.fontSize = min(62, size.width * 0.155)
         titleShadow.fontColor = SKColor.black.withAlphaComponent(0.45)
@@ -169,7 +169,7 @@ final class MainMenuScene: SKScene {
         titleShadow.verticalAlignmentMode = .center
         brand.addChild(titleShadow)
 
-        let title = SKLabelNode(fontNamed: "AvenirNext-Heavy")
+        let title = SKLabelNode(fontNamed: GameFont.name)
         title.text = "TWBP"
         title.fontSize = titleShadow.fontSize
         title.fontColor = palette.parchment
@@ -313,10 +313,10 @@ final class MainMenuScene: SKScene {
         innerBorder.lineWidth = 1.5
         root.addChild(innerBorder)
 
-        let label = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        let label = SKLabelNode(fontNamed: GameFont.name)
         label.name = NodeName.play
         label.text = "START ADVENTURE"
-        label.fontSize = min(18, size.width * 0.046)
+        label.fontSize = min(22, size.width * 0.056)
         label.fontColor = palette.ink
         label.verticalAlignmentMode = .center
         label.position.y = 1

@@ -4,7 +4,7 @@ final class LandmarkNode: SKNode {
     let landmarkID: LandmarkID
 
     private let marker = SKShapeNode(circleOfRadius: 36)
-    private let label = SKLabelNode(fontNamed: "Menlo-Bold")
+    private let label = SKLabelNode(fontNamed: GameFont.name)
 
     init(landmark: WorldLandmark, position: CGPoint) {
         landmarkID = landmark.id

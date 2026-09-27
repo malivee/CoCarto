@@ -34,7 +34,7 @@ final class CellNode: SKNode {
             return
         }
 
-        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        let label = SKLabelNode(fontNamed: GameFont.name)
         label.text = "\(piece.role.debugName)-\(gridID.rawValue)  \(globalCell.x),\(globalCell.y)"
         label.fontSize = 18
         label.fontColor = .white
@@ -113,7 +113,7 @@ final class CellNode: SKNode {
 
     private func addEdgeDebugLabels(edges: CellEdges, cellSize: CGFloat) {
         for direction in Direction.allCases {
-            let label = SKLabelNode(fontNamed: "Menlo-Bold")
+            let label = SKLabelNode(fontNamed: GameFont.name)
             label.text = edges[direction].debugSymbol
             label.fontSize = 18
             label.fontColor = .yellow
@@ -127,7 +127,7 @@ final class CellNode: SKNode {
 
     private func addBiomeEdgeDebugLabels(edges: CellBiomeEdges, cellSize: CGFloat) {
         for direction in Direction.allCases {
-            let label = SKLabelNode(fontNamed: "Menlo-Bold")
+            let label = SKLabelNode(fontNamed: GameFont.name)
             label.text = String(edges[direction].debugSymbol)
             label.fontSize = 18
             label.fontColor = edges[direction].debugColor

@@ -414,9 +414,9 @@ final class InWorldTutorialBannerNode: SKNode {
     private let background = SKShapeNode()
     private let innerBorder = SKShapeNode()
     private let sealBg = SKShapeNode()
-    private let sealIcon = SKLabelNode(fontNamed: "AvenirNext-Bold")
-    private let titleLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
-    private let subtitleLabel = SKLabelNode(fontNamed: "AvenirNext-Medium")
+    private let sealIcon = SKLabelNode(fontNamed: GameFont.name)
+    private let titleLabel = SKLabelNode(fontNamed: GameFont.name)
+    private let subtitleLabel = SKLabelNode(fontNamed: GameFont.name)
 
     override init() {
         super.init()
@@ -443,13 +443,13 @@ final class InWorldTutorialBannerNode: SKNode {
         sealIcon.horizontalAlignmentMode = .center
         addChild(sealIcon)
 
-        titleLabel.fontSize = 13.5
+        titleLabel.fontSize = 15
         titleLabel.fontColor = SKColor(red: 0.22, green: 0.14, blue: 0.08, alpha: 1.0)
         titleLabel.horizontalAlignmentMode = .left
         titleLabel.verticalAlignmentMode = .center
         addChild(titleLabel)
 
-        subtitleLabel.fontSize = 11.5
+        subtitleLabel.fontSize = 13
         subtitleLabel.fontColor = SKColor(red: 0.44, green: 0.32, blue: 0.22, alpha: 1.0)
         subtitleLabel.horizontalAlignmentMode = .left
         subtitleLabel.verticalAlignmentMode = .center
@@ -466,7 +466,7 @@ final class InWorldTutorialBannerNode: SKNode {
 
     func configure(badge: String, title: String, subtitle: String, width: CGFloat) {
         let bannerWidth = min(width, 410)
-        let bannerHeight: CGFloat = 82
+        let bannerHeight: CGFloat = 84
 
         background.path = CGPath(
             roundedRect: CGRect(x: -bannerWidth / 2, y: -bannerHeight / 2, width: bannerWidth, height: bannerHeight),
@@ -493,11 +493,11 @@ final class InWorldTutorialBannerNode: SKNode {
 
         titleLabel.numberOfLines = 2
         titleLabel.text = title
-        titleLabel.position = CGPoint(x: textX, y: 11)
+        titleLabel.position = CGPoint(x: textX, y: 14)
         titleLabel.preferredMaxLayoutWidth = textWidth
 
         subtitleLabel.text = subtitle
-        subtitleLabel.position = CGPoint(x: textX, y: -22)
+        subtitleLabel.position = CGPoint(x: textX, y: -23)
         subtitleLabel.preferredMaxLayoutWidth = textWidth
     }
 }

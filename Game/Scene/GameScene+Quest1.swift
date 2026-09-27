@@ -27,72 +27,97 @@ extension GameScene {
         let rockSaltMineCount = worldState.buildingObjects.filter { $0.kind == .rockSalt }.count
 
         // Quest 6 must take priority over completed chapter placement checks.
-        // Its map phase is specifically the placement of three Rock Salt Mines.
+        // Keep Anneth's House visible alongside the three Rock Salt Mines so
+        // the player can see the complete set of required quest locations.
         if quest6Controller.isUnlocked && !quest6Controller.isCompleted {
-            return [MapQuestItem(
-                category: "Quest 6",
-                title: "\(VillageQuestCatalog.Quest6.mapObjective) (\(rockSaltMineCount)/3)",
-                isCompleted: rockSaltMineCount >= 3,
-                buildingKind: .rockSalt
-            )]
+            guard !hasAnnethHome || rockSaltMineCount < 3 else { return [] }
+            return [
+                MapQuestItem(
+                    category: "Quest 6",
+                    title: "Place Anneth's House (\(hasAnnethHome ? 1 : 0)/1)",
+                    isCompleted: hasAnnethHome,
+                    buildingKind: .annethHouse
+                ),
+                MapQuestItem(
+                    category: "Quest 6",
+                    title: "\(VillageQuestCatalog.Quest6.mapObjective) (\(rockSaltMineCount)/3)",
+                    isCompleted: rockSaltMineCount >= 3,
+                    buildingKind: .rockSalt
+                )
+            ]
         }
 
         if quest5Controller.isUnlocked && !quest5Controller.isCompleted {
+            guard !hasAnnethHome else { return [] }
             return [MapQuestItem(
                 category: "Quest 5",
-                title: VillageQuest5Catalog.mapObjective,
-                isCompleted: hasAnnethHome,
+                title: "\(VillageQuest5Catalog.mapObjective) (0/1)",
+                isCompleted: false,
                 buildingKind: .annethHouse
             )]
         }
 
         if quest4Controller.isUnlocked && !quest4Controller.isCompleted {
+            guard !hasAnimalPen else { return [] }
             return [MapQuestItem(
                 category: "Quest 4",
-                title: VillageQuest4Catalog.mapObjective,
-                isCompleted: hasAnimalPen,
+                title: "\(VillageQuest4Catalog.mapObjective) (0/1)",
+                isCompleted: false,
                 buildingKind: .animalPen
             )]
         }
 
         if !quest1Controller.isCompleted && !quest1Controller.hasCollectedWater {
-            guard hasArthurHome else { return [] }
             return [
-                MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: true, buildingKind: .arthurHouse),
-                MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: hasWell, buildingKind: .well)
+                MapQuestItem(
+                    category: "Quest 1",
+                    title: "\(VillageQuestCatalog.Quest1.mapObjectives[0]) (\(hasArthurHome ? 1 : 0)/1)",
+                    isCompleted: hasArthurHome,
+                    buildingKind: .arthurHouse
+                ),
+                MapQuestItem(
+                    category: "Quest 1",
+                    title: "\(VillageQuestCatalog.Quest1.mapObjectives[1]) (\(hasWell ? 1 : 0)/1)",
+                    isCompleted: hasWell,
+                    buildingKind: .well
+                )
             ]
         }
         if quest1Controller.hasCollectedWater && !quest2Controller.isCompleted {
-            var quest2Items = [
-                MapQuestItem(category: "Quest 2", title: VillageQuestCatalog.Quest2.mapObjective, isCompleted: false, buildingKind: .buMaraHouse)
+            guard !hasArthurHome || !hasWell || !hasMaraHome else { return [] }
+            return [
+                MapQuestItem(
+                    category: "Quest 2",
+                    title: "\(VillageQuestCatalog.Quest2.worldObjectives[0]) (\(hasArthurHome ? 1 : 0)/1)",
+                    isCompleted: hasArthurHome,
+                    buildingKind: .arthurHouse
+                ),
+                MapQuestItem(
+                    category: "Quest 2",
+                    title: "\(VillageQuestCatalog.Quest2.worldObjectives[1]) (\(hasWell ? 1 : 0)/1)",
+                    isCompleted: hasWell,
+                    buildingKind: .well
+                ),
+                MapQuestItem(
+                    category: "Quest 2",
+                    title: "\(VillageQuestCatalog.Quest2.worldObjectives[2]) (\(hasMaraHome ? 1 : 0)/1)",
+                    isCompleted: hasMaraHome,
+                    buildingKind: .buMaraHouse
+                )
             ]
-            if !hasMaraHome {
-                quest2Items.append(MapQuestItem(category: "Quest 2", title: VillageQuestCatalog.Quest2.worldObjectives[2], isCompleted: false, buildingKind: .buMaraHouse))
-            }
-            return quest2Items
         }
         if quest1Controller.isCompleted && quest2Controller.isCompleted && !hasBarn {
-            return [MapQuestItem(category: "Quest 3", title: VillageQuest3Catalog.mapObjective, isCompleted: false, buildingKind: .barn)]
-        }
-        var items: [MapQuestItem] = []
-        if hasArthurHome {
-            items.append(MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[0], isCompleted: true, buildingKind: .arthurHouse))
-        }
-        if quest1Controller.isWellUnlocked || hasWell {
-            items.append(MapQuestItem(category: "Quest 1", title: VillageQuestCatalog.Quest1.mapObjectives[1], isCompleted: hasWell, buildingKind: .well))
-        }
-        if quest1Controller.hasCollectedWater || quest2Controller.isActive || quest2Controller.isCompleted || hasMaraHome {
-            items.append(MapQuestItem(category: "Quest 2", title: VillageQuestCatalog.Quest2.mapObjective, isCompleted: quest2Controller.isCompleted, buildingKind: .buMaraHouse))
-        }
-        if quest1Controller.isCompleted && quest2Controller.isCompleted {
-            items.append(MapQuestItem(
+            return [MapQuestItem(
                 category: "Quest 3",
-                title: VillageQuest3Catalog.mapObjective,
-                isCompleted: quest3Controller.isCompleted || hasBarn,
+                title: "\(VillageQuest3Catalog.mapObjective) (0/1)",
+                isCompleted: false,
                 buildingKind: .barn
-            ))
+            )]
         }
-        return items
+
+        // This tracker is only for active map placement requirements. Once a
+        // building is placed, the world quest UI takes over for the next step.
+        return []
     }
 
     func questUnlockedObjectKinds() -> Set<BuildingObjectKind> {
@@ -175,23 +200,16 @@ extension GameScene {
             handleQuest6Result(activation)
         }
         var items: [MapQuestItem] = []
-        let hasArthurHome = worldState.buildingObjects.contains { $0.kind == .arthurHouse }
-        let hasWell = worldState.buildingObjects.contains { $0.kind == .well }
-        let hasMaraHome = worldState.buildingObjects.contains { $0.kind == .buMaraHouse }
-        let hasBarn = worldState.buildingObjects.contains { $0.kind == .barn }
 
         if quest6Controller.isActive {
-            let mineCount = worldState.buildingObjects.filter { $0.kind == .rockSalt }.count
             let title: String
-            if mineCount < 3 {
-                title = "\(VillageQuestCatalog.Quest6.mapObjective) (\(mineCount)/3)"
-            } else if !quest6Controller.hasCollectedRockSalt {
+            if !quest6Controller.hasCollectedRockSalt {
                 title = "Mine Rock Salt (\(quest6Controller.collectedRockSaltCount)/3)"
             } else {
                 title = "Return the Rock Salt to Anneth"
             }
             items.append(MapQuestItem(category: "Quest 6", title: title, isCompleted: false))
-            worldQuestTracker.update(with: items)
+            worldQuestTracker.update(with: items, showsItemIcon: false)
             worldQuestTracker.isHidden = gameMode != .exploring
             worldQuestLabel.isHidden = true
             return
@@ -203,7 +221,7 @@ extension GameScene {
                 title: VillageQuest5Catalog.worldObjective,
                 isCompleted: false
             ))
-            worldQuestTracker.update(with: items)
+            worldQuestTracker.update(with: items, showsItemIcon: false)
             worldQuestTracker.isHidden = gameMode != .exploring
             worldQuestLabel.isHidden = true
             return
@@ -215,29 +233,17 @@ extension GameScene {
                 title: VillageQuest4Catalog.worldObjective,
                 isCompleted: false
             ))
-            worldQuestTracker.update(with: items)
+            worldQuestTracker.update(with: items, showsItemIcon: false)
             worldQuestTracker.isHidden = gameMode != .exploring
             worldQuestLabel.isHidden = true
             return
         }
 
         if !quest1Controller.isCompleted {
-            if !hasArthurHome {
-                items.append(MapQuestItem(
-                    category: "Quest 1",
-                    title: VillageQuestCatalog.Quest1.mapObjectives[0],
-                    isCompleted: false
-                ))
-            } else if !quest1Controller.isWellUnlocked {
+            if !quest1Controller.isWellUnlocked {
                 items.append(MapQuestItem(
                     category: "Quest 1",
                     title: "Talk to Grandpa at Arthur's House.",
-                    isCompleted: false
-                ))
-            } else if !hasWell {
-                items.append(MapQuestItem(
-                    category: "Quest 1",
-                    title: VillageQuestCatalog.Quest1.mapObjectives[1],
                     isCompleted: false
                 ))
             } else {
@@ -251,19 +257,9 @@ extension GameScene {
             }
         }
         if quest1Controller.hasCollectedWater && !quest2Controller.isCompleted {
-            let quest2Title: String
-            if !hasArthurHome {
-                quest2Title = VillageQuestCatalog.Quest2.worldObjectives[0]
-            } else if !hasWell {
-                quest2Title = VillageQuestCatalog.Quest2.worldObjectives[1]
-            } else if !hasMaraHome {
-                quest2Title = VillageQuestCatalog.Quest2.worldObjectives[2]
-            } else {
-                quest2Title = VillageQuestCatalog.Quest2.mapObjective
-            }
             items.append(MapQuestItem(
                 category: "Quest 2",
-                title: quest2Title,
+                title: VillageQuestCatalog.Quest2.mapObjective,
                 isCompleted: false
             ))
         }
@@ -271,12 +267,12 @@ extension GameScene {
             let quest3Progress = VillageQuest3Progress.load()
             items.append(MapQuestItem(
                 category: "Quest 3",
-                title: hasBarn ? VillageQuest3Catalog.worldObjective : VillageQuest3Catalog.mapObjective,
+                title: VillageQuest3Catalog.worldObjective,
                 isCompleted: quest3Progress.sortedSeeds
             ))
         }
-        worldQuestTracker.update(with: items)
-        worldQuestTracker.isHidden = gameMode != .exploring || items.isEmpty || isQuest1TutorialActive
+        worldQuestTracker.update(with: items, showsItemIcon: false)
+        worldQuestTracker.isHidden = gameMode != .exploring || items.isEmpty
         worldQuestLabel.isHidden = true
         updateWorldTutorialBanner()
     }
@@ -534,7 +530,7 @@ extension GameScene {
             text: line.text,
             speaker: line.speaker,
             pageIndicator: "Tap to continue",
-            fontSize: 17,
+            fontSize: 20,
             maxWidth: min(size.width - 72, 360)
         ))
         bubble.name = "QuestDialogue"

@@ -88,7 +88,7 @@ enum BuildingObjectRenderer {
             return root
         }
 
-        let icon = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        let icon = SKLabelNode(fontNamed: GameFont.name)
         switch object.kind {
         case .well: icon.text = "◉"
         case .rockSalt: icon.text = "◆"
@@ -99,9 +99,9 @@ enum BuildingObjectRenderer {
         icon.verticalAlignmentMode = .center
         icon.position.y = size.height * 0.08
         root.addChild(icon)
-        let title = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        let title = SKLabelNode(fontNamed: GameFont.name)
         title.text = definition.title
-        title.fontSize = min(isWorld ? 17 : 10, size.width / CGFloat(definition.title.count) * 1.5)
+        title.fontSize = min(isWorld ? 20 : 13, size.width / CGFloat(definition.title.count) * 1.9)
         title.verticalAlignmentMode = .center
         title.position.y = -size.height * 0.3
         root.addChild(title)
