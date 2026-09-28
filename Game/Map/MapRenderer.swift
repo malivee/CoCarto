@@ -520,9 +520,9 @@ final class MapRenderer {
                     y: cellOrigin.y + halfCellSize - CGFloat(position.y) * microSize - microSize / 2
                 )
                 node.fillColor = .clear
-                node.strokeColor = SKColor.systemGreen.withAlphaComponent(0.48)
-                node.lineWidth = 0.6
-                node.glowWidth = 0
+                node.strokeColor = SKColor.systemGreen.withAlphaComponent(0.95)
+                node.lineWidth = 1.5
+                node.glowWidth = 2.0
                 root.addChild(node)
             }
         }
