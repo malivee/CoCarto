@@ -476,6 +476,9 @@ extension GameScene {
             return
         }
         objectPreview = nextPreview
+        if mapRenderer.moveBuildingPreview(nextPreview, in: worldState, tutorialStep: currentMapTutorialStep()) {
+            return
+        }
         rebuildMapView()
     }
 

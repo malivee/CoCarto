@@ -2,6 +2,11 @@ import SpriteKit
 import Foundation
 
 final class MapRenderer {
+    private weak var buildingDragNode: SKNode?
+    private weak var buildingDragGlow: SKNode?
+    private var renderedBuildingPreview: BuildingObject?
+    private var renderedBuildingResult: BuildingPlacementResult?
+    private var renderedBuildingTutorial: MapTutorialStep?
     private(set) var mapper = MapGridMapper(cellSize: 96, origin: .zero)
     private(set) var cameraCenter = CGPoint.zero
     private(set) var inventoryExpanded = false
@@ -43,6 +48,11 @@ final class MapRenderer {
         tutorialStep: MapTutorialStep? = nil
     ) {
         mapRoot.removeAllChildren()
+        buildingDragNode = nil
+        buildingDragGlow = nil
+        renderedBuildingPreview = nil
+        renderedBuildingResult = nil
+        renderedBuildingTutorial = tutorialStep
         let tutorialKind = tutorialStep?.dragDemoKind ?? tutorialStep?.placementKind
         currentTutorialTarget = tutorialKind.flatMap {
             TutorialBuildingPlacementResolver.target(for: $0, in: worldState)
@@ -154,9 +164,13 @@ final class MapRenderer {
                 result: result
             )
             previewNode.zPosition = 300
+            buildingDragNode = previewNode
+            renderedBuildingPreview = objectPreview
+            renderedBuildingResult = result
             contentRoot.addChild(previewNode)
             if tutorialStep?.isBuildingPlacementStep == true {
                 addTutorialGlow(around: previewNode, in: contentRoot, color: result == .valid ? .systemGreen : .systemYellow)
+                buildingDragGlow = contentRoot.children.last
             }
         }
 
@@ -499,6 +513,32 @@ final class MapRenderer {
         node.zPosition = -20
         node.name = MapNodeName.background.rawValue
         return node
+    }
+
+    /// A drag within the same placement state only moves the existing sprite.
+    /// Rebuild when validity or tutorial state changes so all feedback stays in sync.
+    func moveBuildingPreview(_ object: BuildingObject, in worldState: WorldState,
+                             tutorialStep: MapTutorialStep?) -> Bool {
+        guard let node = buildingDragNode, node.parent != nil,
+              let previous = renderedBuildingPreview,
+              previous.id == object.id, previous.kind == object.kind,
+              previous.rotation == object.rotation,
+              renderedBuildingTutorial == tutorialStep,
+              BuildingPlacementValidator().validate(object, in: worldState) == renderedBuildingResult,
+              matchesCurrentTutorialTarget(previous) == matchesCurrentTutorialTarget(object) else { return false }
+        let microSize = mapCellSize / CGFloat(MicroBiomeGrid.dimension)
+        let dimensions = object.mapDimensions
+        let oldPosition = node.position
+        node.position = CGPoint(
+            x: (CGFloat(object.origin.x) + CGFloat(dimensions.width) / 2) * microSize - mapCellSize / 2,
+            y: (CGFloat(object.origin.y) + CGFloat(dimensions.height) / 2) * microSize - mapCellSize / 2
+        )
+        if let glow = buildingDragGlow {
+            glow.position.x += node.position.x - oldPosition.x
+            glow.position.y += node.position.y - oldPosition.y
+        }
+        renderedBuildingPreview = object
+        return true
     }
 
     private func addPlacementMicrogridOverlay(to pieceNode: SKNode, piece: WorldPiece, biome: BiomeType) {
